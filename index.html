@@ -636,7 +636,6 @@
 
         .hidden { display: none !important; }
 
-        /* Demo data notice */
         .demo-notice {
             background: rgba(255, 204, 0, 0.1);
             border: 1px solid var(--border);
@@ -648,6 +647,19 @@
             display: flex;
             align-items: center;
             gap: 8px;
+        }
+
+        .debug-info {
+            background: rgba(255, 0, 0, 0.1);
+            border: 1px solid rgba(255, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            font-size: 12px;
+            color: #ff6b6b;
+            font-family: monospace;
+            white-space: pre-wrap;
+            display: none;
         }
 
         @media (max-width: 1200px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
@@ -722,6 +734,8 @@
                     <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     Showing demo data. Check your sheet publishing settings or CORS policy.
                 </div>
+
+                <div class="debug-info" id="debugInfo"></div>
 
                 <div class="stats-grid">
                     <div class="stat-card total">
@@ -865,7 +879,7 @@
 
     <script>
         // ============================================
-        // CONFIGURATION - Your Published Sheet
+        // CONFIGURATION
         // ============================================
         const PUB_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT_IDg3V6_1h2TXV8bVzx38OPSpQANrWMjG3SB2aBjETLM-i5ArudTcJYR-XpOlVCgQzfS3jwTHADbh/pub?output=csv';
 
@@ -874,13 +888,95 @@
         let charts = {};
 
         // ============================================
-        // DEMO DATA (matches your actual sheet structure)
+        // ROBUST CSV PARSER (handles quotes, newlines, commas)
         // ============================================
-        const DEMO_ISSUES = [
-            { ticketId: 'CB-2606-00001', date: '2026-06-29 01:21:22', timestamp: '2026-06-28T19:21:22.349Z', consignmentId: 'F06289AV8CW', merchantName: 'Paperfly', issueTag: 'Delivery delay', issueDetails: 'testtesttesttesttest', Status: 'FALSE', Remarks: '', status: 'Open' },
-            { ticketId: 'CB-2606-00002', date: '2026-06-29 01:26:37', timestamp: '2026-06-28T19:26:36.907Z', consignmentId: 'F0627G7AQDH', merchantName: 'Shemonty', issueTag: 'Phone Number Change', issueDetails: 'bhaia ei id er phn no ta bhul ache , correct no eta 👇 01833-339932', Status: 'FALSE', Remarks: '', status: 'Open' },
-            { ticketId: 'CB-2606-00003', date: '2026-06-29 01:48:20', timestamp: '2026-06-28T19:48:19.856Z', consignmentId: 'F0627G7AQDH', merchantName: 'Shemonty', issueTag: 'Phone Number Change', issueDetails: 'bhaiya etar phone no ta change hobe.', Status: 'FALSE', Remarks: '', status: 'Open' }
-        ];
+        function parseCSV(text) {
+            const result = [];
+            let row = [];
+            let cell = '';
+            let inQuotes = false;
+            
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                const nextChar = text[i + 1];
+                
+                if (inQuotes) {
+                    if (char === '"') {
+                        if (nextChar === '"') {
+                            cell += '"';
+                            i++; // skip next quote
+                        } else {
+                            inQuotes = false;
+                        }
+                    } else {
+                        cell += char;
+                    }
+                } else {
+                    if (char === '"') {
+                        inQuotes = true;
+                    } else if (char === ',') {
+                        row.push(cell);
+                        cell = '';
+                    } else if (char === '\n' || (char === '\r' && nextChar === '\n')) {
+                        if (char === '\r') i++; // skip \n after \r
+                        row.push(cell);
+                        if (row.length > 1 || row[0] !== '') {
+                            result.push(row);
+                        }
+                        row = [];
+                        cell = '';
+                    } else {
+                        cell += char;
+                    }
+                }
+            }
+            
+            // Push last cell and row
+            row.push(cell);
+            if (row.length > 1 || row[0] !== '') {
+                result.push(row);
+            }
+            
+            return result;
+        }
+
+        // ============================================
+        // DATE PARSER (handles Google Sheets serial dates)
+        // ============================================
+        function parseDate(dateStr) {
+            if (!dateStr) return null;
+            
+            // Try standard date parsing first
+            let date = new Date(dateStr);
+            if (!isNaN(date.getTime())) return date;
+            
+            // Handle Google Sheets serial date: Date(2026,5,29,2,53,48)
+            const match = dateStr.match(/Date\((\d+),(\d+),(\d+),(\d+),(\d+),(\d+)\)/);
+            if (match) {
+                const [, year, month, day, hour, minute, second] = match.map(Number);
+                // Month is 0-indexed in JS Date
+                return new Date(year, month, day, hour, minute, second);
+            }
+            
+            // Handle dd/MM/yyyy HH:mm:ss format
+            const ukMatch = dateStr.match(/(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2}):(\d{2})/);
+            if (ukMatch) {
+                const [, day, month, year, hour, minute, second] = ukMatch.map(Number);
+                return new Date(year, month - 1, day, hour, minute, second);
+            }
+            
+            return null;
+        }
+
+        function formatDate(dateStr) {
+            const date = parseDate(dateStr);
+            if (!date || isNaN(date.getTime())) return dateStr || '-';
+            
+            return date.toLocaleDateString('en-GB', {
+                day: '2-digit', month: '2-digit', year: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+            });
+        }
 
         // ============================================
         // DATA LOADING
@@ -892,6 +988,7 @@
                     Loading issues from Google Sheet...
                 </div>
             `;
+            document.getElementById('debugInfo').style.display = 'none';
 
             try {
                 const response = await fetch(PUB_CSV_URL);
@@ -907,31 +1004,54 @@
                 }
 
                 if (csvText.trim().startsWith('<!DOCTYPE') || csvText.trim().startsWith('<html')) {
-                    throw new Error('Sheet returned HTML instead of CSV. Please publish the sheet as CSV.');
+                    throw new Error('Sheet returned HTML instead of CSV');
                 }
 
-                allIssues = parseCSV(csvText);
+                // Parse CSV with robust parser
+                const rows = parseCSV(csvText);
                 
-                if (allIssues.length === 0) {
+                if (rows.length < 2) {
                     throw new Error('No data rows found in sheet');
                 }
 
-                // Process status from checkboxes
-                allIssues.forEach((issue, index) => {
-                    issue.ticketId = `CB-2606-${String(index + 1).padStart(5, '0')`;
+                const headers = rows[0].map(h => h.trim());
+                allIssues = [];
+
+                for (let i = 1; i < rows.length; i++) {
+                    const values = rows[i];
+                    if (values.length < 6) continue;
                     
-                    const statusRaw = (issue.Status || '').toString().trim();
-                    const remarksRaw = (issue.Remarks || '').toString().trim();
+                    const issue = {};
+                    headers.forEach((header, index) => {
+                        issue[header] = values[index] !== undefined ? values[index].trim() : '';
+                    });
+
+                    // Determine status from checkbox
+                    const statusRaw = (issue['Status'] || '').toString().trim();
+                    const remarksRaw = (issue['Remarks'] || '').toString().trim();
                     
-                    // FIXED: Added .trim() to remarks check
-                    if (statusRaw === 'TRUE' || statusRaw === 'true' || statusRaw === '✓') {
-                        issue.status = 'Solved';
+                    let status = 'Open';
+                    if (statusRaw === 'TRUE' || statusRaw === 'true') {
+                        status = 'Solved';
                     } else if (remarksRaw && remarksRaw.trim() !== '' && remarksRaw !== 'FALSE') {
-                        issue.status = 'In Processed';
-                    } else {
-                        issue.status = 'Open';
+                        status = 'In Processed';
                     }
-                });
+
+                    allIssues.push({
+                        ticketId: `CB-2606-${String(i).padStart(5, '0')`,
+                        date: issue['Date'] || issue['Timestamp'] || '',
+                        timestamp: issue['Timestamp'] || '',
+                        consignmentId: issue['Consignment ID'] || '',
+                        merchantName: issue['Merchant Name'] || '',
+                        issueTag: issue['Issue Tag'] || '',
+                        issueDetails: issue['Issue Details'] || '',
+                        Status: issue['Status'] || 'FALSE',
+                        Remarks: issue['Remarks'] || '',
+                        status: status
+                    });
+                }
+
+                allIssues.reverse(); // Newest first
 
                 document.getElementById('demoNotice').style.display = 'none';
                 renderTable();
@@ -945,71 +1065,24 @@
 
             } catch (error) {
                 console.error('Error loading data:', error);
+                document.getElementById('debugInfo').textContent = `Error: ${error.message}\n\nTry opening browser console (F12) for details.`;
+                document.getElementById('debugInfo').style.display = 'block';
                 
-                // FALLBACK: Load demo data so the dashboard still works
-                allIssues = [...DEMO_ISSUES];
-                document.getElementById('demoNotice').style.display = 'flex';
-                
-                renderTable();
-                updateStats();
-                populateTagFilter();
-                updateLastRefreshed();
-                
-                if (!document.getElementById('page-analytics').classList.contains('hidden')) {
-                    renderAnalytics();
-                }
+                showError(`Failed to load data: ${error.message}<br><br>
+                    <strong>Troubleshooting:</strong><br>
+                    1. Check browser console (F12 → Console) for CORS errors<br>
+                    2. Verify sheet is published as CSV<br>
+                    3. Try refreshing in 30 seconds (Google Sheets cache delay)`);
             }
         }
 
-        function parseCSV(csvText) {
-            const lines = csvText.trim().split('\n');
-            if (lines.length < 2) return [];
-            
-            const headers = parseCSVLine(lines[0]);
-            const issues = [];
-
-            for (let i = 1; i < lines.length; i++) {
-                const values = parseCSVLine(lines[i]);
-                if (values.length < 6) continue;
-                
-                const issue = {};
-                headers.forEach((header, index) => {
-                    issue[header.trim()] = values[index] !== undefined ? values[index].trim() : '';
-                });
-                
-                issues.push({
-                    date: issue['Date'] || issue['Timestamp'] || '',
-                    timestamp: issue['Timestamp'] || '',
-                    consignmentId: issue['Consignment ID'] || '',
-                    merchantName: issue['Merchant Name'] || '',
-                    issueTag: issue['Issue Tag'] || '',
-                    issueDetails: issue['Issue Details'] || '',
-                    Status: issue['Status'] || 'FALSE',
-                    Remarks: issue['Remarks'] || ''
-                });
-            }
-
-            return issues.reverse();
-        }
-
-        function parseCSVLine(line) {
-            const result = [];
-            let current = '';
-            let inQuotes = false;
-            
-            for (let i = 0; i < line.length; i++) {
-                const char = line[i];
-                if (char === '"') {
-                    inQuotes = !inQuotes;
-                } else if (char === ',' && !inQuotes) {
-                    result.push(current);
-                    current = '';
-                } else {
-                    current += char;
-                }
-            }
-            result.push(current);
-            return result;
+        function showError(msg) {
+            document.getElementById('tableContent').innerHTML = `
+                <div class="error-box">
+                    <p>${msg}</p>
+                    <button class="btn btn-primary" onclick="loadData()" style="margin-top: 16px;">Retry</button>
+                </div>
+            `;
         }
 
         // ============================================
@@ -1076,18 +1149,6 @@
                 case 'Solved': return 'status-resolved';
                 default: return 'status-open';
             }
-        }
-
-        function formatDate(dateStr) {
-            if (!dateStr) return '-';
-            try {
-                const date = new Date(dateStr);
-                if (isNaN(date.getTime())) return dateStr;
-                return date.toLocaleDateString('en-GB', {
-                    day: '2-digit', month: '2-digit', year: 'numeric',
-                    hour: '2-digit', minute: '2-digit'
-                });
-            } catch { return dateStr; }
         }
 
         function escapeHtml(text) {
