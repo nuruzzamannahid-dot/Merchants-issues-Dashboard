@@ -66,13 +66,9 @@
             min-width: 200px;
         }
         .details-preview {
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-            text-overflow: ellipsis;
             line-height: 1.5;
             word-break: break-word;
+            white-space: normal;
         }
         .logo-img { height: 32px; width: auto; }
     </style>
@@ -474,7 +470,7 @@
                 issuesData = [
                     { date: '2026-06-29', timestamp: '9:21:40', consignmentId: 'F06289AV8CW', merchant: 'Paperfly', issueTag: 'Delivery delay', details: 'test test test testtest test test testtest test test testtest test test test', inProcess: false, solved: false },
                     { date: '2026-06-29', timestamp: '12:41:08', consignmentId: 'F0627SXWXUE', merchant: 'Sumaiya Hair Tonic', issueTag: 'pickup missed', details: 'Ei parcel ajker modhe delivery lagbe', inProcess: true, solved: false },
-                    { date: '2026-06-29', timestamp: '16:55:30', consignmentId: 'F0629UZF89D', merchant: 'Glowfe', issueTag: 'Lost Shipment', details: 'this parcel is lost....', inProcess: false, solved: true },
+                    { date: '2026-06-29', timestamp: '16:55:30', consignmentId: 'F0629UZF89D', merchant: 'Glowfe', issueTag: 'Lost Shipment', details: 'this parcel is lost and we need to find it immediately. Customer is waiting for update since yesterday morning.', inProcess: false, solved: true },
                     { date: '2026-06-28', timestamp: '10:15:00', consignmentId: 'CB-2024-00123', merchant: 'Dhaka Fashion House', issueTag: 'Urgent delivery', details: 'Order was supposed to arrive on 24th June but still has not been delivered. Customer is very upset and calling every hour.', inProcess: false, solved: false },
                     { date: '2026-06-28', timestamp: '11:30:22', consignmentId: 'CB-2024-00155', merchant: 'Organic Roots', issueTag: 'COD update request', details: 'COD amount was collected by rider but not remitted to merchant account. Amount is 2,450 BDT.', inProcess: true, solved: false },
                     { date: '2026-06-27', timestamp: '14:55:00', consignmentId: 'CB-2024-00199', merchant: 'StyleHub', issueTag: 'Fake return', details: 'Return parcel was picked up on 22nd June but status still not updated in system. Merchant waiting for confirmation.', inProcess: false, solved: true },
@@ -505,8 +501,7 @@
 
             for(let i = 1; i < lines.length; i++) {
                 const obj = {};
-                const matches = lines[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || lines[i].split(',');
-                const values = matches.map(v => v.trim().replace(/^"|"$/g, '').replace(/\r/g, ''));
+                const values = parseCSVLine(lines[i]);
 
                 headers.forEach((header, index) => {
                     let val = values[index] || '';
@@ -525,6 +520,34 @@
                 if (obj.date && obj.merchant) result.push(obj);
             }
             return result;
+        }
+
+        function parseCSVLine(line) {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                const nextChar = line[i + 1];
+
+                if (char === '"') {
+                    if (inQuotes && nextChar === '"') {
+                        current += '"';
+                        i++;
+                    } else {
+                        inQuotes = !inQuotes;
+                    }
+                } else if (char === ',' && !inQuotes) {
+                    result.push(current.trim());
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            result.push(current.trim());
+
+            return result.map(v => v.replace(/^"|"$/g, '').replace(/\r/g, ''));
         }
 
         // --- Rendering ---
