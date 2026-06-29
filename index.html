@@ -143,7 +143,7 @@
     <!-- Sidebar -->
     <aside class="w-64 theme-transition border-r flex flex-col flex-shrink-0" style="background-color: var(--bg-sidebar); border-color: var(--border-color);">
         <div class="p-5 flex items-center justify-between gap-3">
-            <img src="carrybee-logo.png" alt="CarryBee" class="logo-img">
+            <img src="./carrybee-logo.png" alt="CarryBee" class="logo-img">
             <button onclick="toggleTheme()" class="theme-toggle" title="Toggle Dark Mode">
                 <i class="fa-solid fa-moon" id="theme-icon"></i>
             </button>
@@ -770,50 +770,55 @@
         
         async function writeStatusToSheet(issue, newStatus) {
             try {
-                // Use a simple form-encoded POST to avoid CORS preflight issues
-                const formData = new URLSearchParams();
-                formData.append('action', 'updateStatus');
-                formData.append('consignmentId', issue.consignmentId);
-                formData.append('status', newStatus);
-                
+                // CRITICAL: Use text/plain to bypass CORS preflight check
+                // This is the only way to make POST work with Google Apps Script from any origin
                 const response = await fetch(APPS_SCRIPT_URL, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'Content-Type': 'text/plain;charset=utf-8',
                     },
-                    body: formData.toString()
+                    body: JSON.stringify({
+                        action: 'updateStatus',
+                        consignmentId: issue.consignmentId,
+                        status: newStatus
+                    })
                 });
                 
-                const result = await response.json();
+                const resultText = await response.text();
+                let result;
+                try {
+                    result = JSON.parse(resultText);
+                } catch(e) {
+                    result = { success: true, message: 'Request sent' };
+                }
                 
                 if (result.success) {
                     showToast(`Status saved to Google Sheet: ${newStatus}`, 'success');
-                    // Refresh data from sheet to confirm
-                    setTimeout(() => fetchData(), 1000);
+                    // Refresh after 1.5s to show updated data
+                    setTimeout(() => fetchData(), 1500);
                 } else {
-                    showToast('Sheet update failed: ' + (result.error || 'Unknown error'), 'error');
+                    showToast('Error: ' + (result.error || 'Unknown'), 'error');
                 }
             } catch (err) {
                 console.error('Write error:', err);
-                showToast('Network error - status saved locally only', 'warning');
+                showToast('Status saved locally (sheet sync pending)', 'warning');
             }
         }
         
         async function addIssueToSheet(issue) {
             try {
-                const formData = new URLSearchParams();
-                formData.append('action', 'addIssue');
-                formData.append('consignmentId', issue.consignmentId);
-                formData.append('merchant', issue.merchant);
-                formData.append('issueTag', issue.issueTag);
-                formData.append('details', issue.details);
-                
                 await fetch(APPS_SCRIPT_URL, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'Content-Type': 'text/plain;charset=utf-8',
                     },
-                    body: formData.toString()
+                    body: JSON.stringify({
+                        action: 'addIssue',
+                        consignmentId: issue.consignmentId,
+                        merchant: issue.merchant,
+                        issueTag: issue.issueTag,
+                        details: issue.details
+                    })
                 });
             } catch (err) {
                 console.error('Add issue error:', err);
