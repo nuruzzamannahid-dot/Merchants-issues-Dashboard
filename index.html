@@ -3,1287 +3,742 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CarryBee - KAM Issue Dashboard</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/gh/nokshaia/li-ador-noirrit@main/LiAdorNoirrit.css" rel="stylesheet">
+    <title>CarryBee | Issue Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        @font-face {
-            font-family: 'Gilroy';
-            src: url('https://cdn.jsdelivr.net/gh/nickymarino/nickymarino.github.io@master/public/fonts/Gilroy/Gilroy-Regular.woff2') format('woff2');
-            font-weight: 400; font-style: normal; font-display: swap;
-        }
-        @font-face {
-            font-family: 'Gilroy';
-            src: url('https://cdn.jsdelivr.net/gh/nickymarino/nickymarino.github.io@master/public/fonts/Gilroy/Gilroy-Medium.woff2') format('woff2');
-            font-weight: 500; font-style: normal; font-display: swap;
-        }
-        @font-face {
-            font-family: 'Gilroy';
-            src: url('https://cdn.jsdelivr.net/gh/nickymarino/nickymarino.github.io@master/public/fonts/Gilroy/Gilroy-SemiBold.woff2') format('woff2');
-            font-weight: 600; font-style: normal; font-display: swap;
-        }
-        @font-face {
-            font-family: 'Gilroy';
-            src: url('https://cdn.jsdelivr.net/gh/nickymarino/nickymarino.github.io@master/public/fonts/Gilroy/Gilroy-Bold.woff2') format('woff2');
-            font-weight: 700; font-style: normal; font-display: swap;
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
-        :root {
-            --bg-primary: #333132;
-            --bg-secondary: #2a292b;
-            --bg-card: #3d3c3e;
-            --bg-sidebar: #2a292b;
-            --text-primary: #ffffff;
-            --text-secondary: #a0a0a0;
-            --yellow: #FFCC00;
-            --yellow-hover: #ffd633;
-            --green: #22c55e;
-            --blue: #3b82f6;
-            --orange: #f97316;
-            --gray: #888888;
-            --border: rgba(255, 204, 0, 0.15);
-        }
-
-        body {
-            font-family: 'Gilroy', 'Inter', 'Li Ador Noirrit', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            min-height: 100vh;
-        }
-
-        .app-container { display: flex; min-height: 100vh; }
-
-        .sidebar {
-            width: 280px;
-            background: var(--bg-sidebar);
-            border-right: 1px solid var(--border);
-            padding: 24px 0;
-            position: fixed;
-            height: 100vh;
-            overflow-y: auto;
-            z-index: 100;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .sidebar-header {
-            padding: 0 24px 24px;
-            border-bottom: 1px solid var(--border);
-            margin-bottom: 16px;
-        }
-
-        .logo-section {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .logo-img {
-            width: 45px;
-            height: auto;
-        }
-
-        .logo-text h1 {
-            font-family: 'Gilroy', 'Inter', sans-serif;
-            font-size: 18px;
-            font-weight: 700;
-            line-height: 1.2;
-            color: var(--yellow);
-        }
-
-        .logo-text span {
-            font-family: 'Gilroy', 'Inter', sans-serif;
-            font-size: 11px;
-            color: var(--text-secondary);
-            letter-spacing: 0.5px;
-        }
-
-        .menu-label {
-            font-family: 'Gilroy', 'Inter', sans-serif;
-            padding: 16px 24px 8px;
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: var(--text-secondary);
-        }
-
-        .nav-item {
-            font-family: 'Gilroy', 'Inter', sans-serif;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px 24px;
-            margin: 2px 12px;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
-            color: var(--text-secondary);
-            text-decoration: none;
-            font-size: 14px;
-        }
-
-        .nav-item:hover {
-            background: rgba(255, 204, 0, 0.05);
-            color: var(--text-primary);
-        }
-
-        .nav-item.active {
-            background: rgba(255, 204, 0, 0.1);
-            color: var(--yellow);
-            font-weight: 500;
-        }
-
-        .nav-item svg { width: 18px; height: 18px; flex-shrink: 0; }
-
-        .sidebar-footer {
-            margin-top: auto;
-            padding: 16px 24px;
-            border-top: 1px solid var(--border);
-            font-size: 11px;
-            color: var(--text-secondary);
-            text-align: center;
-            line-height: 1.6;
-        }
-
-        .sidebar-footer .powered {
-            font-family: 'Gilroy', 'Inter', sans-serif;
-            color: var(--yellow);
-            font-weight: 600;
-            font-size: 12px;
-        }
-
-        .sidebar-footer .devs {
-            font-family: 'Gilroy', 'Inter', sans-serif;
-            margin-top: 4px;
-        }
-
-        .sidebar-footer .devs span {
-            color: var(--yellow);
-            font-weight: 500;
-        }
-
-        .main-content {
-            flex: 1;
-            margin-left: 280px;
-            padding: 32px;
-        }
-
-        .page-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 24px;
-        }
-
-        .page-title h2 {
-            font-family: 'Gilroy', 'Inter', sans-serif;
-            font-size: 24px;
-            font-weight: 700;
-            margin-bottom: 4px;
-        }
-
-        .page-title p {
-            font-family: 'Gilroy', 'Inter', sans-serif;
-            font-size: 13px;
-            color: var(--text-secondary);
-        }
-
-        .header-actions { display: flex; gap: 12px; }
-
-        .btn {
-            font-family: 'Gilroy', 'Inter', sans-serif;
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            border: none;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            transition: all 0.2s;
-        }
-
-        .btn-secondary {
-            background: var(--bg-card);
-            color: var(--text-primary);
-            border: 1px solid var(--border);
-        }
-
-        .btn-secondary:hover { background: rgba(255, 204, 0, 0.1); }
-
-        .btn-primary {
-            background: var(--yellow);
-            color: #333132;
-        }
-
-        .btn-primary:hover { background: var(--yellow-hover); }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 20px;
-            margin-bottom: 24px;
-        }
-
-        .stat-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 24px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .stat-card::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            border-radius: 0 0 12px 12px;
-        }
-
-        .stat-card.total::after { background: var(--yellow); }
-        .stat-card.open::after { background: var(--orange); }
-        .stat-card.progress::after { background: var(--blue); }
-        .stat-card.resolved::after { background: var(--green); }
-
-        .stat-label {
-            font-family: 'Gilroy', 'Inter', sans-serif;
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--text-secondary);
-            margin-bottom: 8px;
-        }
-
-        .stat-value {
-            font-family: 'Gilroy', 'Inter', sans-serif;
-            font-size: 36px;
-            font-weight: 700;
-            margin-bottom: 4px;
-        }
-
-        .stat-sub {
-            font-family: 'Gilroy', 'Inter', sans-serif;
-            font-size: 13px;
-            color: var(--text-secondary);
-        }
-
-        .filters-bar { display: flex; gap: 12px; margin-bottom: 20px; }
-
-        .search-box { flex: 1; position: relative; }
-
-        .search-box input {
-            font-family: 'Gilroy', 'Inter', sans-serif;
-            width: 100%;
-            padding: 12px 16px 12px 40px;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            color: var(--text-primary);
-            font-size: 14px;
-        }
-
-        .search-box input::placeholder { color: var(--gray); }
-
-        .search-box svg {
-            position: absolute;
-            left: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--gray);
-        }
-
-        .filter-dropdown {
-            font-family: 'Gilroy', 'Inter', sans-serif;
-            padding: 12px 16px;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            color: var(--text-primary);
-            font-size: 14px;
-            cursor: pointer;
-            min-width: 140px;
-        }
-
-        .table-container {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            overflow: hidden;
-        }
-
-        .table-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px 24px;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .table-header h3 {
-            font-family: 'Gilroy', 'Inter', sans-serif;
-            font-size: 16px;
-            font-weight: 600;
-        }
-
-        .table-header span {
-            font-family: 'Gilroy', 'Inter', sans-serif;
-            font-size: 13px;
-            color: var(--text-secondary);
-        }
-
-        table { width: 100%; border-collapse: collapse; }
-
-        thead th {
-            font-family: 'Gilroy', 'Inter', sans-serif;
-            text-align: left;
-            padding: 14px 24px;
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--text-secondary);
-            border-bottom: 1px solid var(--border);
-            white-space: nowrap;
-        }
-
-        tbody tr {
-            border-bottom: 1px solid var(--border);
-            transition: background 0.2s;
-        }
-
-        tbody tr:hover { background: rgba(255, 204, 0, 0.02); }
-
-        tbody td {
-            font-family: 'Gilroy', 'Inter', sans-serif;
-            padding: 16px 24px;
-            font-size: 14px;
-            vertical-align: middle;
-        }
-
-        .ticket-id {
-            color: var(--yellow);
-            font-weight: 600;
-            font-size: 13px;
-            cursor: pointer;
-        }
-
-        .ticket-id:hover { text-decoration: underline; }
-
-        .merchant-name { font-weight: 500; }
-
-        .tag-badge {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 500;
-            background: rgba(255, 204, 0, 0.1);
-            color: var(--yellow);
-            border: 1px solid rgba(255, 204, 0, 0.2);
-        }
-
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-
-        .status-badge::before {
-            content: '';
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-        }
-
-        .status-open { background: rgba(249, 115, 22, 0.1); color: var(--orange); }
-        .status-open::before { background: var(--orange); }
-        .status-progress { background: rgba(59, 130, 246, 0.1); color: var(--blue); }
-        .status-progress::before { background: var(--blue); }
-        .status-resolved { background: rgba(34, 197, 94, 0.1); color: var(--green); }
-        .status-resolved::before { background: var(--green); }
-
-        .btn-view {
-            font-family: 'Gilroy', 'Inter', sans-serif;
-            padding: 6px 16px;
-            background: rgba(255, 204, 0, 0.1);
-            color: var(--yellow);
-            border: 1px solid rgba(255, 204, 0, 0.2);
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .btn-view:hover { background: var(--yellow); color: #333132; }
-
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0, 0, 0, 0.7);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-
-        .modal-overlay.active { display: flex; }
-
-        .modal {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            width: 100%;
-            max-width: 600px;
-            max-height: 90vh;
-            overflow-y: auto;
-            position: relative;
-        }
-
-        .modal-header {
-            padding: 24px;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-        }
-
-        .modal-ticket-id {
-            font-size: 13px;
-            color: var(--yellow);
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
-
-        .modal-title {
-            font-family: 'Gilroy', 'Inter', sans-serif;
-            font-size: 20px;
-            font-weight: 700;
-        }
-
-        .modal-close {
-            background: none;
-            border: none;
-            color: var(--text-secondary);
-            font-size: 24px;
-            cursor: pointer;
-            padding: 4px;
-            line-height: 1;
-        }
-
-        .modal-body { padding: 24px; }
-
-        .detail-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-bottom: 20px;
-        }
-
-        .detail-item label {
-            font-family: 'Gilroy', 'Inter', sans-serif;
-            display: block;
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--text-secondary);
-            margin-bottom: 6px;
-        }
-
-        .detail-item p {
-            font-family: 'Gilroy', 'Inter', sans-serif;
-            font-size: 15px;
-            font-weight: 500;
-        }
-
-        .detail-full { grid-column: 1 / -1; }
-
-        .detail-box {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 16px;
-            margin-top: 8px;
-            line-height: 1.6;
-            color: var(--text-secondary);
-        }
-
-        .status-info {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid var(--border);
-        }
-
-        .analytics-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-bottom: 20px;
-        }
-
-        .chart-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 24px;
-        }
-
-        .chart-card h3 {
-            font-family: 'Gilroy', 'Inter', sans-serif;
-            font-size: 16px;
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
-
-        .chart-card p {
-            font-family: 'Gilroy', 'Inter', sans-serif;
-            font-size: 13px;
-            color: var(--text-secondary);
-            margin-bottom: 20px;
-        }
-
-        .chart-container { position: relative; height: 250px; }
-
-        .top-merchants {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 24px;
-        }
-
-        .top-merchants h3 {
-            font-family: 'Gilroy', 'Inter', sans-serif;
-            font-size: 16px;
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
-
-        .top-merchants p {
-            font-family: 'Gilroy', 'Inter', sans-serif;
-            font-size: 13px;
-            color: var(--text-secondary);
-            margin-bottom: 20px;
-        }
-
-        .merchant-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 14px 0;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .merchant-item:last-child { border-bottom: none; }
-
-        .merchant-count {
-            background: rgba(255, 204, 0, 0.1);
-            color: var(--yellow);
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-
-        .loading {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 60px;
-            color: var(--text-secondary);
-        }
-
-        .spinner {
-            width: 24px;
-            height: 24px;
-            border: 2px solid var(--yellow);
-            border-top-color: transparent;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            margin-right: 12px;
-        }
-
+        body { font-family: 'Inter', sans-serif; background-color: #0f111a; color: #e2e8f0; }
+        .glass-panel { background: rgba(30, 41, 59, 0.4); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .card-gradient { background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%); }
+        .text-gold { color: #fbbf24; }
+        .bg-gold { background-color: #fbbf24; }
+        .border-gold { border-color: #fbbf24; }
+        .status-open { background: rgba(251, 191, 36, 0.1); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.2); }
+        .status-progress { background: rgba(59, 130, 246, 0.1); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.2); }
+        .status-resolved { background: rgba(34, 197, 94, 0.1); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.2); }
+        .status-closed { background: rgba(148, 163, 184, 0.1); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.2); }
+        .tag-pill { font-size: 0.75rem; padding: 0.25rem 0.75rem; border-radius: 9999px; font-weight: 500; }
+        .sidebar-item:hover { background: rgba(255,255,255,0.05); }
+        .sidebar-item.active { background: rgba(251, 191, 36, 0.1); color: #fbbf24; border-right: 3px solid #fbbf24; }
+        .hover-row:hover { background: rgba(255,255,255,0.03); }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #0f111a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+        .modal-overlay { background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(4px); }
+        .chart-container { position: relative; height: 250px; width: 100%; }
+        .fade-in { animation: fadeIn 0.5s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .loading-spinner { border: 3px solid rgba(255,255,255,0.1); border-left-color: #fbbf24; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
-
-        .error-box {
-            padding: 40px;
-            text-align: center;
-            color: var(--text-secondary);
-        }
-
-        .error-box button { margin-top: 16px; }
-
-        .hidden { display: none !important; }
-
-        .demo-notice {
-            background: rgba(255, 204, 0, 0.1);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 12px 16px;
-            margin-bottom: 20px;
-            font-size: 13px;
-            color: var(--yellow);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .debug-info {
-            background: rgba(255, 0, 0, 0.1);
-            border: 1px solid rgba(255, 0, 0, 0.3);
-            border-radius: 8px;
-            padding: 12px 16px;
-            margin-bottom: 20px;
-            font-size: 12px;
-            color: #ff6b6b;
-            font-family: monospace;
-            white-space: pre-wrap;
-            display: none;
-        }
-
-        @media (max-width: 1200px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
-        @media (max-width: 768px) {
-            .sidebar { width: 100%; position: relative; height: auto; }
-            .main-content { margin-left: 0; }
-            .stats-grid, .analytics-grid { grid-template-columns: 1fr; }
-            .detail-grid { grid-template-columns: 1fr; }
-        }
+        .toast { animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
     </style>
 </head>
-<body>
-    <div class="app-container">
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <div class="logo-section">
-                    <svg class="logo-img" viewBox="0 0 45 45" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <rect width="45" height="45" rx="10" fill="#FFCC00"/>
-                        <path d="M12 28L22.5 12L33 28H12Z" fill="#333132"/>
-                        <circle cx="22.5" cy="22" r="5" fill="#FFCC00"/>
-                    </svg>
-                    <div class="logo-text">
-                        <h1>CarryBee</h1>
-                        <span>Account Development</span>
-                    </div>
+<body class="h-screen flex overflow-hidden">
+
+    <!-- Sidebar -->
+    <aside class="w-64 bg-[#131625] border-r border-white/5 flex flex-col flex-shrink-0">
+        <div class="p-6 flex items-center gap-3">
+            <div class="w-8 h-8 bg-gold rounded-lg flex items-center justify-center text-[#0f111a] font-bold text-lg">CB</div>
+            <div>
+                <h1 class="font-bold text-lg tracking-tight text-white">CarryBee</h1>
+                <p class="text-xs text-slate-400">Account Development</p>
+            </div>
+        </div>
+
+        <nav class="flex-1 px-3 space-y-1 mt-4">
+            <p class="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Menu</p>
+            <a href="#" onclick="switchView('tracker')" id="nav-tracker" class="sidebar-item active flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors">
+                <i class="fa-solid fa-clipboard-list w-5 text-center"></i> Issue Tracker
+            </a>
+            <a href="#" onclick="switchView('analytics')" id="nav-analytics" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-400 transition-colors">
+                <i class="fa-solid fa-chart-pie w-5 text-center"></i> Analytics
+            </a>
+            <a href="#" onclick="showRaiseIssue()" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-400 transition-colors">
+                <i class="fa-solid fa-plus-circle w-5 text-center"></i> Raise Issue
+            </a>
+        </nav>
+
+        <div class="p-4 border-t border-white/5">
+            <div class="glass-panel rounded-lg p-3">
+                <p class="text-xs text-slate-400 mb-1">Data Source</p>
+                <div class="flex items-center gap-2 text-xs text-slate-300">
+                    <i class="fa-brands fa-google-drive text-green-400"></i>
+                    <span class="truncate">Google Sheets</span>
                 </div>
             </div>
-            
-            <div class="menu-label">Menu</div>
-            
-            <a href="#" class="nav-item active" onclick="showPage('tracker')">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-                Issue Tracker
-            </a>
-            
-            <a href="#" class="nav-item" onclick="showPage('analytics')">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-                Analytics
-            </a>
-            
-            <a href="#" class="nav-item" onclick="window.open('https://docs.google.com/spreadsheets/d/1dlmtCkC3fTHP8dq6Kc_ctM0M3Zex6zrnymn6VhO7fS0/edit', '_blank')">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
-                Open Sheet
-            </a>
+        </div>
+    </aside>
 
-            <div class="sidebar-footer">
-                <div class="powered">Powered by the KAM Team</div>
-                <div class="devs">Developed by <span>Ahmed Asif Rashid</span> And <span>Nahid</span></div>
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col overflow-hidden relative">
+        
+        <!-- Header -->
+        <header class="h-16 border-b border-white/5 flex items-center justify-between px-8 bg-[#131625]/50 backdrop-blur-sm z-10">
+            <div>
+                <h2 id="page-title" class="text-xl font-bold text-white">Issue Tracker</h2>
+                <p id="last-refreshed" class="text-xs text-slate-400 mt-0.5">Last refreshed: Never</p>
             </div>
-        </aside>
+            <div class="flex items-center gap-3">
+                <button onclick="fetchData()" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium transition-colors border border-white/5 flex items-center gap-2">
+                    <i class="fa-solid fa-rotate-right" id="refresh-icon"></i> Refresh
+                </button>
+                <button onclick="exportCSV()" class="px-4 py-2 rounded-lg bg-gold hover:bg-yellow-500 text-[#0f111a] text-sm font-bold transition-colors flex items-center gap-2">
+                    <i class="fa-solid fa-download"></i> Export CSV
+                </button>
+            </div>
+        </header>
 
-        <main class="main-content">
-            <div id="page-tracker">
-                <div class="page-header">
-                    <div class="page-title">
-                        <h2>Issue Tracker</h2>
-                        <p id="lastRefreshed">Last refreshed: Just now</p>
+        <!-- Content Scroll Area -->
+        <div class="flex-1 overflow-y-auto p-8 relative" id="main-content">
+            
+            <!-- Loading State -->
+            <div id="loading-state" class="absolute inset-0 flex flex-col items-center justify-center bg-[#0f111a] z-20">
+                <div class="loading-spinner mb-4"></div>
+                <p class="text-slate-400 text-sm">Loading data from Google Sheets...</p>
+            </div>
+
+            <!-- VIEW: Issue Tracker -->
+            <div id="view-tracker" class="hidden fade-in space-y-6">
+                
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="card-gradient p-5 rounded-xl border border-white/5 relative overflow-hidden group">
+                        <div class="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
+                        <p class="text-slate-400 text-xs font-semibold uppercase tracking-wider">Total Issues</p>
+                        <h3 class="text-3xl font-bold text-white mt-1" id="stat-total">0</h3>
+                        <p class="text-xs text-slate-500 mt-1">All time</p>
+                        <div class="absolute bottom-0 left-0 w-full h-1 bg-slate-700">
+                            <div class="h-full bg-slate-500 w-full"></div>
+                        </div>
                     </div>
-                    <div class="header-actions">
-                        <button class="btn btn-secondary" onclick="loadData()">
-                            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                            Refresh
-                        </button>
-                        <button class="btn btn-primary" onclick="exportCSV()">
-                            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                            Export CSV
-                        </button>
+                    <div class="card-gradient p-5 rounded-xl border border-white/5 relative overflow-hidden group">
+                        <div class="absolute top-0 right-0 w-24 h-24 bg-yellow-500/10 rounded-full -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
+                        <p class="text-slate-400 text-xs font-semibold uppercase tracking-wider">Open</p>
+                        <h3 class="text-3xl font-bold text-gold mt-1" id="stat-open">0</h3>
+                        <p class="text-xs text-slate-500 mt-1">Awaiting action</p>
+                        <div class="absolute bottom-0 left-0 w-full h-1 bg-slate-700">
+                            <div class="h-full bg-gold w-0 transition-all duration-1000" id="bar-open"></div>
+                        </div>
+                    </div>
+                    <div class="card-gradient p-5 rounded-xl border border-white/5 relative overflow-hidden group">
+                        <div class="absolute top-0 right-0 w-24 h-24 bg-blue-500/10 rounded-full -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
+                        <p class="text-slate-400 text-xs font-semibold uppercase tracking-wider">In Progress</p>
+                        <h3 class="text-3xl font-bold text-blue-400 mt-1" id="stat-progress">0</h3>
+                        <p class="text-xs text-slate-500 mt-1">Being handled</p>
+                        <div class="absolute bottom-0 left-0 w-full h-1 bg-slate-700">
+                            <div class="h-full bg-blue-500 w-0 transition-all duration-1000" id="bar-progress"></div>
+                        </div>
+                    </div>
+                    <div class="card-gradient p-5 rounded-xl border border-white/5 relative overflow-hidden group">
+                        <div class="absolute top-0 right-0 w-24 h-24 bg-green-500/10 rounded-full -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
+                        <p class="text-slate-400 text-xs font-semibold uppercase tracking-wider">Resolved</p>
+                        <h3 class="text-3xl font-bold text-green-400 mt-1" id="stat-resolved">0</h3>
+                        <p class="text-xs text-slate-500 mt-1">Closed issues</p>
+                        <div class="absolute bottom-0 left-0 w-full h-1 bg-slate-700">
+                            <div class="h-full bg-green-500 w-0 transition-all duration-1000" id="bar-resolved"></div>
+                        </div>
                     </div>
                 </div>
 
-                <div class="demo-notice" id="demoNotice" style="display: none;">
-                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    Showing demo data. Check your sheet publishing settings or CORS policy.
-                </div>
-
-                <div class="debug-info" id="debugInfo"></div>
-
-                <div class="stats-grid">
-                    <div class="stat-card total">
-                        <div class="stat-label">Total Issues</div>
-                        <div class="stat-value" id="statTotal">0</div>
-                        <div class="stat-sub">All time</div>
+                <!-- Filters -->
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <div class="relative flex-1">
+                        <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                        <input type="text" id="searchInput" onkeyup="renderTable()" placeholder="Search by Ticket ID, Merchant, or Consignment..." 
+                            class="w-full bg-[#1e293b] border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/50 transition-all">
                     </div>
-                    <div class="stat-card open">
-                        <div class="stat-label">Open / Unprocessed</div>
-                        <div class="stat-value" id="statOpen">0</div>
-                        <div class="stat-sub">Awaiting action</div>
-                    </div>
-                    <div class="stat-card progress">
-                        <div class="stat-label">In Processed</div>
-                        <div class="stat-value" id="statProgress">0</div>
-                        <div class="stat-sub">Being handled</div>
-                    </div>
-                    <div class="stat-card resolved">
-                        <div class="stat-label">Solved</div>
-                        <div class="stat-value" id="statResolved">0</div>
-                        <div class="stat-sub">Closed issues</div>
-                    </div>
-                </div>
-
-                <div class="filters-bar">
-                    <div class="search-box">
-                        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                        <input type="text" id="searchInput" placeholder="Search by Ticket ID, Merchant, or Consignment..." oninput="filterIssues()">
-                    </div>
-                    <select class="filter-dropdown" id="statusFilter" onchange="filterIssues()">
-                        <option value="">All Statuses</option>
+                    <select id="statusFilter" onchange="renderTable()" class="bg-[#1e293b] border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-gold/50 cursor-pointer">
+                        <option value="All">All Statuses</option>
                         <option value="Open">Open</option>
-                        <option value="In Processed">In Processed</option>
-                        <option value="Solved">Solved</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Resolved">Resolved</option>
                     </select>
-                    <select class="filter-dropdown" id="tagFilter" onchange="filterIssues()">
-                        <option value="">All Issue Tags</option>
+                    <select id="tagFilter" onchange="renderTable()" class="bg-[#1e293b] border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-gold/50 cursor-pointer">
+                        <option value="All">All Issue Tags</option>
                     </select>
                 </div>
 
-                <div class="table-container">
-                    <div class="table-header">
-                        <h3>Issue Log</h3>
-                        <span id="issueCount">0 issues</span>
+                <!-- Table -->
+                <div class="glass-panel rounded-xl overflow-hidden border border-white/5">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b border-white/5 text-xs uppercase text-slate-400 font-semibold tracking-wider">
+                                    <th class="p-4">Ticket ID</th>
+                                    <th class="p-4">Submitted</th>
+                                    <th class="p-4">Merchant</th>
+                                    <th class="p-4">Consignment</th>
+                                    <th class="p-4">Tag</th>
+                                    <th class="p-4">Details</th>
+                                    <th class="p-4">Status</th>
+                                    <th class="p-4 text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="issuesTableBody" class="text-sm text-slate-300 divide-y divide-white/5">
+                                <!-- Rows injected by JS -->
+                            </tbody>
+                        </table>
                     </div>
-                    <div id="tableContent">
-                        <div class="loading">
-                            <div class="spinner"></div>
-                            Loading issues from Google Sheet...
+                    <div id="emptyState" class="hidden p-12 text-center">
+                        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-800 mb-4">
+                            <i class="fa-solid fa-inbox text-2xl text-slate-600"></i>
+                        </div>
+                        <h3 class="text-lg font-medium text-white">No issues found</h3>
+                        <p class="text-slate-500 text-sm mt-1">Try adjusting your search or filters</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: Analytics -->
+            <div id="view-analytics" class="hidden fade-in space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Issues by Tag -->
+                    <div class="glass-panel p-6 rounded-xl border border-white/5">
+                        <h3 class="text-lg font-bold text-white mb-1">Issues by Tag</h3>
+                        <p class="text-xs text-slate-400 mb-6">Breakdown of issue categories</p>
+                        <div class="chart-container">
+                            <canvas id="tagChart"></canvas>
+                        </div>
+                    </div>
+                    <!-- Status Distribution -->
+                    <div class="glass-panel p-6 rounded-xl border border-white/5">
+                        <h3 class="text-lg font-bold text-white mb-1">Status Distribution</h3>
+                        <p class="text-xs text-slate-400 mb-6">Current status of all issues</p>
+                        <div class="chart-container flex justify-center">
+                            <canvas id="statusChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-6 rounded-xl border border-white/5">
+                    <h3 class="text-lg font-bold text-white mb-1">Issues Over Time</h3>
+                    <p class="text-xs text-slate-400 mb-6">Daily submission volume</p>
+                    <div class="chart-container" style="height: 300px;">
+                        <canvas id="timeChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Top Merchants -->
+                    <div class="glass-panel p-6 rounded-xl border border-white/5">
+                        <h3 class="text-lg font-bold text-white mb-1">Top Merchants by Issues</h3>
+                        <p class="text-xs text-slate-400 mb-4">Most frequent issue raisers</p>
+                        <div id="topMerchantsList" class="space-y-3">
+                            <!-- Injected by JS -->
+                        </div>
+                    </div>
+                    <!-- Resolution Rate -->
+                    <div class="glass-panel p-6 rounded-xl border border-white/5 flex flex-col items-center justify-center">
+                        <h3 class="text-lg font-bold text-white mb-1 w-full text-left">Resolution Rate</h3>
+                        <p class="text-xs text-slate-400 mb-4 w-full text-left">Resolved vs Unresolved</p>
+                        <div class="relative h-48 w-48">
+                            <canvas id="resolutionChart"></canvas>
+                            <div class="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
+                                <span class="text-2xl font-bold text-white" id="resolutionPercent">0%</span>
+                                <span class="text-xs text-slate-400">Resolved</span>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div id="page-analytics" class="hidden">
-                <div class="page-header">
-                    <div class="page-title">
-                        <h2>Analytics</h2>
-                        <p>Issue trends and breakdowns</p>
+        </div>
+    </main>
+
+    <!-- Modal -->
+    <div id="issueModal" class="fixed inset-0 z-50 hidden">
+        <div class="modal-overlay absolute inset-0" onclick="closeModal()"></div>
+        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg px-4">
+            <div class="bg-[#1e293b] border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
+                <div class="p-6 border-b border-white/5 flex justify-between items-start">
+                    <div>
+                        <p class="text-gold text-xs font-mono mb-1" id="modal-ticket-id">CB-0000-00000</p>
+                        <h3 class="text-xl font-bold text-white">Issue Details</h3>
                     </div>
-                    <button class="btn btn-secondary" onclick="loadData()">
-                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                        Refresh
+                    <button onclick="closeModal()" class="text-slate-400 hover:text-white transition-colors">
+                        <i class="fa-solid fa-xmark text-xl"></i>
                     </button>
                 </div>
-
-                <div class="analytics-grid">
-                    <div class="chart-card">
-                        <h3>Issues by Tag</h3>
-                        <p>Breakdown of issue categories</p>
-                        <div class="chart-container"><canvas id="tagChart"></canvas></div>
+                <div class="p-6 space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-xs text-slate-500 uppercase font-semibold mb-1">Merchant</p>
+                            <p class="text-sm text-white font-medium" id="modal-merchant">-</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-slate-500 uppercase font-semibold mb-1">Consignment ID</p>
+                            <p class="text-sm text-white font-medium" id="modal-consignment">-</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-slate-500 uppercase font-semibold mb-1">Issue Tag</p>
+                            <span id="modal-tag" class="tag-pill bg-slate-700 text-slate-300">-</span>
+                        </div>
+                        <div>
+                            <p class="text-xs text-slate-500 uppercase font-semibold mb-1">Submitted At</p>
+                            <p class="text-sm text-white font-medium" id="modal-date">-</p>
+                        </div>
                     </div>
-                    <div class="chart-card">
-                        <h3>Status Distribution</h3>
-                        <p>Current status of all issues</p>
-                        <div class="chart-container"><canvas id="statusChart"></canvas></div>
+                    <div>
+                        <p class="text-xs text-slate-500 uppercase font-semibold mb-1">Issue Details</p>
+                        <div class="bg-[#0f111a] rounded-lg p-4 border border-white/5">
+                            <p class="text-sm text-slate-300 leading-relaxed" id="modal-details">-</p>
+                        </div>
                     </div>
-                </div>
-
-                <div class="analytics-grid">
-                    <div class="top-merchants">
-                        <h3>Top Merchants by Issues</h3>
-                        <p>Most frequent issue raisers</p>
-                        <div id="merchantsList"></div>
-                    </div>
-                    <div class="chart-card">
-                        <h3>Resolution Rate</h3>
-                        <p>Resolved vs Unresolved</p>
-                        <div class="chart-container"><canvas id="resolutionChart"></canvas></div>
+                    
+                    <div class="pt-2">
+                        <p class="text-xs text-slate-500 uppercase font-semibold mb-3">Update Status</p>
+                        <div class="flex gap-2">
+                            <button onclick="updateStatus('Open')" id="btn-open" class="flex-1 py-2 rounded-lg text-sm font-medium border transition-all status-open">Open</button>
+                            <button onclick="updateStatus('In Progress')" id="btn-progress" class="flex-1 py-2 rounded-lg text-sm font-medium border transition-all status-progress">In Progress</button>
+                            <button onclick="updateStatus('Resolved')" id="btn-resolved" class="flex-1 py-2 rounded-lg text-sm font-medium border transition-all status-resolved">Resolved</button>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-3 text-center italic">
+                            <i class="fa-solid fa-circle-info mr-1"></i>
+                            Note: Status is derived from your Google Sheet checkboxes.
+                        </p>
                     </div>
                 </div>
             </div>
-        </main>
+        </div>
     </div>
 
-    <div class="modal-overlay" id="issueModal">
-        <div class="modal">
-            <div class="modal-header">
-                <div>
-                    <div class="modal-ticket-id" id="modalTicketId">CB-2606-00001</div>
-                    <h3 class="modal-title">Issue Details</h3>
+    <!-- Raise Issue Modal -->
+    <div id="raiseIssueModal" class="fixed inset-0 z-50 hidden">
+        <div class="modal-overlay absolute inset-0" onclick="closeRaiseIssue()"></div>
+        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg px-4">
+            <div class="bg-[#1e293b] border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
+                <div class="p-6 border-b border-white/5 flex justify-between items-center">
+                    <h3 class="text-xl font-bold text-white">Raise New Issue</h3>
+                    <button onclick="closeRaiseIssue()" class="text-slate-400 hover:text-white transition-colors">
+                        <i class="fa-solid fa-xmark text-xl"></i>
+                    </button>
                 </div>
-                <button class="modal-close" onclick="closeModal()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="detail-grid">
-                    <div class="detail-item">
-                        <label>Merchant</label>
-                        <p id="modalMerchant">-</p>
+                <div class="p-6 space-y-4">
+                    <div>
+                        <label class="block text-xs text-slate-500 uppercase font-semibold mb-1">Merchant Name</label>
+                        <input type="text" id="new-merchant" class="w-full bg-[#0f111a] border border-white/10 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-gold/50" placeholder="Enter merchant name">
                     </div>
-                    <div class="detail-item">
-                        <label>Consignment ID</label>
-                        <p id="modalConsignment">-</p>
+                    <div>
+                        <label class="block text-xs text-slate-500 uppercase font-semibold mb-1">Consignment ID</label>
+                        <input type="text" id="new-consignment" class="w-full bg-[#0f111a] border border-white/10 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-gold/50" placeholder="Enter consignment ID">
                     </div>
-                    <div class="detail-item">
-                        <label>Issue Tag</label>
-                        <p><span class="tag-badge" id="modalTag">-</span></p>
+                    <div>
+                        <label class="block text-xs text-slate-500 uppercase font-semibold mb-1">Issue Tag</label>
+                        <select id="new-tag" class="w-full bg-[#0f111a] border border-white/10 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-gold/50">
+                            <option value="Delivery Delay">Delivery Delay</option>
+                            <option value="Parcel Damage">Parcel Damage</option>
+                            <option value="Payment Issue">Payment Issue</option>
+                            <option value="Payment Dispute">Payment Dispute</option>
+                            <option value="Return Issue">Return Issue</option>
+                            <option value="Lost Shipment">Lost Shipment</option>
+                            <option value="Wrong Delivery">Wrong Delivery</option>
+                            <option value="Pick-up Failed">Pick-up Failed</option>
+                            <option value="Status Not Updated">Status Not Updated</option>
+                        </select>
                     </div>
-                    <div class="detail-item">
-                        <label>Submitted At</label>
-                        <p id="modalDate">-</p>
+                    <div>
+                        <label class="block text-xs text-slate-500 uppercase font-semibold mb-1">Issue Details</label>
+                        <textarea id="new-details" rows="3" class="w-full bg-[#0f111a] border border-white/10 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-gold/50" placeholder="Describe the issue..."></textarea>
                     </div>
-                    <div class="detail-item detail-full">
-                        <label>Issue Details</label>
-                        <div class="detail-box" id="modalDetails">-</div>
-                    </div>
-                </div>
-                <div class="status-info">
-                    <span style="font-size: 13px; color: var(--text-secondary);">Current Status:</span>
-                    <span class="status-badge" id="modalStatusBadge">Open</span>
-                </div>
-                <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border);">
-                    <p style="font-size: 12px; color: var(--text-secondary);">
-                        💡 To update status, check/uncheck the checkbox in the <strong>Status</strong> column of the Google Sheet.
-                        Checked = Solved, Unchecked = Open/In Processed.
-                    </p>
+                    <button onclick="submitNewIssue()" class="w-full py-2.5 rounded-lg bg-gold hover:bg-yellow-500 text-[#0f111a] text-sm font-bold transition-colors">
+                        Submit Issue
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // ============================================
-        // CONFIGURATION
-        // ============================================
-        const PUB_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT_IDg3V6_1h2TXV8bVzx38OPSpQANrWMjG3SB2aBjETLM-i5ArudTcJYR-XpOlVCgQzfS3jwTHADbh/pub?output=csv';
-
-        let allIssues = [];
-        let currentIssue = null;
+        // --- Configuration ---
+        const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSybJkSsKQxyczJc4Llsa10ywnR7YL3JNWN3Yx7RCc3GGWBOt4O43sSOMy2cNgYVQRtoAakguvAqgsy/pub?output=csv';
+        
+        let issuesData = [];
+        let currentModalIssue = null;
         let charts = {};
 
-        // ============================================
-        // ROBUST CSV PARSER (handles quotes, newlines, commas)
-        // ============================================
-        function parseCSV(text) {
-            const result = [];
-            let row = [];
-            let cell = '';
-            let inQuotes = false;
+        // --- Data Logic ---
+
+        function generateTicketId(date, index) {
+            const d = new Date(date);
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `CB-${month}${day}-${String(index + 1).padStart(5, '0')}`;
+        }
+
+        function getStatus(issue) {
+            // Logic based on your Gsheet columns:
+            // In Process checked = In Progress
+            // Sloved And Closed checked = Resolved
+            // Neither = Open
             
-            for (let i = 0; i < text.length; i++) {
-                const char = text[i];
-                const nextChar = text[i + 1];
+            const solved = issue.solved === true || issue.solved === 'TRUE' || issue.solved === 'true' || issue.solved === 'Yes' || issue.solved === 'yes';
+            const inProcess = issue.inProcess === true || issue.inProcess === 'TRUE' || issue.inProcess === 'true' || issue.inProcess === 'Yes' || issue.inProcess === 'yes';
+            
+            if (solved) return 'Resolved';
+            if (inProcess) return 'In Progress';
+            return 'Open';
+        }
+
+        function getTagColor(tag) {
+            const colors = {
+                'Delivery Delay': 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20',
+                'Parcel Damage': 'bg-red-500/10 text-red-400 border-red-500/20',
+                'Payment Issue': 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+                'Payment Dispute': 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+                'Return Issue': 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+                'Lost Shipment': 'bg-orange-500/10 text-orange-400 border-orange-500/20',
+                'Wrong Delivery': 'bg-pink-500/10 text-pink-400 border-pink-500/20',
+                'Pick-up Failed': 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
+                'Status Not Updated': 'bg-slate-500/10 text-slate-400 border-slate-500/20'
+            };
+            return colors[tag] || 'bg-slate-700 text-slate-300 border-slate-600';
+        }
+
+        async function fetchData() {
+            const refreshIcon = document.getElementById('refresh-icon');
+            refreshIcon.classList.add('fa-spin');
+            document.getElementById('loading-state').classList.remove('hidden');
+            
+            try {
+                const response = await fetch(SHEET_URL);
+                if (!response.ok) throw new Error('Network response was not ok');
+                const csvText = await response.text();
+                issuesData = parseCSV(csvText);
                 
-                if (inQuotes) {
-                    if (char === '"') {
-                        if (nextChar === '"') {
-                            cell += '"';
-                            i++; // skip next quote
-                        } else {
-                            inQuotes = false;
-                        }
-                    } else {
-                        cell += char;
-                    }
-                } else {
-                    if (char === '"') {
-                        inQuotes = true;
-                    } else if (char === ',') {
-                        row.push(cell);
-                        cell = '';
-                    } else if (char === '\n' || (char === '\r' && nextChar === '\n')) {
-                        if (char === '\r') i++; // skip \n after \r
-                        row.push(cell);
-                        if (row.length > 1 || row[0] !== '') {
-                            result.push(row);
-                        }
-                        row = [];
-                        cell = '';
-                    } else {
-                        cell += char;
-                    }
-                }
+                // Sort by date descending
+                issuesData.sort((a, b) => {
+                    const dateA = new Date(a.date + ' ' + a.timestamp);
+                    const dateB = new Date(b.date + ' ' + b.timestamp);
+                    return dateB - dateA;
+                });
+                
+                // Assign Ticket IDs
+                issuesData.forEach((issue, i) => {
+                    issue.ticketId = generateTicketId(issue.date, i);
+                });
+                
+                showToast('Data loaded successfully!', 'success');
+            } catch (e) {
+                console.error('Fetch error:', e);
+                showToast('Failed to load from Google Sheet. Using demo data.', 'error');
+                // Demo fallback data
+                issuesData = [
+                    { date: '2026-06-29', timestamp: '9:21:40', consignmentId: 'F06289AV8CW', merchant: 'Paperfly', issueTag: 'Payment Dispute', details: 'Payment not received for COD order #12345', inProcess: false, solved: false },
+                    { date: '2026-06-29', timestamp: '12:41:08', consignmentId: 'F0627SXWXUE', merchant: 'Sumaiya Hair Tonic', issueTag: 'Delivery Delay', details: 'Ei parcel ajker modhe delivery lagbe', inProcess: true, solved: false },
+                    { date: '2026-06-29', timestamp: '16:55:30', consignmentId: 'F0629UZF89D', merchant: 'Glowfe', issueTag: 'Lost Shipment', details: 'this parcel is lost...', inProcess: false, solved: true },
+                    { date: '2026-06-28', timestamp: '10:15:00', consignmentId: 'CB-2024-00123', merchant: 'Dhaka Fashion House', issueTag: 'Delivery Delay', details: 'Order was supposed to arrive on 24th June but still hasn\'t been delivered.', inProcess: false, solved: false },
+                    { date: '2026-06-28', timestamp: '11:30:22', consignmentId: 'CB-2024-00155', merchant: 'Organic Roots', issueTag: 'Payment Issue', details: 'COD amount was collected but not remitted.', inProcess: true, solved: false },
+                    { date: '2026-06-27', timestamp: '14:55:00', consignmentId: 'CB-2024-00199', merchant: 'StyleHub', issueTag: 'Return Issue', details: 'Return parcel was picked up on 22nd but not updated.', inProcess: false, solved: true },
+                    { date: '2026-06-27', timestamp: '09:12:43', consignmentId: 'CB-2024-00180', merchant: 'TechZone BD', issueTag: 'Parcel Damage', details: 'Package received but the product inside is damaged.', inProcess: true, solved: false },
+                    { date: '2026-06-26', timestamp: '16:20:00', consignmentId: 'CB-2024-00210', merchant: 'Gadget World', issueTag: 'Wrong Delivery', details: 'Delivered to wrong address.', inProcess: false, solved: false },
+                    { date: '2026-06-25', timestamp: '11:00:00', consignmentId: 'CB-2024-00215', merchant: 'Maa Kitchen', issueTag: 'Pick-up Failed', details: 'Rider did not show up for scheduled pick up.', inProcess: false, solved: false },
+                    { date: '2026-06-25', timestamp: '13:45:00', consignmentId: 'CB-2024-00220', merchant: 'Dhaka Fashion House', issueTag: 'Parcel Damage', details: 'Box was torn and item is missing.', inProcess: false, solved: true }
+                ];
             }
+
+            document.getElementById('loading-state').classList.add('hidden');
+            document.getElementById('view-tracker').classList.remove('hidden');
             
-            // Push last cell and row
-            row.push(cell);
-            if (row.length > 1 || row[0] !== '') {
-                result.push(row);
+            updateStats();
+            renderTable();
+            updateAnalytics();
+            
+            document.getElementById('last-refreshed').innerText = `Last refreshed: ${new Date().toLocaleTimeString()}`;
+            refreshIcon.classList.remove('fa-spin');
+        }
+
+        function parseCSV(csv) {
+            const lines = csv.split('\n').filter(line => line.trim() !== '');
+            if (lines.length < 2) return [];
+            
+            const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, '').replace(/\r/g, ''));
+            const result = [];
+            
+            for(let i = 1; i < lines.length; i++) {
+                const obj = {};
+                // Handle quoted fields with commas
+                const matches = lines[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || lines[i].split(',');
+                const values = matches.map(v => v.trim().replace(/^"|"$/g, '').replace(/\r/g, ''));
+                
+                headers.forEach((header, index) => {
+                    let val = values[index] || '';
+                    
+                    if (header === 'Date') obj.date = val;
+                    if (header === 'Time stamp') obj.timestamp = val;
+                    if (header === 'Consignment ID') obj.consignmentId = val;
+                    if (header === 'Merchant Name') obj.merchant = val;
+                    if (header === 'Issue Tag') obj.issueTag = val;
+                    if (header === 'Issue Details') obj.details = val;
+                    if (header === 'In Process') obj.inProcess = (val === 'TRUE' || val === 'true' || val === 'Yes' || val === 'yes' || val === '1');
+                    if (header === 'Sloved And Closed') obj.solved = (val === 'TRUE' || val === 'true' || val === 'Yes' || val === 'yes' || val === '1');
+                    if (header === 'Remarks') obj.remarks = val;
+                });
+                
+                if (obj.date && obj.merchant) result.push(obj);
             }
-            
             return result;
         }
 
-        // ============================================
-        // DATE PARSER (handles Google Sheets serial dates)
-        // ============================================
-        function parseDate(dateStr) {
-            if (!dateStr) return null;
-            
-            // Try standard date parsing first
-            let date = new Date(dateStr);
-            if (!isNaN(date.getTime())) return date;
-            
-            // Handle Google Sheets serial date: Date(2026,5,29,2,53,48)
-            const match = dateStr.match(/Date\((\d+),(\d+),(\d+),(\d+),(\d+),(\d+)\)/);
-            if (match) {
-                const [, year, month, day, hour, minute, second] = match.map(Number);
-                // Month is 0-indexed in JS Date
-                return new Date(year, month, day, hour, minute, second);
-            }
-            
-            // Handle dd/MM/yyyy HH:mm:ss format
-            const ukMatch = dateStr.match(/(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2}):(\d{2})/);
-            if (ukMatch) {
-                const [, day, month, year, hour, minute, second] = ukMatch.map(Number);
-                return new Date(year, month - 1, day, hour, minute, second);
-            }
-            
-            return null;
-        }
+        // --- Rendering ---
 
-        function formatDate(dateStr) {
-            const date = parseDate(dateStr);
-            if (!date || isNaN(date.getTime())) return dateStr || '-';
-            
-            return date.toLocaleDateString('en-GB', {
-                day: '2-digit', month: '2-digit', year: 'numeric',
-                hour: '2-digit', minute: '2-digit'
-            });
-        }
-
-        // ============================================
-        // DATA LOADING
-        // ============================================
-        async function loadData() {
-            document.getElementById('tableContent').innerHTML = `
-                <div class="loading">
-                    <div class="spinner"></div>
-                    Loading issues from Google Sheet...
-                </div>
-            `;
-            document.getElementById('debugInfo').style.display = 'none';
-
-            try {
-                const response = await fetch(PUB_CSV_URL);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-                
-                const csvText = await response.text();
-                
-                if (!csvText || csvText.trim().length === 0) {
-                    throw new Error('Empty response from sheet');
-                }
-
-                if (csvText.trim().startsWith('<!DOCTYPE') || csvText.trim().startsWith('<html')) {
-                    throw new Error('Sheet returned HTML instead of CSV');
-                }
-
-                // Parse CSV with robust parser
-                const rows = parseCSV(csvText);
-                
-                if (rows.length < 2) {
-                    throw new Error('No data rows found in sheet');
-                }
-
-                const headers = rows[0].map(h => h.trim());
-                allIssues = [];
-
-                for (let i = 1; i < rows.length; i++) {
-                    const values = rows[i];
-                    if (values.length < 6) continue;
-                    
-                    const issue = {};
-                    headers.forEach((header, index) => {
-                        issue[header] = values[index] !== undefined ? values[index].trim() : '';
-                    });
-
-                    // Determine status from checkbox
-                    const statusRaw = (issue['Status'] || '').toString().trim();
-                    const remarksRaw = (issue['Remarks'] || '').toString().trim();
-                    
-                    let status = 'Open';
-                    if (statusRaw === 'TRUE' || statusRaw === 'true') {
-                        status = 'Solved';
-                    } else if (remarksRaw && remarksRaw.trim() !== '' && remarksRaw !== 'FALSE') {
-                        status = 'In Processed';
-                    }
-
-                    allIssues.push({
-                        ticketId: `CB-2606-${String(i).padStart(5, '0')`,
-                        date: issue['Date'] || issue['Timestamp'] || '',
-                        timestamp: issue['Timestamp'] || '',
-                        consignmentId: issue['Consignment ID'] || '',
-                        merchantName: issue['Merchant Name'] || '',
-                        issueTag: issue['Issue Tag'] || '',
-                        issueDetails: issue['Issue Details'] || '',
-                        Status: issue['Status'] || 'FALSE',
-                        Remarks: issue['Remarks'] || '',
-                        status: status
-                    });
-                }
-
-                allIssues.reverse(); // Newest first
-
-                document.getElementById('demoNotice').style.display = 'none';
-                renderTable();
-                updateStats();
-                populateTagFilter();
-                updateLastRefreshed();
-                
-                if (!document.getElementById('page-analytics').classList.contains('hidden')) {
-                    renderAnalytics();
-                }
-
-            } catch (error) {
-                console.error('Error loading data:', error);
-                document.getElementById('debugInfo').textContent = `Error: ${error.message}\n\nTry opening browser console (F12) for details.`;
-                document.getElementById('debugInfo').style.display = 'block';
-                
-                showError(`Failed to load data: ${error.message}<br><br>
-                    <strong>Troubleshooting:</strong><br>
-                    1. Check browser console (F12 → Console) for CORS errors<br>
-                    2. Verify sheet is published as CSV<br>
-                    3. Try refreshing in 30 seconds (Google Sheets cache delay)`);
-            }
-        }
-
-        function showError(msg) {
-            document.getElementById('tableContent').innerHTML = `
-                <div class="error-box">
-                    <p>${msg}</p>
-                    <button class="btn btn-primary" onclick="loadData()" style="margin-top: 16px;">Retry</button>
-                </div>
-            `;
-        }
-
-        // ============================================
-        // RENDERING
-        // ============================================
-        function renderTable(issues = allIssues) {
-            if (issues.length === 0) {
-                document.getElementById('tableContent').innerHTML = `
-                    <div class="error-box">
-                        <p>No issues found.</p>
-                    </div>
-                `;
-                document.getElementById('issueCount').textContent = '0 issues';
-                return;
-            }
-
-            let html = `
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Ticket ID</th>
-                            <th>Submitted</th>
-                            <th>Merchant</th>
-                            <th>Consignment</th>
-                            <th>Tag</th>
-                            <th>Details</th>
-                            <th>Status</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-            `;
-
-            issues.forEach((issue, index) => {
-                const shortDetails = issue.issueDetails.length > 50 
-                    ? issue.issueDetails.substring(0, 50) + '...' 
-                    : issue.issueDetails;
-                
-                const statusClass = getStatusClass(issue.status);
-                
-                html += `
-                    <tr>
-                        <td><span class="ticket-id" onclick="openModal(${index})">${issue.ticketId}</span></td>
-                        <td>${formatDate(issue.date)}</td>
-                        <td class="merchant-name">${escapeHtml(issue.merchantName)}</td>
-                        <td>${escapeHtml(issue.consignmentId)}</td>
-                        <td><span class="tag-badge">${escapeHtml(issue.issueTag)}</span></td>
-                        <td style="color: var(--text-secondary); max-width: 200px; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(shortDetails)}</td>
-                        <td><span class="status-badge ${statusClass}">${issue.status}</span></td>
-                        <td><button class="btn-view" onclick="openModal(${index})">View</button></td>
-                    </tr>
-                `;
-            });
-
-            html += '</tbody></table>';
-            document.getElementById('tableContent').innerHTML = html;
-            document.getElementById('issueCount').textContent = `${issues.length} issue${issues.length !== 1 ? 's' : ''}`;
-        }
-
-        function getStatusClass(status) {
-            switch(status) {
-                case 'Open': return 'status-open';
-                case 'In Processed': return 'status-progress';
-                case 'Solved': return 'status-resolved';
-                default: return 'status-open';
-            }
-        }
-
-        function escapeHtml(text) {
-            if (!text) return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        // ============================================
-        // STATS & FILTERS
-        // ============================================
         function updateStats() {
-            const total = allIssues.length;
-            const open = allIssues.filter(i => i.status === 'Open').length;
-            const progress = allIssues.filter(i => i.status === 'In Processed').length;
-            const solved = allIssues.filter(i => i.status === 'Solved').length;
+            const total = issuesData.length;
+            const open = issuesData.filter(i => getStatus(i) === 'Open').length;
+            const progress = issuesData.filter(i => getStatus(i) === 'In Progress').length;
+            const resolved = issuesData.filter(i => getStatus(i) === 'Resolved').length;
 
-            animateNumber('statTotal', total);
-            animateNumber('statOpen', open);
-            animateNumber('statProgress', progress);
-            animateNumber('statResolved', solved);
+            animateValue('stat-total', parseInt(document.getElementById('stat-total').innerText) || 0, total, 800);
+            animateValue('stat-open', parseInt(document.getElementById('stat-open').innerText) || 0, open, 800);
+            animateValue('stat-progress', parseInt(document.getElementById('stat-progress').innerText) || 0, progress, 800);
+            animateValue('stat-resolved', parseInt(document.getElementById('stat-resolved').innerText) || 0, resolved, 800);
+
+            setTimeout(() => {
+                document.getElementById('bar-open').style.width = total ? `${(open/total)*100}%` : '0%';
+                document.getElementById('bar-progress').style.width = total ? `${(progress/total)*100}%` : '0%';
+                document.getElementById('bar-resolved').style.width = total ? `${(resolved/total)*100}%` : '0%';
+            }, 100);
         }
 
-        function animateNumber(id, target) {
-            const el = document.getElementById(id);
-            let current = 0;
-            const increment = target / 20;
-            const timer = setInterval(() => {
+        function animateValue(id, start, end, duration) {
+            if (start === end) return;
+            const range = end - start;
+            let current = start;
+            const increment = end > start ? 1 : -1;
+            const stepTime = Math.abs(Math.floor(duration / range)) || 10;
+            const obj = document.getElementById(id);
+            const timer = setInterval(function() {
                 current += increment;
-                if (current >= target) { current = target; clearInterval(timer); }
-                el.textContent = Math.floor(current);
-            }, 30);
+                obj.innerHTML = current;
+                if (current == end) clearInterval(timer);
+            }, stepTime);
         }
 
-        function populateTagFilter() {
-            const tags = [...new Set(allIssues.map(i => i.issueTag).filter(Boolean))];
-            const select = document.getElementById('tagFilter');
-            select.innerHTML = '<option value="">All Issue Tags</option>';
-            tags.forEach(tag => {
-                select.innerHTML += `<option value="${escapeHtml(tag)}">${escapeHtml(tag)}</option>`;
-            });
-        }
-
-        function filterIssues() {
+        function renderTable() {
+            const tbody = document.getElementById('issuesTableBody');
             const search = document.getElementById('searchInput').value.toLowerCase();
-            const status = document.getElementById('statusFilter').value;
-            const tag = document.getElementById('tagFilter').value;
+            const statusFilter = document.getElementById('statusFilter').value;
+            const tagFilter = document.getElementById('tagFilter').value;
+            
+            tbody.innerHTML = '';
+            
+            // Update Tag Filter Options
+            const allTags = [...new Set(issuesData.map(i => i.issueTag))].filter(Boolean);
+            const tagSelect = document.getElementById('tagFilter');
+            const currentTag = tagSelect.value;
+            tagSelect.innerHTML = '<option value="All">All Issue Tags</option>';
+            allTags.forEach(tag => {
+                tagSelect.innerHTML += `<option value="${tag}" ${tag === currentTag ? 'selected' : ''}>${tag}</option>`;
+            });
 
-            const filtered = allIssues.filter(issue => {
-                const matchesSearch = !search || 
-                    issue.ticketId.toLowerCase().includes(search) ||
-                    issue.merchantName.toLowerCase().includes(search) ||
-                    issue.consignmentId.toLowerCase().includes(search);
+            let filtered = issuesData.filter(issue => {
+                const status = getStatus(issue);
+                const matchesSearch = 
+                    (issue.ticketId && issue.ticketId.toLowerCase().includes(search)) ||
+                    (issue.merchant && issue.merchant.toLowerCase().includes(search)) ||
+                    (issue.consignmentId && issue.consignmentId.toLowerCase().includes(search));
+                const matchesStatus = statusFilter === 'All' || status === statusFilter;
+                const matchesTag = tagFilter === 'All' || issue.issueTag === tagFilter;
                 
-                const matchesStatus = !status || issue.status === status;
-                const matchesTag = !tag || issue.issueTag === tag;
-
                 return matchesSearch && matchesStatus && matchesTag;
             });
 
-            renderTable(filtered);
+            if (filtered.length === 0) {
+                document.getElementById('emptyState').classList.remove('hidden');
+            } else {
+                document.getElementById('emptyState').classList.add('hidden');
+                filtered.forEach(issue => {
+                    const status = getStatus(issue);
+                    let statusClass = '';
+                    let statusDot = '';
+                    
+                    if (status === 'Open') { statusClass = 'status-open'; statusDot = 'bg-yellow-500'; }
+                    else if (status === 'In Progress') { statusClass = 'status-progress'; statusDot = 'bg-blue-500'; }
+                    else if (status === 'Resolved') { statusClass = 'status-resolved'; statusDot = 'bg-green-500'; }
+                    
+                    const row = `
+                        <tr class="hover-row transition-colors border-b border-white/5 last:border-0">
+                            <td class="p-4 font-mono text-gold font-medium">${issue.ticketId || '-'}</td>
+                            <td class="p-4 text-slate-400">${issue.date}<br><span class="text-xs">${issue.timestamp}</span></td>
+                            <td class="p-4 font-medium text-white">${issue.merchant || '-'}</td>
+                            <td class="p-4 text-slate-400 font-mono text-xs">${issue.consignmentId || '-'}</td>
+                            <td class="p-4"><span class="tag-pill border ${getTagColor(issue.issueTag)}">${issue.issueTag || 'General'}</span></td>
+                            <td class="p-4 max-w-xs truncate text-slate-400" title="${issue.details || ''}">${issue.details || '-'}</td>
+                            <td class="p-4">
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${statusClass}">
+                                    <span class="w-1.5 h-1.5 rounded-full ${statusDot}"></span>
+                                    ${status}
+                                </span>
+                            </td>
+                            <td class="p-4 text-right">
+                                <button onclick="openModal('${issue.ticketId}')" class="text-gold hover:text-white text-xs font-bold uppercase tracking-wider transition-colors">View</button>
+                            </td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += row;
+                });
+            }
         }
 
-        function updateLastRefreshed() {
-            document.getElementById('lastRefreshed').textContent = 
-                `Last refreshed: ${new Date().toLocaleTimeString()}`;
+        // --- Modal ---
+
+        function openModal(ticketId) {
+            const issue = issuesData.find(i => i.ticketId === ticketId);
+            if (!issue) return;
+            currentModalIssue = issue;
+
+            document.getElementById('modal-ticket-id').innerText = issue.ticketId;
+            document.getElementById('modal-merchant').innerText = issue.merchant || '-';
+            document.getElementById('modal-consignment').innerText = issue.consignmentId || '-';
+            document.getElementById('modal-tag').innerText = issue.issueTag || 'General';
+            document.getElementById('modal-tag').className = `tag-pill border ${getTagColor(issue.issueTag)}`;
+            document.getElementById('modal-date').innerText = `${issue.date} ${issue.timestamp}`;
+            document.getElementById('modal-details').innerText = issue.details || '-';
+
+            updateModalButtons(issue);
+            document.getElementById('issueModal').classList.remove('hidden');
         }
 
-        // ============================================
-        // MODAL
-        // ============================================
-        function openModal(index) {
-            currentIssue = allIssues[index];
-            if (!currentIssue) return;
+        function updateModalButtons(issue) {
+            const status = getStatus(issue);
+            ['open', 'progress', 'resolved'].forEach(s => {
+                const btn = document.getElementById(`btn-${s}`);
+                btn.classList.remove('ring-2', 'ring-white', 'scale-105', 'shadow-lg');
+                btn.style.opacity = '0.5';
+            });
+            
+            let activeBtn = '';
+            if (status === 'Open') activeBtn = 'btn-open';
+            if (status === 'In Progress') activeBtn = 'btn-progress';
+            if (status === 'Resolved') activeBtn = 'btn-resolved';
+            
+            if (activeBtn) {
+                const btn = document.getElementById(activeBtn);
+                btn.classList.add('ring-2', 'ring-white', 'scale-105', 'shadow-lg');
+                btn.style.opacity = '1';
+            }
+        }
 
-            document.getElementById('modalTicketId').textContent = currentIssue.ticketId;
-            document.getElementById('modalMerchant').textContent = currentIssue.merchantName || '-';
-            document.getElementById('modalConsignment').textContent = currentIssue.consignmentId || '-';
-            document.getElementById('modalTag').textContent = currentIssue.issueTag || '-';
-            document.getElementById('modalDate').textContent = formatDate(currentIssue.date);
-            document.getElementById('modalDetails').textContent = currentIssue.issueDetails || '-';
-
-            const badge = document.getElementById('modalStatusBadge');
-            badge.textContent = currentIssue.status;
-            badge.className = 'status-badge ' + getStatusClass(currentIssue.status);
-
-            document.getElementById('issueModal').classList.add('active');
+        function updateStatus(newStatus) {
+            if (!currentModalIssue) return;
+            
+            // Local simulation - in production this would update the sheet via API
+            if (newStatus === 'Open') {
+                currentModalIssue.inProcess = false;
+                currentModalIssue.solved = false;
+            } else if (newStatus === 'In Progress') {
+                currentModalIssue.inProcess = true;
+                currentModalIssue.solved = false;
+            } else if (newStatus === 'Resolved') {
+                currentModalIssue.inProcess = false;
+                currentModalIssue.solved = true;
+            }
+            
+            updateModalButtons(currentModalIssue);
+            updateStats();
+            renderTable();
+            updateAnalytics();
+            
+            showToast(`Status updated to ${newStatus}`, 'success');
         }
 
         function closeModal() {
-            document.getElementById('issueModal').classList.remove('active');
-            currentIssue = null;
+            document.getElementById('issueModal').classList.add('hidden');
+            currentModalIssue = null;
         }
 
-        // ============================================
-        // ANALYTICS
-        // ============================================
-        function renderAnalytics() {
-            Object.values(charts).forEach(c => c.destroy());
-            charts = {};
+        // --- Raise Issue ---
 
+        function showRaiseIssue() {
+            document.getElementById('raiseIssueModal').classList.remove('hidden');
+        }
+
+        function closeRaiseIssue() {
+            document.getElementById('raiseIssueModal').classList.add('hidden');
+        }
+
+        function submitNewIssue() {
+            const merchant = document.getElementById('new-merchant').value;
+            const consignment = document.getElementById('new-consignment').value;
+            const tag = document.getElementById('new-tag').value;
+            const details = document.getElementById('new-details').value;
+            
+            if (!merchant || !consignment || !details) {
+                showToast('Please fill all fields', 'error');
+                return;
+            }
+            
+            const now = new Date();
+            const dateStr = now.toISOString().split('T')[0];
+            const timeStr = now.toTimeString().split(' ')[0];
+            
+            const newIssue = {
+                date: dateStr,
+                timestamp: timeStr,
+                consignmentId: consignment,
+                merchant: merchant,
+                issueTag: tag,
+                details: details,
+                inProcess: false,
+                solved: false
+            };
+            
+            issuesData.unshift(newIssue);
+            // Re-assign IDs
+            issuesData.forEach((issue, i) => {
+                issue.ticketId = generateTicketId(issue.date, i);
+            });
+            
+            updateStats();
+            renderTable();
+            updateAnalytics();
+            closeRaiseIssue();
+            showToast('New issue raised successfully!', 'success');
+            
+            // Clear form
+            document.getElementById('new-merchant').value = '';
+            document.getElementById('new-consignment').value = '';
+            document.getElementById('new-details').value = '';
+        }
+
+        // --- Analytics ---
+
+        function updateAnalytics() {
             renderTagChart();
             renderStatusChart();
-            renderResolutionChart();
+            renderTimeChart();
             renderTopMerchants();
+            renderResolutionChart();
         }
 
         function renderTagChart() {
             const ctx = document.getElementById('tagChart').getContext('2d');
-            const tagCounts = {};
-            allIssues.forEach(i => { tagCounts[i.issueTag] = (tagCounts[i.issueTag] || 0) + 1; });
-
+            const tags = {};
+            issuesData.forEach(i => { if (i.issueTag) tags[i.issueTag] = (tags[i.issueTag] || 0) + 1; });
+            
+            if (charts.tag) charts.tag.destroy();
             charts.tag = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: Object.keys(tagCounts),
+                    labels: Object.keys(tags),
                     datasets: [{
-                        data: Object.values(tagCounts),
-                        backgroundColor: [
-                            'rgba(255, 204, 0, 0.6)', 'rgba(249, 115, 22, 0.6)',
-                            'rgba(59, 130, 246, 0.6)', 'rgba(34, 197, 94, 0.6)',
-                            'rgba(168, 85, 247, 0.6)', 'rgba(236, 72, 153, 0.6)',
-                            'rgba(99, 102, 241, 0.6)', 'rgba(20, 184, 166, 0.6)',
-                            'rgba(251, 191, 36, 0.6)', 'rgba(239, 68, 68, 0.6)'
-                        ],
-                        borderRadius: 4
+                        label: 'Issues',
+                        data: Object.values(tags),
+                        backgroundColor: ['#fef3c7', '#fee2e2', '#e0e7ff', '#dbeafe', '#fce7f3', '#d1fae5', '#fef9c3', '#f3f4f6'],
+                        borderRadius: 6,
+                        borderSkipped: false,
                     }]
                 },
                 options: {
-                    responsive: true, maintainAspectRatio: false,
+                    responsive: true,
+                    maintainAspectRatio: false,
                     plugins: { legend: { display: false } },
                     scales: {
-                        y: { beginAtZero: true, ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } },
-                        x: { ticks: { color: '#94a3b8' }, grid: { display: false } }
+                        y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', stepSize: 1 } },
+                        x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
                     }
                 }
             });
@@ -1291,117 +746,188 @@
 
         function renderStatusChart() {
             const ctx = document.getElementById('statusChart').getContext('2d');
-            const statusCounts = { 'Open': 0, 'In Processed': 0, 'Solved': 0 };
-            allIssues.forEach(i => {
-                if (statusCounts[i.status] !== undefined) statusCounts[i.status]++;
-                else statusCounts['Open']++;
-            });
-
+            const counts = {
+                'Open': issuesData.filter(i => getStatus(i) === 'Open').length,
+                'In Progress': issuesData.filter(i => getStatus(i) === 'In Progress').length,
+                'Resolved': issuesData.filter(i => getStatus(i) === 'Resolved').length
+            };
+            
+            if (charts.status) charts.status.destroy();
             charts.status = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
-                    labels: Object.keys(statusCounts),
+                    labels: Object.keys(counts),
                     datasets: [{
-                        data: Object.values(statusCounts),
-                        backgroundColor: ['#f97316', '#3b82f6', '#22c55e'],
-                        borderWidth: 0
+                        data: Object.values(counts),
+                        backgroundColor: ['#fbbf24', '#3b82f6', '#22c55e'],
+                        borderWidth: 0,
+                        hoverOffset: 4
                     }]
                 },
                 options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', padding: 20 } } },
-                    cutout: '65%'
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: '#94a3b8', usePointStyle: true, padding: 20 } }
+                    }
                 }
             });
         }
 
-        function renderResolutionChart() {
-            const ctx = document.getElementById('resolutionChart').getContext('2d');
-            const solved = allIssues.filter(i => i.status === 'Solved').length;
-            const unsolved = allIssues.filter(i => i.status !== 'Solved').length;
-
-            charts.resolution = new Chart(ctx, {
-                type: 'doughnut',
+        function renderTimeChart() {
+            const ctx = document.getElementById('timeChart').getContext('2d');
+            const dates = {};
+            const sortedIssues = [...issuesData].sort((a,b) => new Date(a.date) - new Date(b.date));
+            sortedIssues.forEach(i => { if (i.date) dates[i.date] = (dates[i.date] || 0) + 1; });
+            
+            if (charts.time) charts.time.destroy();
+            charts.time = new Chart(ctx, {
+                type: 'line',
                 data: {
-                    labels: ['Solved', 'Pending'],
+                    labels: Object.keys(dates),
                     datasets: [{
-                        data: [solved, unsolved],
-                        backgroundColor: ['#22c55e', 'rgba(255,255,255,0.05)'],
-                        borderWidth: 0
+                        label: 'Issues',
+                        data: Object.values(dates),
+                        borderColor: '#fbbf24',
+                        backgroundColor: 'rgba(251, 191, 36, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        pointBackgroundColor: '#fbbf24',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 4
                     }]
                 },
                 options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', padding: 20 } } },
-                    cutout: '75%'
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', stepSize: 1 } },
+                        x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } }
+                    }
                 }
             });
         }
 
         function renderTopMerchants() {
-            const merchantCounts = {};
-            allIssues.forEach(i => { merchantCounts[i.merchantName] = (merchantCounts[i.merchantName] || 0) + 1; });
-
-            const sorted = Object.entries(merchantCounts).sort((a, b) => b[1] - a[1]).slice(0, 6);
-
-            let html = '';
-            sorted.forEach(([merchant, count]) => {
-                html += `
-                    <div class="merchant-item">
-                        <span>${escapeHtml(merchant)}</span>
-                        <span class="merchant-count">${count} issue${count > 1 ? 's' : ''}</span>
+            const merchants = {};
+            issuesData.forEach(i => { if (i.merchant) merchants[i.merchant] = (merchants[i.merchant] || 0) + 1; });
+            const sorted = Object.entries(merchants).sort((a,b) => b[1] - a[1]).slice(0, 6);
+            
+            const container = document.getElementById('topMerchantsList');
+            container.innerHTML = '';
+            sorted.forEach(([name, count]) => {
+                container.innerHTML += `
+                    <div class="flex items-center justify-between p-3 rounded-lg bg-[#0f111a] border border-white/5">
+                        <span class="text-sm text-white font-medium">${name}</span>
+                        <span class="text-xs font-bold text-gold bg-gold/10 px-2 py-1 rounded-full">${count} issue${count > 1 ? 's' : ''}</span>
                     </div>
                 `;
             });
-
-            document.getElementById('merchantsList').innerHTML = html;
         }
 
-        // ============================================
-        // NAVIGATION
-        // ============================================
-        function showPage(page) {
-            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-            event.target.closest('.nav-item').classList.add('active');
+        function renderResolutionChart() {
+            const ctx = document.getElementById('resolutionChart').getContext('2d');
+            const resolved = issuesData.filter(i => getStatus(i) === 'Resolved').length;
+            const total = issuesData.length;
+            const percent = total ? Math.round((resolved/total)*100) : 0;
+            
+            document.getElementById('resolutionPercent').innerText = `${percent}%`;
+            
+            if (charts.resolution) charts.resolution.destroy();
+            charts.resolution = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Resolved', 'Unresolved'],
+                    datasets: [{
+                        data: [resolved, total - resolved],
+                        backgroundColor: ['#22c55e', '#1e293b'],
+                        borderWidth: 0,
+                        circumference: 180,
+                        rotation: 270,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '75%',
+                    plugins: { legend: { display: false }, tooltip: { enabled: false } }
+                }
+            });
+        }
 
-            if (page === 'tracker') {
-                document.getElementById('page-tracker').classList.remove('hidden');
-                document.getElementById('page-analytics').classList.add('hidden');
-            } else {
-                document.getElementById('page-tracker').classList.add('hidden');
-                document.getElementById('page-analytics').classList.remove('hidden');
-                renderAnalytics();
+        // --- Navigation ---
+
+        function switchView(view) {
+            document.getElementById('view-tracker').classList.add('hidden');
+            document.getElementById('view-analytics').classList.add('hidden');
+            document.getElementById('nav-tracker').classList.remove('active');
+            document.getElementById('nav-analytics').classList.remove('active');
+            
+            document.getElementById(`view-${view}`).classList.remove('hidden');
+            document.getElementById(`nav-${view}`).classList.add('active');
+            
+            document.getElementById('page-title').innerText = view === 'tracker' ? 'Issue Tracker' : 'Analytics';
+            
+            if (view === 'analytics') {
+                setTimeout(() => {
+                    Object.values(charts).forEach(c => { if(c) c.resize(); });
+                }, 100);
             }
         }
 
-        // ============================================
-        // EXPORT
-        // ============================================
         function exportCSV() {
-            let csv = 'Ticket ID,Date,Consignment ID,Merchant Name,Issue Tag,Issue Details,Status,Remarks\n';
-            allIssues.forEach(issue => {
-                csv += `"${issue.ticketId}","${issue.date}","${issue.consignmentId}","${issue.merchantName}","${issue.issueTag}","${issue.issueDetails}","${issue.status}","${issue.Remarks}"\n`;
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Ticket ID,Date,Time,Merchant,Consignment,Tag,Status,Details,Remarks\n";
+            
+            issuesData.forEach(row => {
+                const details = (row.details || '').replace(/"/g, '""');
+                const remarks = (row.remarks || '').replace(/"/g, '""');
+                csvContent += `${row.ticketId},${row.date},${row.timestamp},${row.merchant},${row.consignmentId},${row.issueTag},${getStatus(row)},"${details}","${remarks}"\n`;
             });
-
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `carrybee-issues-${new Date().toISOString().split('T')[0]}.csv`;
-            a.click();
-            window.URL.revokeObjectURL(url);
+            
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "carrybee_issues.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            showToast('CSV exported successfully!', 'success');
         }
 
-        // ============================================
-        // INIT
-        // ============================================
-        document.addEventListener('DOMContentLoaded', () => {
-            loadData();
-            setInterval(loadData, 60000);
+        function showToast(message, type) {
+            const toast = document.createElement('div');
+            const bgColor = type === 'success' ? 'bg-green-500' : 'bg-red-500';
+            const icon = type === 'success' ? 'fa-check' : 'fa-exclamation-circle';
+            toast.className = `fixed bottom-4 right-4 ${bgColor} text-white px-4 py-3 rounded-lg shadow-lg text-sm font-medium toast z-50 flex items-center gap-2`;
+            toast.innerHTML = `<i class="fa-solid ${icon}"></i> ${message}`;
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(100%)';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // --- Init ---
+        window.addEventListener('DOMContentLoaded', () => {
+            fetchData();
         });
 
-        document.getElementById('issueModal').addEventListener('click', (e) => {
-            if (e.target === e.currentTarget) closeModal();
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+                closeRaiseIssue();
+            }
+            if (e.ctrlKey && e.key === 'r') {
+                e.preventDefault();
+                fetchData();
+            }
         });
     </script>
 </body>
