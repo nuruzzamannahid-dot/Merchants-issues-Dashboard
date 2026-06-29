@@ -143,7 +143,7 @@
     <!-- Sidebar -->
     <aside class="w-64 theme-transition border-r flex flex-col flex-shrink-0" style="background-color: var(--bg-sidebar); border-color: var(--border-color);">
         <div class="p-5 flex items-center justify-between gap-3">
-            <img src="./carrybee-logo.png" alt="CarryBee" class="logo-img">
+            <img src="carrybee-logo.png" alt="CarryBee" class="logo-img">
             <button onclick="toggleTheme()" class="theme-toggle" title="Toggle Dark Mode">
                 <i class="fa-solid fa-moon" id="theme-icon"></i>
             </button>
@@ -548,7 +548,9 @@
             document.getElementById('loading-state').classList.remove('hidden');
 
             try {
-                const response = await fetch(SHEET_URL);
+                // Add cache-busting timestamp to force fresh data from Google Sheets
+                const cacheBuster = `&nocache=${Date.now()}`;
+                const response = await fetch(SHEET_URL + cacheBuster);
                 if (!response.ok) throw new Error('Network response was not ok');
                 const csvText = await response.text();
                 issuesData = parseCSV(csvText);
@@ -770,8 +772,6 @@
         
         async function writeStatusToSheet(issue, newStatus) {
             try {
-                // CRITICAL: Use text/plain to bypass CORS preflight check
-                // This is the only way to make POST work with Google Apps Script from any origin
                 const response = await fetch(APPS_SCRIPT_URL, {
                     method: 'POST',
                     headers: {
@@ -794,8 +794,9 @@
                 
                 if (result.success) {
                     showToast(`Status saved to Google Sheet: ${newStatus}`, 'success');
-                    // Refresh after 1.5s to show updated data
-                    setTimeout(() => fetchData(), 1500);
+                    // Wait 3 seconds for Google Sheets cache to update, then refresh
+                    showToast('Syncing with Google Sheet...', 'success');
+                    setTimeout(() => fetchData(), 3000);
                 } else {
                     showToast('Error: ' + (result.error || 'Unknown'), 'error');
                 }
