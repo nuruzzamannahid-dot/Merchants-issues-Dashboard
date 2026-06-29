@@ -765,43 +765,55 @@
             updateAnalytics();
             
             // Write back to Google Sheet via Apps Script
-            if (WRITE_MODE && APPS_SCRIPT_URL !== 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec') {
-                writeStatusToSheet(currentModalIssue, newStatus);
-            } else {
-                showToast(`Status updated to ${newStatus} (local only - enable WRITE_MODE to save to sheet)`, 'success');
-            }
+            writeStatusToSheet(currentModalIssue, newStatus);
         }
         
         async function writeStatusToSheet(issue, newStatus) {
             try {
+                // Use a simple form-encoded POST to avoid CORS preflight issues
+                const formData = new URLSearchParams();
+                formData.append('action', 'updateStatus');
+                formData.append('consignmentId', issue.consignmentId);
+                formData.append('status', newStatus);
+                
                 const response = await fetch(APPS_SCRIPT_URL, {
                     method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        action: 'updateStatus',
-                        consignmentId: issue.consignmentId,
-                        status: newStatus
-                    })
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: formData.toString()
                 });
-                showToast(`Status saved to Google Sheet: ${newStatus}`, 'success');
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showToast(`Status saved to Google Sheet: ${newStatus}`, 'success');
+                    // Refresh data from sheet to confirm
+                    setTimeout(() => fetchData(), 1000);
+                } else {
+                    showToast('Sheet update failed: ' + (result.error || 'Unknown error'), 'error');
+                }
             } catch (err) {
                 console.error('Write error:', err);
-                showToast('Failed to save to sheet, but updated locally', 'warning');
+                showToast('Network error - status saved locally only', 'warning');
             }
         }
         
         async function addIssueToSheet(issue) {
-            if (!WRITE_MODE || APPS_SCRIPT_URL === 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec') return;
             try {
+                const formData = new URLSearchParams();
+                formData.append('action', 'addIssue');
+                formData.append('consignmentId', issue.consignmentId);
+                formData.append('merchant', issue.merchant);
+                formData.append('issueTag', issue.issueTag);
+                formData.append('details', issue.details);
+                
                 await fetch(APPS_SCRIPT_URL, {
                     method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        action: 'addIssue',
-                        ...issue
-                    })
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: formData.toString()
                 });
             } catch (err) {
                 console.error('Add issue error:', err);
