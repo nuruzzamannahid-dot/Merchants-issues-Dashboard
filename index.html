@@ -25,7 +25,6 @@
         :root {
             --cb-yellow: #FFCC00;
             --cb-black: #333132;
-            /* LIGHT MODE (default) */
             --bg-body: #f3f4f6;
             --bg-sidebar: #ffffff;
             --bg-header: rgba(255,255,255,0.8);
@@ -132,226 +131,630 @@
             transition: all 0.2s; flex-shrink: 0;
         }
         .theme-toggle:hover { background: var(--cb-yellow); color: var(--cb-black); border-color: var(--cb-yellow); }
-        /* Smooth transitions for all themed elements */
         .theme-transition {
             transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        /* LOGIN STYLES */
+        .login-stage {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #0c0a08;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            transition: opacity 0.6s ease, visibility 0.6s ease;
+        }
+        .login-stage.hidden-login {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+        .login-stage .hint {
+            position: absolute;
+            top: 28px;
+            left: 38px;
+            color: rgba(255, 255, 255, 0.28);
+            font-size: 11px;
+            letter-spacing: 2.5px;
+            font-weight: 600;
+            text-transform: uppercase;
+            user-select: none;
+            pointer-events: none;
+        }
+        .light-cone {
+            position: absolute;
+            left: 32%;
+            top: 0;
+            width: 520px;
+            height: 100vh;
+            transform: translateX(-50%);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.6s ease;
+        }
+        .light-cone.on { opacity: 1; }
+        .cone-shape {
+            position: absolute;
+            top: 158px;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-left: 130px solid transparent;
+            border-right: 130px solid transparent;
+            border-top: 480px solid rgba(255, 198, 120, 0.16);
+            transform: translateX(-50%);
+            filter: blur(6px);
+        }
+        .floor-glow {
+            position: absolute;
+            bottom: 14%;
+            left: 50%;
+            width: 480px;
+            height: 90px;
+            background: radial-gradient(ellipse at center, rgba(255, 198, 120, 0.30) 0%, rgba(255, 198, 120, 0) 75%);
+            transform: translateX(-50%);
+        }
+        .lamp {
+            position: absolute;
+            left: 32%;
+            top: 0;
+            height: 100vh;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 3;
+        }
+        .lamp-shade-wrap { position: relative; margin-top: 120px; }
+        .lamp-bulb-glow {
+            position: absolute;
+            top: 14px;
+            left: 50%;
+            width: 30px;
+            height: 30px;
+            transform: translateX(-50%);
+            background: #ffc875;
+            border-radius: 50%;
+            filter: blur(10px);
+            opacity: 0.25;
+            transition: opacity 0.5s ease, box-shadow 0.5s ease;
+        }
+        .light-on .lamp-bulb-glow {
+            opacity: 1;
+            box-shadow: 0 0 60px 30px rgba(255, 198, 120, 0.55);
+        }
+        .lamp-shade {
+            position: relative;
+            width: 150px;
+            height: 38px;
+            background: linear-gradient(180deg, #4a4540 0%, #2c2824 100%);
+            border-radius: 50% 50% 18px 18px / 70% 70% 30% 30%;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+            z-index: 2;
+        }
+        .lamp-shade::after {
+            content: "";
+            position: absolute;
+            bottom: -6px;
+            left: 8%;
+            width: 84%;
+            height: 14px;
+            background: radial-gradient(ellipse at center, #fff7e0 0%, #ffdca0 40%, rgba(255,220,160,0) 80%);
+            opacity: 0.15;
+            border-radius: 50%;
+            transition: opacity 0.5s ease;
+        }
+        .light-on .lamp-shade::after { opacity: 0.95; }
+        .lamp-pole {
+            width: 6px;
+            height: 380px;
+            background: linear-gradient(90deg, #1a1714, #353029, #1a1714);
+        }
+        .lamp-base {
+            width: 96px;
+            height: 10px;
+            border-radius: 5px;
+            background: linear-gradient(90deg, #1a1714, #3a342c, #1a1714);
+            margin-top: -2px;
+        }
+        .pull-string-zone {
+            position: absolute;
+            top: 158px;
+            left: 50%;
+            width: 70px;
+            height: 130px;
+            transform: translateX(-50%);
+            cursor: pointer;
+            z-index: 4;
+        }
+        .pull-string {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            width: 1.5px;
+            height: 92px;
+            background: rgba(220, 210, 195, 0.55);
+            transform: translateX(-50%);
+            transition: height 0.18s ease;
+        }
+        .pull-knob {
+            position: absolute;
+            left: 50%;
+            width: 11px;
+            height: 15px;
+            background: linear-gradient(180deg, #d9b25c, #a87f2e);
+            border-radius: 3px 3px 6px 6px;
+            transform: translateX(-50%);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+            transition: top 0.18s ease;
+        }
+        .pull-string-zone.pulling .pull-string { height: 116px; }
+        .pull-string-zone.pulling .pull-knob { top: 116px !important; }
+        .login-card-wrap {
+            position: absolute;
+            right: 9%;
+            top: 50%;
+            transform: translateY(-50%) translateX(40px) scale(0.96);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.55s cubic-bezier(.2,.8,.2,1), transform 0.55s cubic-bezier(.2,.8,.2,1);
+            z-index: 5;
+        }
+        .login-card-wrap.visible {
+            opacity: 1;
+            transform: translateY(-50%) translateX(0) scale(1);
+            pointer-events: auto;
+        }
+        .login-card {
+            width: 320px;
+            padding: 30px 28px 26px;
+            background: rgba(38, 35, 33, 0.55);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 18px;
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            box-shadow: 0 30px 60px -20px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.02) inset;
+        }
+        .login-card h1 {
+            margin: 0 0 22px;
+            font-size: 19px;
+            font-weight: 700;
+            color: #f3efe9;
+            text-align: center;
+            letter-spacing: 0.2px;
+        }
+        .login-field { position: relative; margin-bottom: 11px; }
+        .login-field input {
+            width: 100%;
+            padding: 12px 14px;
+            background: rgba(0, 0, 0, 0.28);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 9px;
+            color: #f3efe9;
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.2s ease, background 0.2s ease;
+        }
+        .login-field input::placeholder { color: #9a948d; }
+        .login-field input:focus {
+            border-color: rgba(139, 108, 242, 0.55);
+            background: rgba(0,0,0,0.36);
+        }
+        .login-eye-toggle {
+            position: absolute;
+            right: 13px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 17px;
+            height: 17px;
+            cursor: pointer;
+            color: #9a948d;
+            background: none;
+            border: none;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .login-eye-toggle svg { width: 17px; height: 17px; }
+        .login-forgot-row {
+            text-align: right;
+            margin: 4px 2px 16px;
+        }
+        .login-forgot-row a {
+            font-size: 11.5px;
+            color: #b59cf0;
+            text-decoration: none;
+        }
+        .login-forgot-row a:hover { text-decoration: underline; }
+        .login-btn-signin {
+            width: 100%;
+            padding: 12px 0;
+            border: none;
+            border-radius: 9px;
+            background: linear-gradient(90deg, #8b6cf2, #5b8cf2);
+            color: #fff;
+            font-size: 12.5px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: filter 0.2s ease, transform 0.15s ease;
+        }
+        .login-btn-signin:hover { filter: brightness(1.08); }
+        .login-btn-signin:active { transform: translateY(1px); }
+        .login-error {
+            color: #ef4444;
+            font-size: 12px;
+            text-align: center;
+            margin-bottom: 12px;
+            min-height: 18px;
+            transition: opacity 0.3s ease;
+        }
+        .login-success-msg {
+            color: #22c55e;
+            font-size: 13px;
+            text-align: center;
+            margin-bottom: 12px;
+            display: none;
+        }
+        .login-divider {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 16px 0;
+        }
+        .login-divider::before, .login-divider::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background: rgba(255,255,255,0.09);
+        }
+        .login-divider span {
+            font-size: 11px;
+            color: #9a948d;
+        }
+        .login-btn-google {
+            width: 100%;
+            padding: 11px 0;
+            border-radius: 9px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255,255,255,0.04);
+            color: #f3efe9;
+            font-size: 12.5px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 9px;
+            transition: background 0.2s ease;
+        }
+        .login-btn-google:hover { background: rgba(255,255,255,0.08); }
+        .login-btn-google svg { width: 16px; height: 16px; }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--cb-yellow), #f59e0b);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 12px;
+            color: var(--cb-black);
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .user-avatar:hover { transform: scale(1.05); }
+        .user-dropdown {
+            position: absolute;
+            top: 48px;
+            right: 0;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 8px 0;
+            min-width: 180px;
+            box-shadow: var(--shadow-md);
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-8px);
+            transition: all 0.2s ease;
+            z-index: 100;
+        }
+        .user-dropdown.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+        .user-dropdown-item {
+            padding: 10px 16px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: background 0.15s;
+        }
+        .user-dropdown-item:hover { background: var(--bg-table-hover); }
+        .user-dropdown-item.logout { color: #ef4444; }
+        .user-dropdown-item.logout:hover { background: rgba(239,68,68,0.08); }
+        .user-dropdown-divider {
+            height: 1px;
+            background: var(--border-color);
+            margin: 6px 0;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .login-card-wrap, .light-cone, .lamp-bulb-glow, .lamp-shade::after, .pull-string, .pull-knob {
+                transition: none !important;
+            }
+        }
+        @media (max-width: 760px) {
+            .lamp { left: 50%; }
+            .light-cone { left: 50%; }
+            .login-card-wrap {
+                right: auto;
+                left: 50%;
+                transform: translate(-50%, -50%) translateY(120px) scale(0.96);
+            }
+            .login-card-wrap.visible { transform: translate(-50%, -50%) translateY(0) scale(1); }
+            .login-card { width: 86vw; max-width: 320px; }
         }
     </style>
 </head>
 <body class="h-screen flex overflow-hidden">
 
-    <!-- Sidebar -->
-    <aside class="w-64 theme-transition border-r flex flex-col flex-shrink-0" style="background-color: var(--bg-sidebar); border-color: var(--border-color);">
-        <div class="p-5 flex items-center justify-between gap-3">
-            <img src="carrybee-logo.png" alt="CarryBee" class="logo-img">
-            <button onclick="toggleTheme()" class="theme-toggle" title="Toggle Dark Mode">
-                <i class="fa-solid fa-moon" id="theme-icon"></i>
-            </button>
+    <!-- LOGIN SCREEN -->
+    <div class="login-stage" id="loginStage">
+        <div class="hint">Pull the string to toggle login</div>
+        <div class="light-cone" id="lightCone">
+            <div class="cone-shape"></div>
+            <div class="floor-glow"></div>
         </div>
-
-        <nav class="flex-1 px-3 space-y-1 mt-2">
-            <p class="px-3 text-xs font-semibold uppercase tracking-wider mb-2" style="color: var(--text-muted);">Menu</p>
-            <a href="#" onclick="switchView('tracker')" id="nav-tracker" class="sidebar-item active flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium">
-                <i class="fa-solid fa-clipboard-list w-5 text-center"></i> Issue Tracker
-            </a>
-            <a href="#" onclick="switchView('analytics')" id="nav-analytics" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium">
-                <i class="fa-solid fa-chart-pie w-5 text-center"></i> Analytics
-            </a>
-            <a href="#" onclick="showRaiseIssue()" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium">
-                <i class="fa-solid fa-plus-circle w-5 text-center"></i> Raise Issue
-            </a>
-        </nav>
-
-        <div class="p-4 border-t" style="border-color: var(--border-color);">
-            <div class="glass-panel rounded-lg p-3">
-                <p class="text-xs mb-1" style="color: var(--text-muted);">Data Source</p>
-                <div class="flex items-center gap-2 text-xs" style="color: var(--text-secondary);">
-                    <i class="fa-brands fa-google-drive text-green-500"></i>
-                    <span class="truncate">Google Sheets</span>
+        <div class="lamp" id="lampRoot">
+            <div class="lamp-shade-wrap">
+                <div class="lamp-bulb-glow"></div>
+                <div class="lamp-shade"></div>
+            </div>
+            <div class="pull-string-zone" id="pullZone" role="button" tabindex="0" aria-label="Pull string to toggle login form">
+                <div class="pull-string" id="pullString"></div>
+                <div class="pull-knob" id="pullKnob" style="top: 92px;"></div>
+            </div>
+            <div class="lamp-pole"></div>
+            <div class="lamp-base"></div>
+        </div>
+        <div class="login-card-wrap" id="cardWrap">
+            <div class="login-card">
+                <h1>Welcome Back</h1>
+                <div class="login-error" id="loginError"></div>
+                <div class="login-success-msg" id="loginSuccess">Signing in...</div>
+                <div class="login-field">
+                    <input type="email" id="loginEmail" placeholder="Email address" autocomplete="email">
                 </div>
-            </div>
-        </div>
-    </aside>
-
-    <!-- Main Content -->
-    <main class="flex-1 flex flex-col overflow-hidden relative">
-
-        <!-- Header -->
-        <header class="h-16 border-b flex items-center justify-between px-8 backdrop-blur-sm z-10 theme-transition" style="background-color: var(--bg-header); border-color: var(--border-color);">
-            <div>
-                <h2 id="page-title" class="text-xl font-bold theme-transition" style="color: var(--text-primary);">Issue Tracker</h2>
-                <p id="last-refreshed" class="text-xs mt-0.5 theme-transition" style="color: var(--text-muted);">Last refreshed: Never</p>
-                        <p id="auto-refresh-countdown" class="text-xs mt-0.5 font-mono theme-transition" style="color: var(--cb-yellow); opacity: 0.8;"></p>
-            </div>
-            <div class="flex items-center gap-3">
-                <button onclick="fetchData()" class="px-4 py-2 rounded-lg text-sm font-medium transition-colors border flex items-center gap-2 theme-transition" style="background-color: var(--bg-input); color: var(--text-secondary); border-color: var(--border-input);">
-                    <i class="fa-solid fa-rotate-right" id="refresh-icon"></i> Refresh
-                </button>
-                <button onclick="exportCSV()" class="px-4 py-2 rounded-lg bg-gold hover:opacity-90 text-sm font-bold transition-colors flex items-center gap-2" style="color: var(--cb-black);">
-                    <i class="fa-solid fa-download"></i> Export CSV
+                <div class="login-field">
+                    <input type="password" placeholder="Password" id="pwField" autocomplete="current-password">
+                    <button class="login-eye-toggle" data-target="pwField" aria-label="Show password">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                    </button>
+                </div>
+                <div class="login-forgot-row"><a href="#" onclick="showToast('Contact admin to reset password','warning')">Forgot Password?</a></div>
+                <button class="login-btn-signin" type="button" onclick="handleLogin()">SIGN IN</button>
+                <div class="login-divider"><span>or</span></div>
+                <button class="login-btn-google" type="button" onclick="showToast('Google login not configured','warning')">
+                    <svg viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.6-6 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l5.7-5.7C34.5 6 29.5 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.2-.1-2.4-.4-3.5z"></path><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 16 18.9 13 24 13c3.1 0 5.8 1.1 8 3l5.7-5.7C34.5 6 29.5 4 24 4 16.1 4 9.3 8.4 6.3 14.7z"></path><path fill="#4CAF50" d="M24 44c5.4 0 10.3-1.9 14-5.1l-6.5-5.5c-1.9 1.5-4.5 2.6-7.5 2.6-5.3 0-9.7-3.4-11.3-8l-6.5 5C9.2 39.6 16 44 24 44z"></path><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.2 4.2-4 5.6l6.5 5.5C41.6 35.7 44 30.3 44 24c0-1.2-.1-2.4-.4-3.5z"></path></svg>
+                    Continue with Google
                 </button>
             </div>
-        </header>
+        </div>
+    </div>
 
-        <!-- Content Scroll Area -->
-        <div class="flex-1 overflow-y-auto p-8 relative" id="main-content">
-
-            <!-- Loading State -->
-            <div id="loading-state" class="absolute inset-0 flex flex-col items-center justify-center z-20 theme-transition" style="background-color: var(--bg-body);">
-                <div class="loading-spinner mb-4"></div>
-                <p class="text-sm theme-transition" style="color: var(--text-muted);">Loading data from Google Sheets...</p>
+    <!-- DASHBOARD -->
+    <div id="dashboard" class="flex w-full h-full" style="display:none;">
+        <aside class="w-64 theme-transition border-r flex flex-col flex-shrink-0" style="background-color: var(--bg-sidebar); border-color: var(--border-color);">
+            <div class="p-5 flex items-center justify-between gap-3">
+                <img src="carrybee-logo.png" alt="CarryBee" class="logo-img">
+                <button onclick="toggleTheme()" class="theme-toggle" title="Toggle Dark Mode">
+                    <i class="fa-solid fa-moon" id="theme-icon"></i>
+                </button>
             </div>
-
-            <!-- VIEW: Issue Tracker -->
-            <div id="view-tracker" class="hidden fade-in space-y-6">
-
-                <!-- Stats Cards -->
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div class="card-gradient p-5 rounded-xl border relative overflow-hidden group theme-transition" style="border-color: var(--border-color); box-shadow: var(--shadow-sm);">
-                        <div class="absolute top-0 right-0 w-24 h-24 rounded-full -mr-8 -mt-8 transition-transform group-hover:scale-110" style="background: var(--border-color);"></div>
-                        <p class="text-xs font-semibold uppercase tracking-wider theme-transition" style="color: var(--text-muted);">Total Issues</p>
-                        <h3 class="text-3xl font-bold mt-1 theme-transition" style="color: var(--text-primary);" id="stat-total">0</h3>
-                        <p class="text-xs mt-1 theme-transition" style="color: var(--text-muted);">All time</p>
-                        <div class="absolute bottom-0 left-0 w-full h-1" style="background: var(--border-color);">
-                            <div class="h-full w-full theme-transition" style="background: var(--text-muted); opacity: 0.5;"></div>
-                        </div>
+            <nav class="flex-1 px-3 space-y-1 mt-2">
+                <p class="px-3 text-xs font-semibold uppercase tracking-wider mb-2" style="color: var(--text-muted);">Menu</p>
+                <a href="#" onclick="switchView('tracker')" id="nav-tracker" class="sidebar-item active flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium">
+                    <i class="fa-solid fa-clipboard-list w-5 text-center"></i> Issue Tracker
+                </a>
+                <a href="#" onclick="switchView('analytics')" id="nav-analytics" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium">
+                    <i class="fa-solid fa-chart-pie w-5 text-center"></i> Analytics
+                </a>
+                <a href="#" onclick="showRaiseIssue()" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium">
+                    <i class="fa-solid fa-plus-circle w-5 text-center"></i> Raise Issue
+                </a>
+            </nav>
+            <div class="p-4 border-t" style="border-color: var(--border-color);">
+                <div class="glass-panel rounded-lg p-3">
+                    <p class="text-xs mb-1" style="color: var(--text-muted);">Data Source</p>
+                    <div class="flex items-center gap-2 text-xs" style="color: var(--text-secondary);">
+                        <i class="fa-brands fa-google-drive text-green-500"></i>
+                        <span class="truncate">Google Sheets</span>
                     </div>
-                    <div class="card-gradient p-5 rounded-xl border relative overflow-hidden group theme-transition" style="border-color: var(--border-color); box-shadow: var(--shadow-sm);">
-                        <div class="absolute top-0 right-0 w-24 h-24 rounded-full -mr-8 -mt-8 transition-transform group-hover:scale-110" style="background: rgba(255,204,0,0.1);"></div>
-                        <p class="text-xs font-semibold uppercase tracking-wider theme-transition" style="color: var(--text-muted);">Open</p>
-                        <h3 class="text-3xl font-bold text-gold mt-1" id="stat-open">0</h3>
-                        <p class="text-xs mt-1 theme-transition" style="color: var(--text-muted);">Awaiting action</p>
-                        <div class="absolute bottom-0 left-0 w-full h-1" style="background: var(--border-color);">
-                            <div class="h-full bg-gold w-0 transition-all duration-1000" id="bar-open"></div>
-                        </div>
-                    </div>
-                    <div class="card-gradient p-5 rounded-xl border relative overflow-hidden group theme-transition" style="border-color: var(--border-color); box-shadow: var(--shadow-sm);">
-                        <div class="absolute top-0 right-0 w-24 h-24 rounded-full -mr-8 -mt-8 transition-transform group-hover:scale-110" style="background: rgba(59,130,246,0.1);"></div>
-                        <p class="text-xs font-semibold uppercase tracking-wider theme-transition" style="color: var(--text-muted);">In Progress</p>
-                        <h3 class="text-3xl font-bold mt-1" style="color: #3b82f6;" id="stat-progress">0</h3>
-                        <p class="text-xs mt-1 theme-transition" style="color: var(--text-muted);">Being handled</p>
-                        <div class="absolute bottom-0 left-0 w-full h-1" style="background: var(--border-color);">
-                            <div class="h-full w-0 transition-all duration-1000" style="background: #3b82f6;" id="bar-progress"></div>
-                        </div>
-                    </div>
-                    <div class="card-gradient p-5 rounded-xl border relative overflow-hidden group theme-transition" style="border-color: var(--border-color); box-shadow: var(--shadow-sm);">
-                        <div class="absolute top-0 right-0 w-24 h-24 rounded-full -mr-8 -mt-8 transition-transform group-hover:scale-110" style="background: rgba(34,197,94,0.1);"></div>
-                        <p class="text-xs font-semibold uppercase tracking-wider theme-transition" style="color: var(--text-muted);">Resolved</p>
-                        <h3 class="text-3xl font-bold mt-1" style="color: #22c55e;" id="stat-resolved">0</h3>
-                        <p class="text-xs mt-1 theme-transition" style="color: var(--text-muted);">Closed issues</p>
-                        <div class="absolute bottom-0 left-0 w-full h-1" style="background: var(--border-color);">
-                            <div class="h-full w-0 transition-all duration-1000" style="background: #22c55e;" id="bar-resolved"></div>
+                </div>
+            </div>
+        </aside>
+        <main class="flex-1 flex flex-col overflow-hidden relative">
+            <header class="h-16 border-b flex items-center justify-between px-8 backdrop-blur-sm z-10 theme-transition" style="background-color: var(--bg-header); border-color: var(--border-color);">
+                <div>
+                    <h2 id="page-title" class="text-xl font-bold theme-transition" style="color: var(--text-primary);">Issue Tracker</h2>
+                    <p id="last-refreshed" class="text-xs mt-0.5 theme-transition" style="color: var(--text-muted);">Last refreshed: Never</p>
+                    <p id="auto-refresh-countdown" class="text-xs mt-0.5 font-mono theme-transition" style="color: var(--cb-yellow); opacity: 0.8;"></p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button onclick="fetchData()" class="px-4 py-2 rounded-lg text-sm font-medium transition-colors border flex items-center gap-2 theme-transition" style="background-color: var(--bg-input); color: var(--text-secondary); border-color: var(--border-input);">
+                        <i class="fa-solid fa-rotate-right" id="refresh-icon"></i> Refresh
+                    </button>
+                    <button onclick="exportCSV()" class="px-4 py-2 rounded-lg bg-gold hover:opacity-90 text-sm font-bold transition-colors flex items-center gap-2" style="color: var(--cb-black);">
+                        <i class="fa-solid fa-download"></i> Export CSV
+                    </button>
+                    <div class="relative" id="userMenuContainer">
+                        <div class="user-avatar" id="userAvatar" onclick="toggleUserMenu()">U</div>
+                        <div class="user-dropdown" id="userDropdown">
+                            <div class="px-4 py-2">
+                                <p class="text-xs font-medium theme-transition" style="color: var(--text-primary);" id="dropdownName">User</p>
+                                <p class="text-xs theme-transition" style="color: var(--text-muted);" id="dropdownEmail">user@carrybee.com</p>
+                            </div>
+                            <div class="user-dropdown-divider"></div>
+                            <div class="user-dropdown-item" onclick="toggleTheme()">
+                                <i class="fa-solid fa-moon"></i> Toggle Theme
+                            </div>
+                            <div class="user-dropdown-item logout" onclick="handleLogout()">
+                                <i class="fa-solid fa-arrow-right-from-bracket"></i> Sign Out
+                            </div>
                         </div>
                     </div>
                 </div>
-
-                <!-- Filters -->
-                <div class="flex flex-col sm:flex-row gap-3">
-                    <div class="relative flex-1">
-                        <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 theme-transition" style="color: var(--text-muted);"></i>
-                        <input type="text" id="searchInput" onkeyup="renderTable()" placeholder="Search by Ticket ID, Merchant, Consignment, or Details..."
-                            class="w-full rounded-lg pl-10 pr-4 py-2.5 text-sm placeholder-slate-400 focus:outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/50 transition-all theme-transition"
+            </header>
+            <div class="flex-1 overflow-y-auto p-8 relative" id="main-content">
+                <div id="loading-state" class="absolute inset-0 flex flex-col items-center justify-center z-20 theme-transition" style="background-color: var(--bg-body);">
+                    <div class="loading-spinner mb-4"></div>
+                    <p class="text-sm theme-transition" style="color: var(--text-muted);">Loading data from Google Sheets...</p>
+                </div>
+                <div id="view-tracker" class="hidden fade-in space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div class="card-gradient p-5 rounded-xl border relative overflow-hidden group theme-transition" style="border-color: var(--border-color); box-shadow: var(--shadow-sm);">
+                            <div class="absolute top-0 right-0 w-24 h-24 rounded-full -mr-8 -mt-8 transition-transform group-hover:scale-110" style="background: var(--border-color);"></div>
+                            <p class="text-xs font-semibold uppercase tracking-wider theme-transition" style="color: var(--text-muted);">Total Issues</p>
+                            <h3 class="text-3xl font-bold mt-1 theme-transition" style="color: var(--text-primary);" id="stat-total">0</h3>
+                            <p class="text-xs mt-1 theme-transition" style="color: var(--text-muted);">All time</p>
+                            <div class="absolute bottom-0 left-0 w-full h-1" style="background: var(--border-color);">
+                                <div class="h-full w-full theme-transition" style="background: var(--text-muted); opacity: 0.5;"></div>
+                            </div>
+                        </div>
+                        <div class="card-gradient p-5 rounded-xl border relative overflow-hidden group theme-transition" style="border-color: var(--border-color); box-shadow: var(--shadow-sm);">
+                            <div class="absolute top-0 right-0 w-24 h-24 rounded-full -mr-8 -mt-8 transition-transform group-hover:scale-110" style="background: rgba(255,204,0,0.1);"></div>
+                            <p class="text-xs font-semibold uppercase tracking-wider theme-transition" style="color: var(--text-muted);">Open</p>
+                            <h3 class="text-3xl font-bold text-gold mt-1" id="stat-open">0</h3>
+                            <p class="text-xs mt-1 theme-transition" style="color: var(--text-muted);">Awaiting action</p>
+                            <div class="absolute bottom-0 left-0 w-full h-1" style="background: var(--border-color);">
+                                <div class="h-full bg-gold w-0 transition-all duration-1000" id="bar-open"></div>
+                            </div>
+                        </div>
+                        <div class="card-gradient p-5 rounded-xl border relative overflow-hidden group theme-transition" style="border-color: var(--border-color); box-shadow: var(--shadow-sm);">
+                            <div class="absolute top-0 right-0 w-24 h-24 rounded-full -mr-8 -mt-8 transition-transform group-hover:scale-110" style="background: rgba(59,130,246,0.1);"></div>
+                            <p class="text-xs font-semibold uppercase tracking-wider theme-transition" style="color: var(--text-muted);">In Progress</p>
+                            <h3 class="text-3xl font-bold mt-1" style="color: #3b82f6;" id="stat-progress">0</h3>
+                            <p class="text-xs mt-1 theme-transition" style="color: var(--text-muted);">Being handled</p>
+                            <div class="absolute bottom-0 left-0 w-full h-1" style="background: var(--border-color);">
+                                <div class="h-full w-0 transition-all duration-1000" style="background: #3b82f6;" id="bar-progress"></div>
+                            </div>
+                        </div>
+                        <div class="card-gradient p-5 rounded-xl border relative overflow-hidden group theme-transition" style="border-color: var(--border-color); box-shadow: var(--shadow-sm);">
+                            <div class="absolute top-0 right-0 w-24 h-24 rounded-full -mr-8 -mt-8 transition-transform group-hover:scale-110" style="background: rgba(34,197,94,0.1);"></div>
+                            <p class="text-xs font-semibold uppercase tracking-wider theme-transition" style="color: var(--text-muted);">Resolved</p>
+                            <h3 class="text-3xl font-bold mt-1" style="color: #22c55e;" id="stat-resolved">0</h3>
+                            <p class="text-xs mt-1 theme-transition" style="color: var(--text-muted);">Closed issues</p>
+                            <div class="absolute bottom-0 left-0 w-full h-1" style="background: var(--border-color);">
+                                <div class="h-full w-0 transition-all duration-1000" style="background: #22c55e;" id="bar-resolved"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <div class="relative flex-1">
+                            <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 theme-transition" style="color: var(--text-muted);"></i>
+                            <input type="text" id="searchInput" onkeyup="renderTable()" placeholder="Search by Ticket ID, Merchant, Consignment, or Details..."
+                                class="w-full rounded-lg pl-10 pr-4 py-2.5 text-sm placeholder-slate-400 focus:outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/50 transition-all theme-transition"
+                                style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
+                        </div>
+                        <select id="statusFilter" onchange="renderTable()" class="rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
                             style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
+                            <option value="All">All Statuses</option>
+                            <option value="Open">Open</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Resolved">Resolved</option>
+                        </select>
+                        <select id="tagFilter" onchange="renderTable()" class="rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
+                            style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
+                            <option value="All">All Issue Tags</option>
+                        </select>
                     </div>
-                    <select id="statusFilter" onchange="renderTable()" class="rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
-                        style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
-                        <option value="All">All Statuses</option>
-                        <option value="Open">Open</option>
-                        <option value="In Progress">In Progress</option>
-                        <option value="Resolved">Resolved</option>
-                    </select>
-                    <select id="tagFilter" onchange="renderTable()" class="rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
-                        style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
-                        <option value="All">All Issue Tags</option>
-                    </select>
-                </div>
-
-                <!-- Table -->
-                <div class="glass-panel rounded-xl overflow-hidden">
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse">
-                            <thead>
-                                <tr class="border-b text-xs uppercase font-semibold tracking-wider theme-transition" style="border-color: var(--border-color); color: var(--text-muted);">
-                                    <th class="p-4 w-32">Ticket ID</th>
-                                    <th class="p-4 w-36">Submitted</th>
-                                    <th class="p-4 w-40">Merchant</th>
-                                    <th class="p-4 w-36">Consignment</th>
-                                    <th class="p-4 w-36">Tag</th>
-                                    <th class="p-4">Details</th>
-                                    <th class="p-4 w-28">Status</th>
-                                    <th class="p-4 w-20 text-right">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody id="issuesTableBody" class="text-sm divide-y theme-transition" style="color: var(--text-secondary); border-color: var(--border-color);">
-                                <!-- Rows injected by JS -->
-                            </tbody>
-                        </table>
-                    </div>
-                    <div id="emptyState" class="hidden p-12 text-center">
-                        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 theme-transition" style="background: var(--border-color);">
-                            <i class="fa-solid fa-inbox text-2xl theme-transition" style="color: var(--text-muted);"></i>
+                    <div class="glass-panel rounded-xl overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="border-b text-xs uppercase font-semibold tracking-wider theme-transition" style="border-color: var(--border-color); color: var(--text-muted);">
+                                        <th class="p-4 w-32">Ticket ID</th>
+                                        <th class="p-4 w-36">Submitted</th>
+                                        <th class="p-4 w-40">Merchant</th>
+                                        <th class="p-4 w-36">Consignment</th>
+                                        <th class="p-4 w-36">Tag</th>
+                                        <th class="p-4">Details</th>
+                                        <th class="p-4 w-28">Status</th>
+                                        <th class="p-4 w-20 text-right">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="issuesTableBody" class="text-sm divide-y theme-transition" style="color: var(--text-secondary); border-color: var(--border-color);">
+                                </tbody>
+                            </table>
                         </div>
-                        <h3 class="text-lg font-medium theme-transition" style="color: var(--text-primary);">No issues found</h3>
-                        <p class="text-sm mt-1 theme-transition" style="color: var(--text-muted);">Try adjusting your search or filters</p>
+                        <div id="emptyState" class="hidden p-12 text-center">
+                            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 theme-transition" style="background: var(--border-color);">
+                                <i class="fa-solid fa-inbox text-2xl theme-transition" style="color: var(--text-muted);"></i>
+                            </div>
+                            <h3 class="text-lg font-medium theme-transition" style="color: var(--text-primary);">No issues found</h3>
+                            <p class="text-sm mt-1 theme-transition" style="color: var(--text-muted);">Try adjusting your search or filters</p>
+                        </div>
                     </div>
                 </div>
-            </div>
-
-            <!-- VIEW: Analytics -->
-            <div id="view-analytics" class="hidden fade-in space-y-6">
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <!-- Issues by Tag -->
+                <div id="view-analytics" class="hidden fade-in space-y-6">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="glass-panel p-6 rounded-xl">
+                            <h3 class="text-lg font-bold mb-1 theme-transition" style="color: var(--text-primary);">Issues by Tag</h3>
+                            <p class="text-xs mb-6 theme-transition" style="color: var(--text-muted);">Breakdown of issue categories</p>
+                            <div class="chart-container">
+                                <canvas id="tagChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="glass-panel p-6 rounded-xl">
+                            <h3 class="text-lg font-bold mb-1 theme-transition" style="color: var(--text-primary);">Status Distribution</h3>
+                            <p class="text-xs mb-6 theme-transition" style="color: var(--text-muted);">Current status of all issues</p>
+                            <div class="chart-container flex justify-center">
+                                <canvas id="statusChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
                     <div class="glass-panel p-6 rounded-xl">
-                        <h3 class="text-lg font-bold mb-1 theme-transition" style="color: var(--text-primary);">Issues by Tag</h3>
-                        <p class="text-xs mb-6 theme-transition" style="color: var(--text-muted);">Breakdown of issue categories</p>
-                        <div class="chart-container">
-                            <canvas id="tagChart"></canvas>
+                        <h3 class="text-lg font-bold mb-1 theme-transition" style="color: var(--text-primary);">Issues Over Time</h3>
+                        <p class="text-xs mb-6 theme-transition" style="color: var(--text-muted);">Daily submission volume</p>
+                        <div class="chart-container" style="height: 300px;">
+                            <canvas id="timeChart"></canvas>
                         </div>
                     </div>
-                    <!-- Status Distribution -->
-                    <div class="glass-panel p-6 rounded-xl">
-                        <h3 class="text-lg font-bold mb-1 theme-transition" style="color: var(--text-primary);">Status Distribution</h3>
-                        <p class="text-xs mb-6 theme-transition" style="color: var(--text-muted);">Current status of all issues</p>
-                        <div class="chart-container flex justify-center">
-                            <canvas id="statusChart"></canvas>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="glass-panel p-6 rounded-xl">
+                            <h3 class="text-lg font-bold mb-1 theme-transition" style="color: var(--text-primary);">Top Merchants by Issues</h3>
+                            <p class="text-xs mb-4 theme-transition" style="color: var(--text-muted);">Most frequent issue raisers</p>
+                            <div id="topMerchantsList" class="space-y-3">
+                            </div>
                         </div>
-                    </div>
-                </div>
-
-                <div class="glass-panel p-6 rounded-xl">
-                    <h3 class="text-lg font-bold mb-1 theme-transition" style="color: var(--text-primary);">Issues Over Time</h3>
-                    <p class="text-xs mb-6 theme-transition" style="color: var(--text-muted);">Daily submission volume</p>
-                    <div class="chart-container" style="height: 300px;">
-                        <canvas id="timeChart"></canvas>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <!-- Top Merchants -->
-                    <div class="glass-panel p-6 rounded-xl">
-                        <h3 class="text-lg font-bold mb-1 theme-transition" style="color: var(--text-primary);">Top Merchants by Issues</h3>
-                        <p class="text-xs mb-4 theme-transition" style="color: var(--text-muted);">Most frequent issue raisers</p>
-                        <div id="topMerchantsList" class="space-y-3">
-                            <!-- Injected by JS -->
-                        </div>
-                    </div>
-                    <!-- Resolution Rate -->
-                    <div class="glass-panel p-6 rounded-xl flex flex-col items-center justify-center">
-                        <h3 class="text-lg font-bold mb-1 w-full text-left theme-transition" style="color: var(--text-primary);">Resolution Rate</h3>
-                        <p class="text-xs mb-4 w-full text-left theme-transition" style="color: var(--text-muted);">Resolved vs Unresolved</p>
-                        <div class="relative h-48 w-48">
-                            <canvas id="resolutionChart"></canvas>
-                            <div class="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
-                                <span class="text-2xl font-bold theme-transition" style="color: var(--text-primary);" id="resolutionPercent">0%</span>
-                                <span class="text-xs theme-transition" style="color: var(--text-muted);">Resolved</span>
+                        <div class="glass-panel p-6 rounded-xl flex flex-col items-center justify-center">
+                            <h3 class="text-lg font-bold mb-1 w-full text-left theme-transition" style="color: var(--text-primary);">Resolution Rate</h3>
+                            <p class="text-xs mb-4 w-full text-left theme-transition" style="color: var(--text-muted);">Resolved vs Unresolved</p>
+                            <div class="relative h-48 w-48">
+                                <canvas id="resolutionChart"></canvas>
+                                <div class="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
+                                    <span class="text-2xl font-bold theme-transition" style="color: var(--text-primary);" id="resolutionPercent">0%</span>
+                                    <span class="text-xs theme-transition" style="color: var(--text-muted);">Resolved</span>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-
-        </div>
-    </main>
+        </main>
+    </div>
 
     <!-- Issue Details Modal -->
     <div id="issueModal" class="fixed inset-0 z-50 hidden">
@@ -392,7 +795,6 @@
                             <p class="text-sm leading-relaxed whitespace-pre-wrap break-words font-bangla theme-transition" style="color: var(--text-secondary);" id="modal-details">-</p>
                         </div>
                     </div>
-
                     <div class="pt-2">
                         <p class="text-xs uppercase font-semibold mb-3 theme-transition" style="color: var(--text-muted);">Update Status</p>
                         <div class="flex gap-2">
@@ -462,7 +864,160 @@
     </div>
 
     <script>
-        // --- Theme Toggle ---
+
+        // ==================== AUTHENTICATION ====================
+        const USERS = [
+            { email: 'nuruzzaman.nahid@carrybee.com', password: 'CL-84175', name: 'Nuruzzaman Nahid' },
+            { email: 'asif.rashid@carrybee.com', password: 'CL-86026', name: 'Asif Rashid' },
+            { email: 'golam.muktadir@carrybee.com', password: 'CL-86003', name: 'Golam Muktadir' }
+        ];
+
+        let currentUser = null;
+
+        function checkAuth() {
+            const saved = localStorage.getItem('carrybee-user');
+            if (saved) {
+                try {
+                    const user = JSON.parse(saved);
+                    const found = USERS.find(u => u.email === user.email);
+                    if (found) {
+                        currentUser = found;
+                        showDashboard();
+                        return;
+                    }
+                } catch(e) {}
+            }
+            showLogin();
+        }
+
+        function showLogin() {
+            document.getElementById('loginStage').classList.remove('hidden-login');
+            document.getElementById('dashboard').style.display = 'none';
+            currentUser = null;
+        }
+
+        function showDashboard() {
+            document.getElementById('loginStage').classList.add('hidden-login');
+            document.getElementById('dashboard').style.display = 'flex';
+            updateUserUI();
+            if (issuesData.length === 0) fetchData();
+        }
+
+        function handleLogin() {
+            const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+            const password = document.getElementById('pwField').value;
+            const errorEl = document.getElementById('loginError');
+            const successEl = document.getElementById('loginSuccess');
+
+            errorEl.textContent = '';
+            successEl.style.display = 'none';
+
+            if (!email || !password) {
+                errorEl.textContent = 'Please enter both email and password.';
+                return;
+            }
+
+            const user = USERS.find(u => u.email.toLowerCase() === email && u.password === password);
+            if (!user) {
+                errorEl.textContent = 'Invalid email or password.';
+                return;
+            }
+
+            successEl.style.display = 'block';
+            successEl.textContent = 'Welcome, ' + user.name + '!';
+            currentUser = user;
+            localStorage.setItem('carrybee-user', JSON.stringify({ email: user.email, name: user.name }));
+
+            setTimeout(() => {
+                showDashboard();
+                showToast('Welcome back, ' + user.name + '!', 'success');
+            }, 800);
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('carrybee-user');
+            currentUser = null;
+            document.getElementById('loginEmail').value = '';
+            document.getElementById('pwField').value = '';
+            document.getElementById('loginError').textContent = '';
+            document.getElementById('loginSuccess').style.display = 'none';
+            hideUserMenu();
+            showLogin();
+            showToast('Signed out successfully', 'success');
+        }
+
+        function updateUserUI() {
+            if (!currentUser) return;
+            const initials = currentUser.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+            document.getElementById('userAvatar').textContent = initials;
+            document.getElementById('dropdownName').textContent = currentUser.name;
+            document.getElementById('dropdownEmail').textContent = currentUser.email;
+        }
+
+        function toggleUserMenu() {
+            document.getElementById('userDropdown').classList.toggle('show');
+        }
+
+        function hideUserMenu() {
+            document.getElementById('userDropdown').classList.remove('show');
+        }
+
+        document.addEventListener('click', (e) => {
+            const container = document.getElementById('userMenuContainer');
+            if (container && !container.contains(e.target)) {
+                hideUserMenu();
+            }
+        });
+
+        // ==================== LOGIN LAMP ANIMATION ====================
+        const pullZone   = document.getElementById('pullZone');
+        const lampRoot   = document.getElementById('lampRoot');
+        const lightCone  = document.getElementById('lightCone');
+        const cardWrap   = document.getElementById('cardWrap');
+
+        let isOn = false;
+        let animating = false;
+
+        function setLight(on) {
+            isOn = on;
+            lampRoot.classList.toggle('light-on', isOn);
+            lightCone.classList.toggle('on', isOn);
+            cardWrap.classList.toggle('visible', isOn);
+        }
+
+        function playPullAnimation() {
+            if (animating) return;
+            animating = true;
+            pullZone.classList.add('pulling');
+            setTimeout(() => { setLight(!isOn); }, 90);
+            setTimeout(() => {
+                pullZone.classList.remove('pulling');
+                animating = false;
+            }, 320);
+        }
+
+        pullZone.addEventListener('click', playPullAnimation);
+        pullZone.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                playPullAnimation();
+            }
+        });
+
+        document.querySelectorAll('.login-eye-toggle').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const target = document.getElementById(btn.dataset.target);
+                const isPw = target.type === 'password';
+                target.type = isPw ? 'text' : 'password';
+                btn.setAttribute('aria-label', isPw ? 'Hide password' : 'Show password');
+            });
+        });
+
+        document.getElementById('pwField').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') handleLogin();
+        });
+
+        // ==================== THEME TOGGLE ====================
         let currentTheme = localStorage.getItem('carrybee-theme') || 'light';
         document.documentElement.setAttribute('data-theme', currentTheme);
         updateThemeIcon();
@@ -472,7 +1027,6 @@
             document.documentElement.setAttribute('data-theme', currentTheme);
             localStorage.setItem('carrybee-theme', currentTheme);
             updateThemeIcon();
-            // Re-render charts to update colors
             setTimeout(() => {
                 Object.values(charts).forEach(c => { if(c) { c.destroy(); } });
                 charts = {};
@@ -482,14 +1036,12 @@
 
         function updateThemeIcon() {
             const icon = document.getElementById('theme-icon');
-            if (currentTheme === 'dark') {
-                icon.className = 'fa-solid fa-sun';
-            } else {
-                icon.className = 'fa-solid fa-moon';
+            if (icon) {
+                icon.className = currentTheme === 'dark' ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
             }
         }
 
-        // --- Configuration ---
+        // ==================== CONFIGURATION ====================
         const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSybJkSsKQxyczJc4Llsa10ywnR7YL3JNWN3Yx7RCc3GGWBOt4O43sSOMy2cNgYVQRtoAakguvAqgsy/pub?output=csv';
         const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyVGcgxpiuX9GbQsLd_IO3rtSqJZnd260t_qB2Ii4F8NvYVjCfrtWxoYyRmS9mwXKVuzg/exec';
         const WRITE_MODE = true;
@@ -549,7 +1101,6 @@
             document.getElementById('loading-state').classList.remove('hidden');
 
             try {
-                // Add cache-busting timestamp to force fresh data from Google Sheets
                 const cacheBuster = `&nocache=${Date.now()}`;
                 const response = await fetch(SHEET_URL + cacheBuster);
                 if (!response.ok) throw new Error('Network response was not ok');
@@ -585,9 +1136,11 @@
         }
 
         function parseCSV(csv) {
-            const lines = csv.split('\n').filter(line => line.trim() !== '');
+            const lines = csv.split('
+').filter(line => line.trim() !== '');
             if (lines.length < 2) return [];
-            const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, '').replace(/\r/g, ''));
+            const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, '').replace(/
+/g, ''));
             const result = [];
             for(let i = 1; i < lines.length; i++) {
                 const obj = {};
@@ -625,7 +1178,8 @@
                 } else { current += char; }
             }
             result.push(current.trim());
-            return result.map(v => v.replace(/^"|"$/g, '').replace(/\r/g, ''));
+            return result.map(v => v.replace(/^"|"$/g, '').replace(/
+/g, ''));
         }
 
         function updateStats() {
@@ -664,7 +1218,6 @@
             const statusFilter = document.getElementById('statusFilter').value;
             const tagFilter = document.getElementById('tagFilter').value;
             tbody.innerHTML = '';
-            // Only use predefined tags, no duplicates from data
             const tagSelect = document.getElementById('tagFilter');
             const currentTag = tagSelect.value;
             tagSelect.innerHTML = '<option value="All">All Issue Tags</option>';
@@ -756,46 +1309,28 @@
 
         function updateStatus(newStatus) {
             if (!currentModalIssue) return;
-            
-            // Update locally first for instant feedback
             if (newStatus === 'Open') { currentModalIssue.inProcess = false; currentModalIssue.solved = false; }
             else if (newStatus === 'In Progress') { currentModalIssue.inProcess = true; currentModalIssue.solved = false; }
             else if (newStatus === 'Resolved') { currentModalIssue.inProcess = false; currentModalIssue.solved = true; }
-            
             updateModalButtons(currentModalIssue);
             updateStats();
             renderTable();
             updateAnalytics();
-            
-            // Write back to Google Sheet via Apps Script
             writeStatusToSheet(currentModalIssue, newStatus);
         }
-        
+
         async function writeStatusToSheet(issue, newStatus) {
             try {
                 const response = await fetch(APPS_SCRIPT_URL, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'text/plain;charset=utf-8',
-                    },
-                    body: JSON.stringify({
-                        action: 'updateStatus',
-                        consignmentId: issue.consignmentId,
-                        status: newStatus
-                    })
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: 'updateStatus', consignmentId: issue.consignmentId, status: newStatus })
                 });
-                
                 const resultText = await response.text();
                 let result;
-                try {
-                    result = JSON.parse(resultText);
-                } catch(e) {
-                    result = { success: true, message: 'Request sent' };
-                }
-                
+                try { result = JSON.parse(resultText); } catch(e) { result = { success: true, message: 'Request sent' }; }
                 if (result.success) {
                     showToast(`Status saved to Google Sheet: ${newStatus}`, 'success');
-                    // Wait 3 seconds for Google Sheets cache to update, then refresh
                     showToast('Syncing with Google Sheet...', 'success');
                     setTimeout(() => fetchData(), 3000);
                 } else {
@@ -806,25 +1341,15 @@
                 showToast('Status saved locally (sheet sync pending)', 'warning');
             }
         }
-        
+
         async function addIssueToSheet(issue) {
             try {
                 await fetch(APPS_SCRIPT_URL, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'text/plain;charset=utf-8',
-                    },
-                    body: JSON.stringify({
-                        action: 'addIssue',
-                        consignmentId: issue.consignmentId,
-                        merchant: issue.merchant,
-                        issueTag: issue.issueTag,
-                        details: issue.details
-                    })
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: 'addIssue', consignmentId: issue.consignmentId, merchant: issue.merchant, issueTag: issue.issueTag, details: issue.details })
                 });
-            } catch (err) {
-                console.error('Add issue error:', err);
-            }
+            } catch (err) { console.error('Add issue error:', err); }
         }
 
         function closeModal() { document.getElementById('issueModal').classList.add('hidden'); currentModalIssue = null; }
@@ -961,11 +1486,13 @@
 
         function exportCSV() {
             let csvContent = "data:text/csv;charset=utf-8,";
-            csvContent += "Ticket ID,Date,Time,Merchant,Consignment,Tag,Status,Details,Remarks\n";
+            csvContent += "Ticket ID,Date,Time,Merchant,Consignment,Tag,Status,Details,Remarks
+";
             issuesData.forEach(row => {
                 const details = (row.details || '').replace(/"/g, '""');
                 const remarks = (row.remarks || '').replace(/"/g, '""');
-                csvContent += `${row.ticketId},${row.date},${row.timestamp},${row.merchant},${row.consignmentId},${row.issueTag},${getStatus(row)},"${details}","${remarks}"\n`;
+                csvContent += `${row.ticketId},${row.date},${row.timestamp},${row.merchant},${row.consignmentId},${row.issueTag},${getStatus(row)},"${details}","${remarks}"
+`;
             });
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
@@ -979,21 +1506,19 @@
 
         function showToast(message, type) {
             const toast = document.createElement('div');
-            const bgColor = type === 'success' ? 'bg-green-500' : 'bg-red-500';
-            const icon = type === 'success' ? 'fa-check' : 'fa-exclamation-circle';
+            const bgColor = type === 'success' ? 'bg-green-500' : type === 'warning' ? 'bg-yellow-500' : 'bg-red-500';
+            const icon = type === 'success' ? 'fa-check' : type === 'warning' ? 'fa-triangle-exclamation' : 'fa-exclamation-circle';
             toast.className = `fixed bottom-4 right-4 ${bgColor} text-white px-4 py-3 rounded-lg shadow-lg text-sm font-medium toast z-50 flex items-center gap-2`;
             toast.innerHTML = `<i class="fa-solid ${icon}"></i> ${message}`;
             document.body.appendChild(toast);
             setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateX(100%)'; setTimeout(() => toast.remove(), 300); }, 3000);
         }
 
-        window.addEventListener('DOMContentLoaded', () => { fetchData(); });
-        startAutoRefresh();
+        window.addEventListener('DOMContentLoaded', () => { checkAuth(); });
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') { closeModal(); closeRaiseIssue(); }
             if (e.ctrlKey && e.key === 'r') { e.preventDefault(); fetchData(); }
         });
-    
 
         // ==================== AUTO REFRESH (15 MIN) ====================
         let autoRefreshInterval = null;
@@ -1003,46 +1528,25 @@
         function startAutoRefresh() {
             const REFRESH_MINUTES = 15;
             const REFRESH_MS = REFRESH_MINUTES * 60 * 1000;
-
-            // Calculate next refresh time
             nextRefreshTime = Date.now() + REFRESH_MS;
-
-            // Clear any existing intervals
             if (autoRefreshInterval) clearInterval(autoRefreshInterval);
             if (countdownInterval) clearInterval(countdownInterval);
-
-            // Auto refresh data every 15 minutes
             autoRefreshInterval = setInterval(() => {
                 console.log('[AUTO REFRESH] Fetching fresh data...');
                 fetchData();
                 nextRefreshTime = Date.now() + REFRESH_MS;
                 showToast('Auto-refreshed from Google Sheets', 'success');
             }, REFRESH_MS);
-
-            // Update countdown every second
             countdownInterval = setInterval(updateCountdown, 1000);
             updateCountdown();
-
-            console.log(`[AUTO REFRESH] Started. Refreshing every ${REFRESH_MINUTES} minutes.`);
         }
 
         function updateCountdown() {
             const countdownEl = document.getElementById('auto-refresh-countdown');
-            if (!countdownEl) return;
-
-            if (!nextRefreshTime) {
-                countdownEl.innerText = '';
-                return;
-            }
-
+            if (!countdownEl || !nextRefreshTime) return;
             const now = Date.now();
             const diff = nextRefreshTime - now;
-
-            if (diff <= 0) {
-                countdownEl.innerText = 'Refreshing...';
-                return;
-            }
-
+            if (diff <= 0) { countdownEl.innerText = 'Refreshing...'; return; }
             const minutes = Math.floor(diff / 60000);
             const seconds = Math.floor((diff % 60000) / 1000);
             countdownEl.innerText = `Auto-refresh in ${minutes}:${seconds.toString().padStart(2, '0')}`;
@@ -1058,25 +1562,21 @@
             if (countdownEl) countdownEl.innerText = '';
         }
 
-        // Start auto-refresh when page loads
         window.addEventListener('DOMContentLoaded', () => {
-            // Original fetchData is already called, so start the timer after first load
             setTimeout(startAutoRefresh, 2000);
         });
 
-        // Pause auto-refresh when tab is hidden to save resources
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
-                console.log('[AUTO REFRESH] Tab hidden — pausing countdown');
+                console.log('[AUTO REFRESH] Tab hidden - pausing countdown');
             } else {
-                console.log('[AUTO REFRESH] Tab visible — resuming');
-                // Recalculate next refresh time based on when we should have refreshed
+                console.log('[AUTO REFRESH] Tab visible - resuming');
                 if (nextRefreshTime && Date.now() >= nextRefreshTime) {
                     fetchData();
                     nextRefreshTime = Date.now() + (15 * 60 * 1000);
                 }
             }
         });
-</script>
+    </script>
 </body>
 </html>
