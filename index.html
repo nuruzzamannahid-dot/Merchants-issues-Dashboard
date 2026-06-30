@@ -181,6 +181,7 @@
             <div>
                 <h2 id="page-title" class="text-xl font-bold theme-transition" style="color: var(--text-primary);">Issue Tracker</h2>
                 <p id="last-refreshed" class="text-xs mt-0.5 theme-transition" style="color: var(--text-muted);">Last refreshed: Never</p>
+                        <p id="auto-refresh-countdown" class="text-xs mt-0.5 font-mono theme-transition" style="color: var(--cb-yellow); opacity: 0.8;"></p>
             </div>
             <div class="flex items-center gap-3">
                 <button onclick="fetchData()" class="px-4 py-2 rounded-lg text-sm font-medium transition-colors border flex items-center gap-2 theme-transition" style="background-color: var(--bg-input); color: var(--text-secondary); border-color: var(--border-input);">
@@ -987,10 +988,95 @@
         }
 
         window.addEventListener('DOMContentLoaded', () => { fetchData(); });
+        startAutoRefresh();
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') { closeModal(); closeRaiseIssue(); }
             if (e.ctrlKey && e.key === 'r') { e.preventDefault(); fetchData(); }
         });
-    </script>
+    
+
+        // ==================== AUTO REFRESH (15 MIN) ====================
+        let autoRefreshInterval = null;
+        let countdownInterval = null;
+        let nextRefreshTime = null;
+
+        function startAutoRefresh() {
+            const REFRESH_MINUTES = 15;
+            const REFRESH_MS = REFRESH_MINUTES * 60 * 1000;
+
+            // Calculate next refresh time
+            nextRefreshTime = Date.now() + REFRESH_MS;
+
+            // Clear any existing intervals
+            if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+            if (countdownInterval) clearInterval(countdownInterval);
+
+            // Auto refresh data every 15 minutes
+            autoRefreshInterval = setInterval(() => {
+                console.log('[AUTO REFRESH] Fetching fresh data...');
+                fetchData();
+                nextRefreshTime = Date.now() + REFRESH_MS;
+                showToast('Auto-refreshed from Google Sheets', 'success');
+            }, REFRESH_MS);
+
+            // Update countdown every second
+            countdownInterval = setInterval(updateCountdown, 1000);
+            updateCountdown();
+
+            console.log(`[AUTO REFRESH] Started. Refreshing every ${REFRESH_MINUTES} minutes.`);
+        }
+
+        function updateCountdown() {
+            const countdownEl = document.getElementById('auto-refresh-countdown');
+            if (!countdownEl) return;
+
+            if (!nextRefreshTime) {
+                countdownEl.innerText = '';
+                return;
+            }
+
+            const now = Date.now();
+            const diff = nextRefreshTime - now;
+
+            if (diff <= 0) {
+                countdownEl.innerText = 'Refreshing...';
+                return;
+            }
+
+            const minutes = Math.floor(diff / 60000);
+            const seconds = Math.floor((diff % 60000) / 1000);
+            countdownEl.innerText = `Auto-refresh in ${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        function stopAutoRefresh() {
+            if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+            if (countdownInterval) clearInterval(countdownInterval);
+            autoRefreshInterval = null;
+            countdownInterval = null;
+            nextRefreshTime = null;
+            const countdownEl = document.getElementById('auto-refresh-countdown');
+            if (countdownEl) countdownEl.innerText = '';
+        }
+
+        // Start auto-refresh when page loads
+        window.addEventListener('DOMContentLoaded', () => {
+            // Original fetchData is already called, so start the timer after first load
+            setTimeout(startAutoRefresh, 2000);
+        });
+
+        // Pause auto-refresh when tab is hidden to save resources
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                console.log('[AUTO REFRESH] Tab hidden — pausing countdown');
+            } else {
+                console.log('[AUTO REFRESH] Tab visible — resuming');
+                // Recalculate next refresh time based on when we should have refreshed
+                if (nextRefreshTime && Date.now() >= nextRefreshTime) {
+                    fetchData();
+                    nextRefreshTime = Date.now() + (15 * 60 * 1000);
+                }
+            }
+        });
+</script>
 </body>
 </html>
