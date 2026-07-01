@@ -505,7 +505,6 @@ body {
     .login-card { width: 86vw; max-width: 320px; }
 }
 </style>
-<base target="_blank">
 </head>
 <body>
 
@@ -578,8 +577,8 @@ body {
             <div class="glass-panel rounded-lg p-3">
                 <p class="text-xs mb-1" style="color: var(--text-muted);">Data Source</p>
                 <div class="flex items-center gap-2 text-xs" style="color: var(--text-secondary);">
-                    <i class="fa-solid fa-database text-blue-500"></i>
-                    <span class="truncate">PostgreSQL</span>
+                    <i class="fa-brands fa-google-drive text-green-500"></i>
+                    <span class="truncate">Google Sheets</span>
                 </div>
             </div>
         </div>
@@ -619,7 +618,7 @@ body {
         <div class="flex-1 overflow-y-auto p-8 relative" id="main-content">
             <div id="loading-state" class="absolute inset-0 flex flex-col items-center justify-center z-20 theme-transition" style="background-color: var(--bg-body);">
                 <div class="loading-spinner mb-4"></div>
-                <p class="text-sm theme-transition" style="color: var(--text-muted);">Loading data from PostgreSQL...</p>
+                <p class="text-sm theme-transition" style="color: var(--text-muted);">Loading data from Google Sheets...</p>
             </div>
             <div id="view-tracker" class="hidden fade-in space-y-6">
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -803,7 +802,7 @@ body {
                     </div>
                     <p class="text-xs mt-3 text-center italic theme-transition" style="color: var(--text-muted);">
                         <i class="fa-solid fa-circle-info mr-1"></i>
-                        Status updates are saved directly to PostgreSQL database.
+                        Note: Status is derived from your Google Sheet checkboxes.
                     </p>
                 </div>
             </div>
@@ -861,47 +860,8 @@ body {
         </div>
     </div>
 </div>
+
 <script>
-// ==================== CONFIGURATION ====================
-const API_URL = 'http://localhost:3000';
-// const API_URL = 'https://your-deployed-api.com'; // Use this when deployed
-
-const TAG_COLORS = {
-    'Delivery delay': 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20',
-    'pickup missed': 'bg-orange-500/10 text-orange-600 border-orange-500/20',
-    'Urgent delivery': 'bg-red-500/10 text-red-600 border-red-500/20',
-    'Fake hold': 'bg-purple-500/10 text-purple-600 border-purple-500/20',
-    'Fake return': 'bg-pink-500/10 text-pink-600 border-pink-500/20',
-    'COD update request': 'bg-blue-500/10 text-blue-600 border-blue-500/20',
-    'Address Change': 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20',
-    'Phone Number Change': 'bg-cyan-500/10 text-cyan-600 border-cyan-500/20',
-    'Wrong COD/Delivery charge Collection': 'bg-rose-500/10 text-rose-600 border-rose-500/20',
-    'Rider Misbehave': 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20',
-    'Payment Dispute': 'bg-amber-500/10 text-amber-600 border-amber-500/20',
-    'Lost Shipment': 'bg-red-700/10 text-red-700 border-red-700/20',
-    'Urgent Delivery': 'bg-rose-500/10 text-rose-600 border-rose-500/20'
-};
-
-const TAG_CHART_COLORS = {
-    'Delivery delay': '#fbbf24',
-    'pickup missed': '#f97316',
-    'Urgent delivery': '#ef4444',
-    'Fake hold': '#a855f7',
-    'Fake return': '#ec4899',
-    'COD update request': '#3b82f6',
-    'Address Change': '#6366f1',
-    'Phone Number Change': '#06b6d4',
-    'Wrong COD/Delivery charge Collection': '#f43f5e',
-    'Rider Misbehave': '#10b981',
-    'Payment Dispute': '#f59e0b',
-    'Lost Shipment': '#b91c1c',
-    'Urgent Delivery': '#e11d48'
-};
-
-let issuesData = [];
-let currentModalIssue = null;
-let charts = {};
-
 // ==================== AUTHENTICATION ====================
 const USERS = [
     { email: 'nuruzzaman.nahid@carrybee.com', password: 'CL-84175', name: 'Nuruzzaman Nahid' },
@@ -1078,9 +1038,113 @@ function updateThemeIcon() {
     }
 }
 
-// ==================== DATA FETCHING FROM POSTGRESQL API ====================
+// ==================== CONFIGURATION ====================
+const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSybJkSsKQxyczJc4Llsa10ywnR7YL3JNWN3Yx7RCc3GGWBOt4O43sSOMy2cNgYVQRtoAakguvAqgsy/pub?output=csv';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyVGcgxpiuX9GbQsLd_IO3rtSqJZnd260t_qB2Ii4F8NvYVjCfrtWxoYyRmS9mwXKVuzg/exec';
+const WRITE_MODE = true;
+
+const TAG_COLORS = {
+    'Delivery delay': 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20',
+    'pickup missed': 'bg-orange-500/10 text-orange-600 border-orange-500/20',
+    'Urgent delivery': 'bg-red-500/10 text-red-600 border-red-500/20',
+    'Fake hold': 'bg-purple-500/10 text-purple-600 border-purple-500/20',
+    'Fake return': 'bg-pink-500/10 text-pink-600 border-pink-500/20',
+    'COD update request': 'bg-blue-500/10 text-blue-600 border-blue-500/20',
+    'Address Change': 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20',
+    'Phone Number Change': 'bg-cyan-500/10 text-cyan-600 border-cyan-500/20',
+    'Wrong COD/Delivery charge Collection': 'bg-rose-500/10 text-rose-600 border-rose-500/20',
+    'Rider Misbehave': 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
+};
+
+const TAG_CHART_COLORS = {
+    'Delivery delay': '#fbbf24',
+    'pickup missed': '#f97316',
+    'Urgent delivery': '#ef4444',
+    'Fake hold': '#a855f7',
+    'Fake return': '#ec4899',
+    'COD update request': '#3b82f6',
+    'Address Change': '#6366f1',
+    'Phone Number Change': '#06b6d4',
+    'Wrong COD/Delivery charge Collection': '#f43f5e',
+    'Rider Misbehave': '#10b981'
+};
+
+let issuesData = [];
+let currentModalIssue = null;
+let charts = {};
+
+function generateTicketId(date, index) {
+    const d = new Date(date);
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `CB-${month}${day}-${String(index + 1).padStart(5, '0')}`;
+}
+
+// Tracks status updates the user just made, so a stale/lagging sheet fetch
+// (Google's "Publish to web" CSV can lag behind edits, and if your Apps Script
+// writes to a source sheet that only gets pulled into the published sheet on
+// an hourly sync, the delay can be much longer than a few minutes) doesn't
+// silently revert the UI back to the old status. Persisted to localStorage so
+// it survives page reloads too, not just the in-memory session.
+const PENDING_STORAGE_KEY = 'cb_pendingStatusUpdates';
+const PENDING_UPDATE_TTL_MS = 24 * 60 * 60 * 1000; // safety net: drop after 24h if never confirmed (e.g. ID typo/mismatch)
+
+function normalizeConsignmentId(id) {
+    return (id || '').toString().trim().toUpperCase();
+}
+
+function loadPendingStatusUpdates() {
+    try {
+        const raw = localStorage.getItem(PENDING_STORAGE_KEY);
+        return raw ? JSON.parse(raw) : {};
+    } catch (e) {
+        return {};
+    }
+}
+
+function savePendingStatusUpdates() {
+    try {
+        localStorage.setItem(PENDING_STORAGE_KEY, JSON.stringify(pendingStatusUpdates));
+    } catch (e) { /* ignore storage errors */ }
+}
+
+let pendingStatusUpdates = loadPendingStatusUpdates();
+
+function registerPendingStatus(consignmentId, status) {
+    const key = normalizeConsignmentId(consignmentId);
+    if (!key) return;
+    pendingStatusUpdates[key] = { status, expiresAt: Date.now() + PENDING_UPDATE_TTL_MS };
+    savePendingStatusUpdates();
+}
+
+function applyPendingStatus(issue) {
+    const key = normalizeConsignmentId(issue.consignmentId);
+    const pending = pendingStatusUpdates[key];
+    if (!pending) return;
+    if (Date.now() > pending.expiresAt) {
+        delete pendingStatusUpdates[key];
+        savePendingStatusUpdates();
+        return;
+    }
+    const freshStatus = getStatus(issue);
+    if (freshStatus === pending.status) {
+        // Sheet has caught up with our edit — safe to stop protecting it.
+        delete pendingStatusUpdates[key];
+        savePendingStatusUpdates();
+        return;
+    }
+    // Sheet hasn't caught up yet — keep showing what the user set.
+    if (pending.status === 'Open') { issue.inProcess = false; issue.solved = false; }
+    else if (pending.status === 'In Progress') { issue.inProcess = true; issue.solved = false; }
+    else if (pending.status === 'Resolved') { issue.inProcess = false; issue.solved = true; }
+}
+
 function getStatus(issue) {
-    return issue.status || 'Open';
+    const solved = issue.solved === true || issue.solved === 'TRUE' || issue.solved === 'true' || issue.solved === 'Yes' || issue.solved === 'yes';
+    const inProcess = issue.inProcess === true || issue.inProcess === 'TRUE' || issue.inProcess === 'true' || issue.inProcess === 'Yes' || issue.inProcess === 'yes';
+    if (solved) return 'Resolved';
+    if (inProcess) return 'In Progress';
+    return 'Open';
 }
 
 function getTagColor(tag) {
@@ -1093,34 +1157,30 @@ async function fetchData() {
     document.getElementById('loading-state').classList.remove('hidden');
 
     try {
-        const response = await fetch(`${API_URL}/api/dashboard-stats`);
-        if (!response.ok) throw new Error('API response was not ok');
-        const data = await response.json();
-
-        // Transform API data to match existing format
-        issuesData = data.issues.map(issue => ({
-            ticketId: issue.ticket_id,
-            date: new Date(issue.submitted_at).toISOString().split('T')[0],
-            timestamp: new Date(issue.submitted_at).toTimeString().split(' ')[0],
-            consignmentId: issue.consignment_id,
-            merchant: issue.merchant_name,
-            issueTag: issue.issue_tag,
-            details: issue.issue_details,
-            status: issue.status,
-            remarks: issue.remarks || ''
-        }));
-
-        // Update stats directly from API
-        document.getElementById('stat-total').textContent = data.stats.total_issues;
-        document.getElementById('stat-open').textContent = data.stats.open;
-        document.getElementById('stat-progress').textContent = data.stats.in_progress;
-        document.getElementById('stat-resolved').textContent = data.stats.resolved;
-
-        showToast('Data loaded from PostgreSQL!', 'success');
+        const cacheBuster = `&nocache=${Date.now()}`;
+        const response = await fetch(SHEET_URL + cacheBuster);
+        if (!response.ok) throw new Error('Network response was not ok');
+        const csvText = await response.text();
+        issuesData = parseCSV(csvText);
+        issuesData.forEach(issue => applyPendingStatus(issue));
+        issuesData.sort((a, b) => new Date(b.date + ' ' + b.timestamp) - new Date(a.date + ' ' + a.timestamp));
+        issuesData.forEach((issue, i) => { issue.ticketId = generateTicketId(issue.date, i); });
+        showToast('Data loaded successfully!', 'success');
     } catch (e) {
         console.error('Fetch error:', e);
-        showToast('Failed to connect to API. Check if server is running.', 'error');
-        issuesData = [];
+        showToast('Failed to load from Google Sheet. Using demo data.', 'error');
+        issuesData = [
+            { date: '2026-06-29', timestamp: '9:21:40', consignmentId: 'F06289AV8CW', merchant: 'Paperfly', issueTag: 'Delivery delay', details: 'test test test testtest test test testtest test test testtest test test test', inProcess: false, solved: false },
+            { date: '2026-06-29', timestamp: '12:41:08', consignmentId: 'F0627SXWXUE', merchant: 'Sumaiya Hair Tonic', issueTag: 'pickup missed', details: 'Ei parcel ajker modhe delivery lagbe', inProcess: true, solved: false },
+            { date: '2026-06-29', timestamp: '16:55:30', consignmentId: 'F0629UZF89D', merchant: 'Glowfe', issueTag: 'Lost Shipment', details: 'this parcel is lost and we need to find it immediately. Customer is waiting for update since yesterday morning.', inProcess: false, solved: true },
+            { date: '2026-06-28', timestamp: '10:15:00', consignmentId: 'CB-2024-00123', merchant: 'Dhaka Fashion House', issueTag: 'Urgent delivery', details: 'Order was supposed to arrive on 24th June but still has not been delivered. Customer is very upset and calling every hour.', inProcess: false, solved: false },
+            { date: '2026-06-28', timestamp: '11:30:22', consignmentId: 'CB-2024-00155', merchant: 'Organic Roots', issueTag: 'COD update request', details: 'COD amount was collected by rider but not remitted to merchant account. Amount is 2,450 BDT.', inProcess: true, solved: false },
+            { date: '2026-06-27', timestamp: '14:55:00', consignmentId: 'CB-2024-00199', merchant: 'StyleHub', issueTag: 'Fake return', details: 'Return parcel was picked up on 22nd June but status still not updated in system. Merchant waiting for confirmation.', inProcess: false, solved: true },
+            { date: '2026-06-27', timestamp: '09:12:43', consignmentId: 'CB-2024-00180', merchant: 'TechZone BD', issueTag: 'Rider Misbehave', details: 'Package received but the product inside is damaged. Screen is cracked. Customer wants replacement.', inProcess: true, solved: false },
+            { date: '2026-06-26', timestamp: '16:20:00', consignmentId: 'CB-2024-00210', merchant: 'Gadget World', issueTag: 'Address Change', details: 'Delivered to wrong address. Customer address was House 15, Road 7 but delivered to House 51, Road 7.', inProcess: false, solved: false },
+            { date: '2026-06-25', timestamp: '11:00:00', consignmentId: 'CB-2024-00215', merchant: 'Maa Kitchen', issueTag: 'Phone Number Change', details: 'Rider did not show up for scheduled pick up at 2 PM. Merchant waited for 1 hour. Need reschedule.', inProcess: false, solved: false },
+            { date: '2026-06-25', timestamp: '13:45:00', consignmentId: 'CB-2024-00220', merchant: 'Dhaka Fashion House', issueTag: 'Wrong COD/Delivery charge Collection', details: 'Box was torn and item is missing. Customer received empty package. Very urgent complaint.', inProcess: false, solved: true }
+        ];
     }
 
     document.getElementById('loading-state').classList.add('hidden');
@@ -1132,17 +1192,59 @@ async function fetchData() {
     refreshIcon.classList.remove('fa-spin');
 }
 
+function parseCSV(csv) {
+    const lines = csv.split('\n').filter(line => line.trim() !== '');
+    if (lines.length < 2) return [];
+    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, '').replace(/\r/g, ''));
+    const result = [];
+    for(let i = 1; i < lines.length; i++) {
+        const obj = {};
+        const values = parseCSVLine(lines[i]);
+        headers.forEach((header, index) => {
+            let val = values[index] || '';
+            if (header === 'Date') obj.date = val;
+            if (header === 'Time stamp') obj.timestamp = val;
+            if (header === 'Consignment ID') obj.consignmentId = val;
+            if (header === 'Merchant Name') obj.merchant = val;
+            if (header === 'Issue Tag') obj.issueTag = val;
+            if (header === 'Issue Details') obj.details = val;
+            if (header === 'In Process') obj.inProcess = (val === 'TRUE' || val === 'true' || val === 'Yes' || val === 'yes' || val === '1');
+            if (header === 'Sloved And Closed') obj.solved = (val === 'TRUE' || val === 'true' || val === 'Yes' || val === 'yes' || val === '1');
+            if (header === 'Remarks') obj.remarks = val;
+        });
+        if (obj.date && obj.merchant) result.push(obj);
+    }
+    return result;
+}
+
+function parseCSVLine(line) {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        const nextChar = line[i + 1];
+        if (char === '"') {
+            if (inQuotes && nextChar === '"') { current += '"'; i++; }
+            else { inQuotes = !inQuotes; }
+        } else if (char === ',' && !inQuotes) {
+            result.push(current.trim());
+            current = '';
+        } else { current += char; }
+    }
+    result.push(current.trim());
+    return result.map(v => v.replace(/^"|"$/g, '').replace(/\r/g, ''));
+}
+
 function updateStats() {
     const total = issuesData.length;
     const open = issuesData.filter(i => getStatus(i) === 'Open').length;
     const progress = issuesData.filter(i => getStatus(i) === 'In Progress').length;
     const resolved = issuesData.filter(i => getStatus(i) === 'Resolved').length;
-
     animateValue('stat-total', parseInt(document.getElementById('stat-total').innerText) || 0, total, 800);
     animateValue('stat-open', parseInt(document.getElementById('stat-open').innerText) || 0, open, 800);
     animateValue('stat-progress', parseInt(document.getElementById('stat-progress').innerText) || 0, progress, 800);
     animateValue('stat-resolved', parseInt(document.getElementById('stat-resolved').innerText) || 0, resolved, 800);
-
     setTimeout(() => {
         document.getElementById('bar-open').style.width = total ? `${(open/total)*100}%` : '0%';
         document.getElementById('bar-progress').style.width = total ? `${(progress/total)*100}%` : '0%';
@@ -1170,7 +1272,6 @@ function renderTable() {
     const statusFilter = document.getElementById('statusFilter').value;
     const tagFilter = document.getElementById('tagFilter').value;
     tbody.innerHTML = '';
-
     const tagSelect = document.getElementById('tagFilter');
     const currentTag = tagSelect.value;
     tagSelect.innerHTML = '<option value="All">All Issue Tags</option>';
@@ -1260,99 +1361,77 @@ function updateModalButtons(issue) {
     }
 }
 
-async function updateStatus(newStatus) {
+function updateStatus(newStatus) {
     if (!currentModalIssue) return;
+    if (newStatus === 'Open') { currentModalIssue.inProcess = false; currentModalIssue.solved = false; }
+    else if (newStatus === 'In Progress') { currentModalIssue.inProcess = true; currentModalIssue.solved = false; }
+    else if (newStatus === 'Resolved') { currentModalIssue.inProcess = false; currentModalIssue.solved = true; }
+    // Remember this edit so a stale/lagging sheet fetch (fires a few seconds later,
+    // on the next 15-min auto-refresh, or even after a page reload) can't silently
+    // revert it before your backend has actually picked up the change.
+    registerPendingStatus(currentModalIssue.consignmentId, newStatus);
+    updateModalButtons(currentModalIssue);
+    updateStats();
+    renderTable();
+    updateAnalytics();
+    writeStatusToSheet(currentModalIssue, newStatus);
+}
 
+async function writeStatusToSheet(issue, newStatus) {
     try {
-        const response = await fetch(`${API_URL}/api/update-status/${currentModalIssue.ticketId}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: newStatus, remarks: `Status changed to ${newStatus} via dashboard` })
+        const response = await fetch(APPS_SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: 'updateStatus', consignmentId: issue.consignmentId, status: newStatus })
         });
-
-        if (!response.ok) throw new Error('Update failed');
-
-        currentModalIssue.status = newStatus;
-        updateModalButtons(currentModalIssue);
-        updateStats();
-        renderTable();
-        updateAnalytics();
-        showToast(`Status updated to ${newStatus}`, 'success');
-
-        // Refresh data from server to sync
-        setTimeout(() => fetchData(), 1000);
-
+        const resultText = await response.text();
+        let result;
+        try { result = JSON.parse(resultText); } catch(e) { result = { success: true, message: 'Request sent' }; }
+        if (result.success) {
+            showToast(`Status saved to Google Sheet: ${newStatus}`, 'success');
+            showToast('Syncing with Google Sheet...', 'success');
+            setTimeout(() => fetchData(), 3000);
+        } else {
+            showToast('Error: ' + (result.error || 'Unknown'), 'error');
+        }
     } catch (err) {
-        console.error('Update error:', err);
-        showToast('Failed to update status. Server may be offline.', 'error');
+        console.error('Write error:', err);
+        showToast('Status saved locally (sheet sync pending)', 'warning');
     }
 }
 
-function closeModal() { 
-    document.getElementById('issueModal').classList.add('hidden'); 
-    currentModalIssue = null; 
+async function addIssueToSheet(issue) {
+    try {
+        await fetch(APPS_SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: 'addIssue', consignmentId: issue.consignmentId, merchant: issue.merchant, issueTag: issue.issueTag, details: issue.details })
+        });
+    } catch (err) { console.error('Add issue error:', err); }
 }
 
-function showRaiseIssue() { 
-    document.getElementById('raiseIssueModal').classList.remove('hidden'); 
-}
+function closeModal() { document.getElementById('issueModal').classList.add('hidden'); currentModalIssue = null; }
+function showRaiseIssue() { document.getElementById('raiseIssueModal').classList.remove('hidden'); }
+function closeRaiseIssue() { document.getElementById('raiseIssueModal').classList.add('hidden'); }
 
-function closeRaiseIssue() { 
-    document.getElementById('raiseIssueModal').classList.add('hidden'); 
-}
-
-async function submitNewIssue() {
+function submitNewIssue() {
     const merchant = document.getElementById('new-merchant').value;
     const consignment = document.getElementById('new-consignment').value;
     const tag = document.getElementById('new-tag').value;
     const details = document.getElementById('new-details').value;
-
-    if (!merchant || !consignment || !details) { 
-        showToast('Please fill all fields', 'error'); 
-        return; 
-    }
-
-    try {
-        const response = await fetch(`${API_URL}/api/submit-issue`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                consignment_id: consignment,
-                merchant_name: merchant,
-                issue_tag: tag,
-                issue_details: details
-            })
-        });
-
-        if (!response.ok) throw new Error('Submit failed');
-
-        const result = await response.json();
-
-        showToast(`Issue raised! Ticket: ${result.ticket.ticket_id}`, 'success');
-        closeRaiseIssue();
-
-        // Clear form
-        document.getElementById('new-merchant').value = '';
-        document.getElementById('new-consignment').value = '';
-        document.getElementById('new-details').value = '';
-
-        // Refresh data
-        setTimeout(() => fetchData(), 500);
-
-    } catch (err) {
-        console.error('Submit error:', err);
-        showToast('Failed to submit issue. Server may be offline.', 'error');
-    }
+    if (!merchant || !consignment || !details) { showToast('Please fill all fields', 'error'); return; }
+    const now = new Date();
+    const newIssue = { date: now.toISOString().split('T')[0], timestamp: now.toTimeString().split(' ')[0], consignmentId: consignment, merchant: merchant, issueTag: tag, details: details, inProcess: false, solved: false };
+    issuesData.unshift(newIssue);
+    issuesData.forEach((issue, i) => { issue.ticketId = generateTicketId(issue.date, i); });
+    updateStats(); renderTable(); updateAnalytics(); closeRaiseIssue(); showToast('New issue raised successfully!', 'success');
+    addIssueToSheet(newIssue);
+    document.getElementById('new-merchant').value = '';
+    document.getElementById('new-consignment').value = '';
+    document.getElementById('new-details').value = '';
 }
 
-// ==================== ANALYTICS ====================
-function updateAnalytics() { 
-    renderTagChart(); 
-    renderStatusChart(); 
-    renderTimeChart(); 
-    renderTopMerchants(); 
-    renderResolutionChart(); 
-}
+function updateAnalytics() { renderTagChart(); renderStatusChart(); renderTimeChart(); renderTopMerchants(); renderResolutionChart(); }
 
 function getChartColors() {
     return {
@@ -1387,11 +1466,7 @@ function renderTagChart() {
 
 function renderStatusChart() {
     const ctx = document.getElementById('statusChart').getContext('2d');
-    const counts = { 
-        'Open': issuesData.filter(i => getStatus(i) === 'Open').length, 
-        'In Progress': issuesData.filter(i => getStatus(i) === 'In Progress').length, 
-        'Resolved': issuesData.filter(i => getStatus(i) === 'Resolved').length 
-    };
+    const counts = { 'Open': issuesData.filter(i => getStatus(i) === 'Open').length, 'In Progress': issuesData.filter(i => getStatus(i) === 'In Progress').length, 'Resolved': issuesData.filter(i => getStatus(i) === 'Resolved').length };
     const cc = getChartColors();
     if (charts.status) charts.status.destroy();
     charts.status = new Chart(ctx, {
@@ -1469,13 +1544,11 @@ function switchView(view) {
 
 function exportCSV() {
     let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "Ticket ID,Date,Time,Merchant,Consignment,Tag,Status,Details,Remarks
-";
+    csvContent += "Ticket ID,Date,Time,Merchant,Consignment,Tag,Status,Details,Remarks\n";
     issuesData.forEach(row => {
         const details = (row.details || '').replace(/"/g, '""');
         const remarks = (row.remarks || '').replace(/"/g, '""');
-        csvContent += `${row.ticketId},${row.date},${row.timestamp},${row.merchant},${row.consignmentId},${row.issueTag},${getStatus(row)},"${details}","${remarks}"
-`;
+        csvContent += `${row.ticketId},${row.date},${row.timestamp},${row.merchant},${row.consignmentId},${row.issueTag},${getStatus(row)},"${details}","${remarks}"\n`;
     });
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
@@ -1497,37 +1570,67 @@ function showToast(message, type) {
     setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateX(100%)'; setTimeout(() => toast.remove(), 300); }, 3000);
 }
 
-// ==================== AUTO REFRESH ====================
-let autoRefreshInterval = null;
-
-function startAutoRefresh() {
-    // Refresh every 15 seconds for real-time feel
-    if (autoRefreshInterval) clearInterval(autoRefreshInterval);
-    autoRefreshInterval = setInterval(() => {
-        console.log('[AUTO REFRESH] Fetching fresh data from PostgreSQL...');
-        fetchData();
-    }, 15000);
-}
-
-function stopAutoRefresh() {
-    if (autoRefreshInterval) clearInterval(autoRefreshInterval);
-    autoRefreshInterval = null;
-}
-
-window.addEventListener('DOMContentLoaded', () => { 
-    checkAuth(); 
-    setTimeout(startAutoRefresh, 2000);
-});
-
+window.addEventListener('DOMContentLoaded', () => { checkAuth(); });
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') { closeModal(); closeRaiseIssue(); }
     if (e.ctrlKey && e.key === 'r') { e.preventDefault(); fetchData(); }
 });
 
-document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) {
-        console.log('[AUTO REFRESH] Tab visible - refreshing data');
+// ==================== AUTO REFRESH (15 MIN) ====================
+let autoRefreshInterval = null;
+let countdownInterval = null;
+let nextRefreshTime = null;
+
+function startAutoRefresh() {
+    const REFRESH_MINUTES = 15;
+    const REFRESH_MS = REFRESH_MINUTES * 60 * 1000;
+    nextRefreshTime = Date.now() + REFRESH_MS;
+    if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+    if (countdownInterval) clearInterval(countdownInterval);
+    autoRefreshInterval = setInterval(() => {
+        console.log('[AUTO REFRESH] Fetching fresh data...');
         fetchData();
+        nextRefreshTime = Date.now() + REFRESH_MS;
+        showToast('Auto-refreshed from Google Sheets', 'success');
+    }, REFRESH_MS);
+    countdownInterval = setInterval(updateCountdown, 1000);
+    updateCountdown();
+}
+
+function updateCountdown() {
+    const countdownEl = document.getElementById('auto-refresh-countdown');
+    if (!countdownEl || !nextRefreshTime) return;
+    const now = Date.now();
+    const diff = nextRefreshTime - now;
+    if (diff <= 0) { countdownEl.innerText = 'Refreshing...'; return; }
+    const minutes = Math.floor(diff / 60000);
+    const seconds = Math.floor((diff % 60000) / 1000);
+    countdownEl.innerText = `Auto-refresh in ${minutes}:${seconds.toString().padStart(2, '0')}`;
+}
+
+function stopAutoRefresh() {
+    if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+    if (countdownInterval) clearInterval(countdownInterval);
+    autoRefreshInterval = null;
+    countdownInterval = null;
+    nextRefreshTime = null;
+    const countdownEl = document.getElementById('auto-refresh-countdown');
+    if (countdownEl) countdownEl.innerText = '';
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    setTimeout(startAutoRefresh, 2000);
+});
+
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        console.log('[AUTO REFRESH] Tab hidden - pausing countdown');
+    } else {
+        console.log('[AUTO REFRESH] Tab visible - resuming');
+        if (nextRefreshTime && Date.now() >= nextRefreshTime) {
+            fetchData();
+            nextRefreshTime = Date.now() + (15 * 60 * 1000);
+        }
     }
 });
 </script>
