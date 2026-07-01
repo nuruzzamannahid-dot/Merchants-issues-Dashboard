@@ -1080,6 +1080,65 @@ function generateTicketId(date, index) {
     return `CB-${month}${day}-${String(index + 1).padStart(5, '0')}`;
 }
 
+// Tracks status updates the user just made, so a stale/lagging sheet fetch
+// (Google's "Publish to web" CSV can lag behind edits, and if your Apps Script
+// writes to a source sheet that only gets pulled into the published sheet on
+// an hourly sync, the delay can be much longer than a few minutes) doesn't
+// silently revert the UI back to the old status. Persisted to localStorage so
+// it survives page reloads too, not just the in-memory session.
+const PENDING_STORAGE_KEY = 'cb_pendingStatusUpdates';
+const PENDING_UPDATE_TTL_MS = 24 * 60 * 60 * 1000; // safety net: drop after 24h if never confirmed (e.g. ID typo/mismatch)
+
+function normalizeConsignmentId(id) {
+    return (id || '').toString().trim().toUpperCase();
+}
+
+function loadPendingStatusUpdates() {
+    try {
+        const raw = localStorage.getItem(PENDING_STORAGE_KEY);
+        return raw ? JSON.parse(raw) : {};
+    } catch (e) {
+        return {};
+    }
+}
+
+function savePendingStatusUpdates() {
+    try {
+        localStorage.setItem(PENDING_STORAGE_KEY, JSON.stringify(pendingStatusUpdates));
+    } catch (e) { /* ignore storage errors */ }
+}
+
+let pendingStatusUpdates = loadPendingStatusUpdates();
+
+function registerPendingStatus(consignmentId, status) {
+    const key = normalizeConsignmentId(consignmentId);
+    if (!key) return;
+    pendingStatusUpdates[key] = { status, expiresAt: Date.now() + PENDING_UPDATE_TTL_MS };
+    savePendingStatusUpdates();
+}
+
+function applyPendingStatus(issue) {
+    const key = normalizeConsignmentId(issue.consignmentId);
+    const pending = pendingStatusUpdates[key];
+    if (!pending) return;
+    if (Date.now() > pending.expiresAt) {
+        delete pendingStatusUpdates[key];
+        savePendingStatusUpdates();
+        return;
+    }
+    const freshStatus = getStatus(issue);
+    if (freshStatus === pending.status) {
+        // Sheet has caught up with our edit — safe to stop protecting it.
+        delete pendingStatusUpdates[key];
+        savePendingStatusUpdates();
+        return;
+    }
+    // Sheet hasn't caught up yet — keep showing what the user set.
+    if (pending.status === 'Open') { issue.inProcess = false; issue.solved = false; }
+    else if (pending.status === 'In Progress') { issue.inProcess = true; issue.solved = false; }
+    else if (pending.status === 'Resolved') { issue.inProcess = false; issue.solved = true; }
+}
+
 function getStatus(issue) {
     const solved = issue.solved === true || issue.solved === 'TRUE' || issue.solved === 'true' || issue.solved === 'Yes' || issue.solved === 'yes';
     const inProcess = issue.inProcess === true || issue.inProcess === 'TRUE' || issue.inProcess === 'true' || issue.inProcess === 'Yes' || issue.inProcess === 'yes';
@@ -1103,6 +1162,7 @@ async function fetchData() {
         if (!response.ok) throw new Error('Network response was not ok');
         const csvText = await response.text();
         issuesData = parseCSV(csvText);
+        issuesData.forEach(issue => applyPendingStatus(issue));
         issuesData.sort((a, b) => new Date(b.date + ' ' + b.timestamp) - new Date(a.date + ' ' + a.timestamp));
         issuesData.forEach((issue, i) => { issue.ticketId = generateTicketId(issue.date, i); });
         showToast('Data loaded successfully!', 'success');
@@ -1306,6 +1366,10 @@ function updateStatus(newStatus) {
     if (newStatus === 'Open') { currentModalIssue.inProcess = false; currentModalIssue.solved = false; }
     else if (newStatus === 'In Progress') { currentModalIssue.inProcess = true; currentModalIssue.solved = false; }
     else if (newStatus === 'Resolved') { currentModalIssue.inProcess = false; currentModalIssue.solved = true; }
+    // Remember this edit so a stale/lagging sheet fetch (fires a few seconds later,
+    // on the next 15-min auto-refresh, or even after a page reload) can't silently
+    // revert it before your backend has actually picked up the change.
+    registerPendingStatus(currentModalIssue.consignmentId, newStatus);
     updateModalButtons(currentModalIssue);
     updateStats();
     renderTable();
