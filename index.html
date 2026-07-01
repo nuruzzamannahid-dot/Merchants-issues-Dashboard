@@ -1,9 +1,668 @@
-<div class="p-4 border-t" style="border-color: var(--border-color);">
-    <div class="glass-panel rounded-lg p-3">
-        <p class="text-xs mb-1" style="color: var(--text-muted);">Data Source</p>
-        <div class="flex items-center gap-2 text-xs" style="color: var(--text-secondary);">
-            <i class="fa-solid fa-database text-blue-500"></i>  <!-- Changed from fa-google-drive -->
-            <span class="truncate">PostgreSQL</span>  <!-- Changed from Google Sheets -->
-        </div>
-    </div>
-</div>
+<script>
+// ==================== CONFIGURATION ====================
+const API_URL = 'http://localhost:3000';
+// const API_URL = 'https://your-deployed-api.com'; // Use this when deployed
+
+const TAG_COLORS = {
+    'Delivery delay': 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20',
+    'pickup missed': 'bg-orange-500/10 text-orange-600 border-orange-500/20',
+    'Urgent delivery': 'bg-red-500/10 text-red-600 border-red-500/20',
+    'Fake hold': 'bg-purple-500/10 text-purple-600 border-purple-500/20',
+    'Fake return': 'bg-pink-500/10 text-pink-600 border-pink-500/20',
+    'COD update request': 'bg-blue-500/10 text-blue-600 border-blue-500/20',
+    'Address Change': 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20',
+    'Phone Number Change': 'bg-cyan-500/10 text-cyan-600 border-cyan-500/20',
+    'Wrong COD/Delivery charge Collection': 'bg-rose-500/10 text-rose-600 border-rose-500/20',
+    'Rider Misbehave': 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20',
+    'Payment Dispute': 'bg-amber-500/10 text-amber-600 border-amber-500/20',
+    'Lost Shipment': 'bg-red-700/10 text-red-700 border-red-700/20',
+    'Urgent Delivery': 'bg-rose-500/10 text-rose-600 border-rose-500/20'
+};
+
+const TAG_CHART_COLORS = {
+    'Delivery delay': '#fbbf24',
+    'pickup missed': '#f97316',
+    'Urgent delivery': '#ef4444',
+    'Fake hold': '#a855f7',
+    'Fake return': '#ec4899',
+    'COD update request': '#3b82f6',
+    'Address Change': '#6366f1',
+    'Phone Number Change': '#06b6d4',
+    'Wrong COD/Delivery charge Collection': '#f43f5e',
+    'Rider Misbehave': '#10b981',
+    'Payment Dispute': '#f59e0b',
+    'Lost Shipment': '#b91c1c',
+    'Urgent Delivery': '#e11d48'
+};
+
+let issuesData = [];
+let currentModalIssue = null;
+let charts = {};
+
+// ==================== AUTHENTICATION ====================
+const USERS = [
+    { email: 'nuruzzaman.nahid@carrybee.com', password: 'CL-84175', name: 'Nuruzzaman Nahid' },
+    { email: 'asif.rashid@carrybee.com', password: 'CL-86026', name: 'Asif Rashid' },
+    { email: 'golam.muktadir@carrybee.com', password: 'CL-86003', name: 'Golam Muktadir' }
+];
+
+let currentUser = null;
+
+function checkAuth() {
+    const saved = localStorage.getItem('carrybee-user');
+    if (saved) {
+        try {
+            const user = JSON.parse(saved);
+            const found = USERS.find(u => u.email === user.email);
+            if (found) {
+                currentUser = found;
+                showDashboard();
+                return;
+            }
+        } catch(e) {}
+    }
+    showLogin();
+}
+
+function showLogin() {
+    document.getElementById('loginScreen').classList.remove('hidden');
+    document.getElementById('dashboard').style.display = 'none';
+    currentUser = null;
+}
+
+function showDashboard() {
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('dashboard').style.display = 'flex';
+    updateUserUI();
+    if (issuesData.length === 0) fetchData();
+}
+
+function handleLogin() {
+    const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+    const password = document.getElementById('pwField').value;
+    const errorEl = document.getElementById('loginError');
+    const successEl = document.getElementById('loginSuccess');
+
+    errorEl.textContent = '';
+    successEl.style.display = 'none';
+
+    if (!email || !password) {
+        errorEl.textContent = 'Please enter both email and password.';
+        return;
+    }
+
+    const user = USERS.find(u => u.email.toLowerCase() === email && u.password === password);
+    if (!user) {
+        errorEl.textContent = 'Invalid email or password.';
+        return;
+    }
+
+    successEl.style.display = 'block';
+    successEl.textContent = 'Welcome, ' + user.name + '!';
+    currentUser = user;
+    localStorage.setItem('carrybee-user', JSON.stringify({ email: user.email, name: user.name }));
+
+    setTimeout(() => {
+        showDashboard();
+        showToast('Welcome back, ' + user.name + '!', 'success');
+    }, 800);
+}
+
+function handleLogout() {
+    localStorage.removeItem('carrybee-user');
+    currentUser = null;
+    document.getElementById('loginEmail').value = '';
+    document.getElementById('pwField').value = '';
+    document.getElementById('loginError').textContent = '';
+    document.getElementById('loginSuccess').style.display = 'none';
+    hideUserMenu();
+    showLogin();
+    showToast('Signed out successfully', 'success');
+}
+
+function updateUserUI() {
+    if (!currentUser) return;
+    const initials = currentUser.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+    document.getElementById('userAvatar').textContent = initials;
+    document.getElementById('dropdownName').textContent = currentUser.name;
+    document.getElementById('dropdownEmail').textContent = currentUser.email;
+}
+
+function toggleUserMenu() {
+    document.getElementById('userDropdown').classList.toggle('show');
+}
+
+function hideUserMenu() {
+    document.getElementById('userDropdown').classList.remove('show');
+}
+
+document.addEventListener('click', (e) => {
+    const container = document.getElementById('userMenuContainer');
+    if (container && !container.contains(e.target)) {
+        hideUserMenu();
+    }
+});
+
+// ==================== LOGIN LAMP ANIMATION ====================
+const pullZone   = document.getElementById('pullZone');
+const lampRoot   = document.getElementById('lampRoot');
+const lightCone  = document.getElementById('lightCone');
+const cardWrap   = document.getElementById('cardWrap');
+
+let isOn = false;
+let animating = false;
+
+function setLight(on) {
+    isOn = on;
+    lampRoot.classList.toggle('light-on', isOn);
+    lightCone.classList.toggle('on', isOn);
+    cardWrap.classList.toggle('visible', isOn);
+}
+
+function playPullAnimation() {
+    if (animating) return;
+    animating = true;
+    pullZone.classList.add('pulling');
+    setTimeout(() => { setLight(!isOn); }, 90);
+    setTimeout(() => {
+        pullZone.classList.remove('pulling');
+        animating = false;
+    }, 320);
+}
+
+pullZone.addEventListener('click', playPullAnimation);
+pullZone.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        playPullAnimation();
+    }
+});
+
+document.querySelectorAll('.login-eye-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const target = document.getElementById(btn.dataset.target);
+        const isPw = target.type === 'password';
+        target.type = isPw ? 'text' : 'password';
+        btn.setAttribute('aria-label', isPw ? 'Hide password' : 'Show password');
+    });
+});
+
+document.getElementById('pwField').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') handleLogin();
+});
+
+// ==================== THEME TOGGLE ====================
+let currentTheme = localStorage.getItem('carrybee-theme') || 'light';
+document.documentElement.setAttribute('data-theme', currentTheme);
+updateThemeIcon();
+
+function toggleTheme() {
+    currentTheme = currentTheme === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', currentTheme);
+    localStorage.setItem('carrybee-theme', currentTheme);
+    updateThemeIcon();
+    setTimeout(() => {
+        Object.values(charts).forEach(c => { if(c) { c.destroy(); } });
+        charts = {};
+        updateAnalytics();
+    }, 300);
+}
+
+function updateThemeIcon() {
+    const icon = document.getElementById('theme-icon');
+    if (icon) {
+        icon.className = currentTheme === 'dark' ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+    }
+}
+
+// ==================== DATA FETCHING FROM POSTGRESQL API ====================
+function getStatus(issue) {
+    return issue.status || 'Open';
+}
+
+function getTagColor(tag) {
+    return TAG_COLORS[tag] || 'bg-gray-200 text-gray-600 border-gray-300';
+}
+
+async function fetchData() {
+    const refreshIcon = document.getElementById('refresh-icon');
+    refreshIcon.classList.add('fa-spin');
+    document.getElementById('loading-state').classList.remove('hidden');
+
+    try {
+        const response = await fetch(`${API_URL}/api/dashboard-stats`);
+        if (!response.ok) throw new Error('API response was not ok');
+        const data = await response.json();
+        
+        // Transform API data to match existing format
+        issuesData = data.issues.map(issue => ({
+            ticketId: issue.ticket_id,
+            date: new Date(issue.submitted_at).toISOString().split('T')[0],
+            timestamp: new Date(issue.submitted_at).toTimeString().split(' ')[0],
+            consignmentId: issue.consignment_id,
+            merchant: issue.merchant_name,
+            issueTag: issue.issue_tag,
+            details: issue.issue_details,
+            status: issue.status,
+            remarks: issue.remarks || ''
+        }));
+        
+        // Update stats directly from API
+        document.getElementById('stat-total').textContent = data.stats.total_issues;
+        document.getElementById('stat-open').textContent = data.stats.open;
+        document.getElementById('stat-progress').textContent = data.stats.in_progress;
+        document.getElementById('stat-resolved').textContent = data.stats.resolved;
+        
+        showToast('Data loaded from PostgreSQL!', 'success');
+    } catch (e) {
+        console.error('Fetch error:', e);
+        showToast('Failed to connect to API. Check if server is running.', 'error');
+        issuesData = [];
+    }
+
+    document.getElementById('loading-state').classList.add('hidden');
+    document.getElementById('view-tracker').classList.remove('hidden');
+    updateStats();
+    renderTable();
+    updateAnalytics();
+    document.getElementById('last-refreshed').innerText = `Last refreshed: ${new Date().toLocaleTimeString()}`;
+    refreshIcon.classList.remove('fa-spin');
+}
+
+function updateStats() {
+    const total = issuesData.length;
+    const open = issuesData.filter(i => getStatus(i) === 'Open').length;
+    const progress = issuesData.filter(i => getStatus(i) === 'In Progress').length;
+    const resolved = issuesData.filter(i => getStatus(i) === 'Resolved').length;
+    
+    animateValue('stat-total', parseInt(document.getElementById('stat-total').innerText) || 0, total, 800);
+    animateValue('stat-open', parseInt(document.getElementById('stat-open').innerText) || 0, open, 800);
+    animateValue('stat-progress', parseInt(document.getElementById('stat-progress').innerText) || 0, progress, 800);
+    animateValue('stat-resolved', parseInt(document.getElementById('stat-resolved').innerText) || 0, resolved, 800);
+    
+    setTimeout(() => {
+        document.getElementById('bar-open').style.width = total ? `${(open/total)*100}%` : '0%';
+        document.getElementById('bar-progress').style.width = total ? `${(progress/total)*100}%` : '0%';
+        document.getElementById('bar-resolved').style.width = total ? `${(resolved/total)*100}%` : '0%';
+    }, 100);
+}
+
+function animateValue(id, start, end, duration) {
+    if (start === end) return;
+    const range = end - start;
+    let current = start;
+    const increment = end > start ? 1 : -1;
+    const stepTime = Math.abs(Math.floor(duration / range)) || 10;
+    const obj = document.getElementById(id);
+    const timer = setInterval(function() {
+        current += increment;
+        obj.innerHTML = current;
+        if (current == end) clearInterval(timer);
+    }, stepTime);
+}
+
+function renderTable() {
+    const tbody = document.getElementById('issuesTableBody');
+    const search = document.getElementById('searchInput').value.toLowerCase();
+    const statusFilter = document.getElementById('statusFilter').value;
+    const tagFilter = document.getElementById('tagFilter').value;
+    tbody.innerHTML = '';
+    
+    const tagSelect = document.getElementById('tagFilter');
+    const currentTag = tagSelect.value;
+    tagSelect.innerHTML = '<option value="All">All Issue Tags</option>';
+    Object.keys(TAG_COLORS).forEach(tag => {
+        tagSelect.innerHTML += `<option value="${tag}" ${tag === currentTag ? 'selected' : ''}>${tag}</option>`;
+    });
+
+    let filtered = issuesData.filter(issue => {
+        const status = getStatus(issue);
+        const matchesSearch =
+            (issue.ticketId && issue.ticketId.toLowerCase().includes(search)) ||
+            (issue.merchant && issue.merchant.toLowerCase().includes(search)) ||
+            (issue.consignmentId && issue.consignmentId.toLowerCase().includes(search)) ||
+            (issue.details && issue.details.toLowerCase().includes(search));
+        const matchesStatus = statusFilter === 'All' || status === statusFilter;
+        const matchesTag = tagFilter === 'All' || issue.issueTag === tagFilter;
+        return matchesSearch && matchesStatus && matchesTag;
+    });
+
+    if (filtered.length === 0) {
+        document.getElementById('emptyState').classList.remove('hidden');
+    } else {
+        document.getElementById('emptyState').classList.add('hidden');
+        filtered.forEach(issue => {
+            const status = getStatus(issue);
+            let statusClass = '', statusDot = '';
+            if (status === 'Open') { statusClass = 'status-open'; statusDot = 'bg-yellow-500'; }
+            else if (status === 'In Progress') { statusClass = 'status-progress'; statusDot = 'bg-blue-500'; }
+            else if (status === 'Resolved') { statusClass = 'status-resolved'; statusDot = 'bg-green-500'; }
+            const detailsText = issue.details || '-';
+            const row = `
+                <tr class="hover-row transition-colors border-b last:border-0 theme-transition" style="border-color: var(--border-color);">
+                    <td class="p-4 font-mono text-gold font-medium text-xs">${issue.ticketId || '-'}</td>
+                    <td class="p-4 text-xs theme-transition" style="color: var(--text-muted);">${issue.date}<br><span class="text-xs opacity-70">${issue.timestamp}</span></td>
+                    <td class="p-4 font-medium text-sm theme-transition" style="color: var(--text-primary);">${issue.merchant || '-'}</td>
+                    <td class="p-4 font-mono text-xs theme-transition" style="color: var(--text-muted);">${issue.consignmentId || '-'}</td>
+                    <td class="p-4"><span class="tag-pill border ${getTagColor(issue.issueTag)}">${issue.issueTag || 'General'}</span></td>
+                    <td class="p-4 details-cell">
+                        <div class="details-preview text-xs theme-transition" style="color: var(--text-muted);">${detailsText}</div>
+                    </td>
+                    <td class="p-4">
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${statusClass}">
+                            <span class="w-1.5 h-1.5 rounded-full ${statusDot}"></span>
+                            ${status}
+                        </span>
+                    </td>
+                    <td class="p-4 text-right">
+                        <button onclick="openModal('${issue.ticketId}')" class="text-gold hover:opacity-80 text-xs font-bold uppercase tracking-wider transition-colors">View</button>
+                    </td>
+                </tr>
+            `;
+            tbody.innerHTML += row;
+        });
+    }
+}
+
+function openModal(ticketId) {
+    const issue = issuesData.find(i => i.ticketId === ticketId);
+    if (!issue) return;
+    currentModalIssue = issue;
+    document.getElementById('modal-ticket-id').innerText = issue.ticketId;
+    document.getElementById('modal-merchant').innerText = issue.merchant || '-';
+    document.getElementById('modal-consignment').innerText = issue.consignmentId || '-';
+    document.getElementById('modal-tag').innerText = issue.issueTag || 'General';
+    document.getElementById('modal-tag').className = `tag-pill border ${getTagColor(issue.issueTag)}`;
+    document.getElementById('modal-date').innerText = `${issue.date} ${issue.timestamp}`;
+    document.getElementById('modal-details').innerText = issue.details || '-';
+    updateModalButtons(issue);
+    document.getElementById('issueModal').classList.remove('hidden');
+}
+
+function updateModalButtons(issue) {
+    const status = getStatus(issue);
+    ['open', 'progress', 'resolved'].forEach(s => {
+        const btn = document.getElementById(`btn-${s}`);
+        btn.classList.remove('ring-2', 'ring-white', 'ring-gray-400', 'scale-105', 'shadow-lg');
+        btn.style.opacity = '0.5';
+    });
+    let activeBtn = '';
+    if (status === 'Open') activeBtn = 'btn-open';
+    if (status === 'In Progress') activeBtn = 'btn-progress';
+    if (status === 'Resolved') activeBtn = 'btn-resolved';
+    if (activeBtn) {
+        const btn = document.getElementById(activeBtn);
+        btn.classList.add('ring-2', currentTheme === 'dark' ? 'ring-white' : 'ring-gray-400', 'scale-105', 'shadow-lg');
+        btn.style.opacity = '1';
+    }
+}
+
+async function updateStatus(newStatus) {
+    if (!currentModalIssue) return;
+    
+    try {
+        const response = await fetch(`${API_URL}/api/update-status/${currentModalIssue.ticketId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: newStatus, remarks: `Status changed to ${newStatus} via dashboard` })
+        });
+        
+        if (!response.ok) throw new Error('Update failed');
+        
+        currentModalIssue.status = newStatus;
+        updateModalButtons(currentModalIssue);
+        updateStats();
+        renderTable();
+        updateAnalytics();
+        showToast(`Status updated to ${newStatus}`, 'success');
+        
+        // Refresh data from server to sync
+        setTimeout(() => fetchData(), 1000);
+        
+    } catch (err) {
+        console.error('Update error:', err);
+        showToast('Failed to update status. Server may be offline.', 'error');
+    }
+}
+
+function closeModal() { 
+    document.getElementById('issueModal').classList.add('hidden'); 
+    currentModalIssue = null; 
+}
+
+function showRaiseIssue() { 
+    document.getElementById('raiseIssueModal').classList.remove('hidden'); 
+}
+
+function closeRaiseIssue() { 
+    document.getElementById('raiseIssueModal').classList.add('hidden'); 
+}
+
+async function submitNewIssue() {
+    const merchant = document.getElementById('new-merchant').value;
+    const consignment = document.getElementById('new-consignment').value;
+    const tag = document.getElementById('new-tag').value;
+    const details = document.getElementById('new-details').value;
+    
+    if (!merchant || !consignment || !details) { 
+        showToast('Please fill all fields', 'error'); 
+        return; 
+    }
+    
+    try {
+        const response = await fetch(`${API_URL}/api/submit-issue`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                consignment_id: consignment,
+                merchant_name: merchant,
+                issue_tag: tag,
+                issue_details: details
+            })
+        });
+        
+        if (!response.ok) throw new Error('Submit failed');
+        
+        const result = await response.json();
+        
+        showToast(`Issue raised! Ticket: ${result.ticket.ticket_id}`, 'success');
+        closeRaiseIssue();
+        
+        // Clear form
+        document.getElementById('new-merchant').value = '';
+        document.getElementById('new-consignment').value = '';
+        document.getElementById('new-details').value = '';
+        
+        // Refresh data
+        setTimeout(() => fetchData(), 500);
+        
+    } catch (err) {
+        console.error('Submit error:', err);
+        showToast('Failed to submit issue. Server may be offline.', 'error');
+    }
+}
+
+// ==================== ANALYTICS ====================
+function updateAnalytics() { 
+    renderTagChart(); 
+    renderStatusChart(); 
+    renderTimeChart(); 
+    renderTopMerchants(); 
+    renderResolutionChart(); 
+}
+
+function getChartColors() {
+    return {
+        grid: currentTheme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)',
+        tick: currentTheme === 'dark' ? '#9ca3af' : '#6b7280',
+        legend: currentTheme === 'dark' ? '#9ca3af' : '#6b7280'
+    };
+}
+
+function renderTagChart() {
+    const ctx = document.getElementById('tagChart').getContext('2d');
+    const tags = {};
+    issuesData.forEach(i => { if (i.issueTag) tags[i.issueTag] = (tags[i.issueTag] || 0) + 1; });
+    const labels = Object.keys(tags);
+    const data = Object.values(tags);
+    const colors = labels.map(tag => TAG_CHART_COLORS[tag] || '#94a3b8');
+    const cc = getChartColors();
+    if (charts.tag) charts.tag.destroy();
+    charts.tag = new Chart(ctx, {
+        type: 'bar',
+        data: { labels: labels, datasets: [{ label: 'Issues', data: data, backgroundColor: colors, borderRadius: 6, borderSkipped: false }] },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, grid: { color: cc.grid }, ticks: { color: cc.tick, stepSize: 1 } },
+                x: { grid: { display: false }, ticks: { color: cc.tick } }
+            }
+        }
+    });
+}
+
+function renderStatusChart() {
+    const ctx = document.getElementById('statusChart').getContext('2d');
+    const counts = { 
+        'Open': issuesData.filter(i => getStatus(i) === 'Open').length, 
+        'In Progress': issuesData.filter(i => getStatus(i) === 'In Progress').length, 
+        'Resolved': issuesData.filter(i => getStatus(i) === 'Resolved').length 
+    };
+    const cc = getChartColors();
+    if (charts.status) charts.status.destroy();
+    charts.status = new Chart(ctx, {
+        type: 'doughnut',
+        data: { labels: Object.keys(counts), datasets: [{ data: Object.values(counts), backgroundColor: ['#fbbf24', '#3b82f6', '#22c55e'], borderWidth: 0, hoverOffset: 4 }] },
+        options: {
+            responsive: true, maintainAspectRatio: false, cutout: '70%',
+            plugins: { legend: { position: 'bottom', labels: { color: cc.legend, usePointStyle: true, padding: 20 } } }
+        }
+    });
+}
+
+function renderTimeChart() {
+    const ctx = document.getElementById('timeChart').getContext('2d');
+    const dates = {};
+    [...issuesData].sort((a,b) => new Date(a.date) - new Date(b.date)).forEach(i => { if (i.date) dates[i.date] = (dates[i.date] || 0) + 1; });
+    const cc = getChartColors();
+    if (charts.time) charts.time.destroy();
+    charts.time = new Chart(ctx, {
+        type: 'line',
+        data: { labels: Object.keys(dates), datasets: [{ label: 'Issues', data: Object.values(dates), borderColor: '#fbbf24', backgroundColor: 'rgba(251, 191, 36, 0.1)', tension: 0.4, fill: true, pointBackgroundColor: '#fbbf24', pointBorderColor: '#fff', pointBorderWidth: 2, pointRadius: 4 }] },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, grid: { color: cc.grid }, ticks: { color: cc.tick, stepSize: 1 } },
+                x: { grid: { color: cc.grid }, ticks: { color: cc.tick } }
+            }
+        }
+    });
+}
+
+function renderTopMerchants() {
+    const merchants = {};
+    issuesData.forEach(i => { if (i.merchant) merchants[i.merchant] = (merchants[i.merchant] || 0) + 1; });
+    const sorted = Object.entries(merchants).sort((a,b) => b[1] - a[1]).slice(0, 6);
+    const container = document.getElementById('topMerchantsList');
+    container.innerHTML = '';
+    sorted.forEach(([name, count]) => {
+        container.innerHTML += `
+            <div class="flex items-center justify-between p-3 rounded-lg border theme-transition" style="background: var(--bg-modal-content); border-color: var(--border-color);">
+                <span class="text-sm font-medium theme-transition" style="color: var(--text-primary);">${name}</span>
+                <span class="text-xs font-bold text-gold bg-gold/10 px-2 py-1 rounded-full">${count} issue${count > 1 ? 's' : ''}</span>
+            </div>
+        `;
+    });
+}
+
+function renderResolutionChart() {
+    const ctx = document.getElementById('resolutionChart').getContext('2d');
+    const resolved = issuesData.filter(i => getStatus(i) === 'Resolved').length;
+    const total = issuesData.length;
+    const percent = total ? Math.round((resolved/total)*100) : 0;
+    document.getElementById('resolutionPercent').innerText = `${percent}%`;
+    if (charts.resolution) charts.resolution.destroy();
+    charts.resolution = new Chart(ctx, {
+        type: 'doughnut',
+        data: { labels: ['Resolved', 'Unresolved'], datasets: [{ data: [resolved, total - resolved], backgroundColor: ['#22c55e', currentTheme === 'dark' ? '#1e293b' : '#e5e7eb'], borderWidth: 0, circumference: 180, rotation: 270 }] },
+        options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { display: false }, tooltip: { enabled: false } } }
+    });
+}
+
+function switchView(view) {
+    document.getElementById('view-tracker').classList.add('hidden');
+    document.getElementById('view-analytics').classList.add('hidden');
+    document.getElementById('nav-tracker').classList.remove('active');
+    document.getElementById('nav-analytics').classList.remove('active');
+    document.getElementById(`view-${view}`).classList.remove('hidden');
+    document.getElementById(`nav-${view}`).classList.add('active');
+    document.getElementById('page-title').innerText = view === 'tracker' ? 'Issue Tracker' : 'Analytics';
+    if (view === 'analytics') {
+        setTimeout(() => { Object.values(charts).forEach(c => { if(c) c.resize(); }); }, 100);
+    }
+}
+
+function exportCSV() {
+    let csvContent = "data:text/csv;charset=utf-8,";
+    csvContent += "Ticket ID,Date,Time,Merchant,Consignment,Tag,Status,Details,Remarks\n";
+    issuesData.forEach(row => {
+        const details = (row.details || '').replace(/"/g, '""');
+        const remarks = (row.remarks || '').replace(/"/g, '""');
+        csvContent += `${row.ticketId},${row.date},${row.timestamp},${row.merchant},${row.consignmentId},${row.issueTag},${getStatus(row)},"${details}","${remarks}"\n`;
+    });
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "carrybee_issues.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast('CSV exported successfully!', 'success');
+}
+
+function showToast(message, type) {
+    const toast = document.createElement('div');
+    const bgColor = type === 'success' ? 'bg-green-500' : type === 'warning' ? 'bg-yellow-500' : 'bg-red-500';
+    const icon = type === 'success' ? 'fa-check' : type === 'warning' ? 'fa-triangle-exclamation' : 'fa-exclamation-circle';
+    toast.className = `fixed bottom-4 right-4 ${bgColor} text-white px-4 py-3 rounded-lg shadow-lg text-sm font-medium toast z-50 flex items-center gap-2`;
+    toast.innerHTML = `<i class="fa-solid ${icon}"></i> ${message}`;
+    document.body.appendChild(toast);
+    setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateX(100%)'; setTimeout(() => toast.remove(), 300); }, 3000);
+}
+
+// ==================== AUTO REFRESH ====================
+let autoRefreshInterval = null;
+
+function startAutoRefresh() {
+    // Refresh every 15 seconds for real-time feel
+    if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+    autoRefreshInterval = setInterval(() => {
+        console.log('[AUTO REFRESH] Fetching fresh data from PostgreSQL...');
+        fetchData();
+    }, 15000);
+}
+
+function stopAutoRefresh() {
+    if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+    autoRefreshInterval = null;
+}
+
+window.addEventListener('DOMContentLoaded', () => { 
+    checkAuth(); 
+    setTimeout(startAutoRefresh, 2000);
+});
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { closeModal(); closeRaiseIssue(); }
+    if (e.ctrlKey && e.key === 'r') { e.preventDefault(); fetchData(); }
+});
+
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+        console.log('[AUTO REFRESH] Tab visible - refreshing data');
+        fetchData();
+    }
+});
+</script>
