@@ -659,6 +659,27 @@ body {
                         </div>
                     </div>
                 </div>
+                <div class="card-gradient p-5 rounded-xl border relative overflow-hidden theme-transition" style="border-color: var(--border-color); box-shadow: var(--shadow-sm);">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-wider theme-transition" style="color: var(--text-muted);">Response Activity</p>
+                            <div class="flex items-baseline gap-2 mt-1">
+                                <h3 class="text-3xl font-bold theme-transition" style="color: var(--text-primary);" id="stat-responded-total">0</h3>
+                                <span class="text-xs theme-transition" style="color: var(--text-muted);">total responded</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-calendar-day text-gold"></i>
+                            <div>
+                                <h3 class="text-2xl font-bold text-gold" id="stat-responded-today">0</h3>
+                                <p class="text-xs theme-transition" style="color: var(--text-muted);">responded today</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="responded-daily-breakdown" class="space-y-2 max-h-56 overflow-y-auto pr-1">
+                        <!-- Daily breakdown rows injected by JS -->
+                    </div>
+                </div>
                 <div class="flex flex-col sm:flex-row gap-3">
                     <div class="relative flex-1">
                         <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 theme-transition" style="color: var(--text-muted);"></i>
@@ -1098,38 +1119,6 @@ function getTagColor(tag) {
     return TAG_COLORS[tag] || 'bg-gray-200 text-gray-600 border-gray-300';
 }
 
-// ==================== RESPONDED-BY LOCAL PERSISTENCE ====================
-// NOTE: The backend API does not yet store a "respondedBy" field, so it
-// disappears on refresh. As a stop-gap, we cache it locally in this browser
-// so it survives refreshes here. For it to persist across all devices/users,
-// the backend (/api/issues/:id/status) needs a respondedBy column added.
-const RESPONDED_STORAGE_KEY = 'carrybee-responded-by';
-
-function getRespondedMap() {
-    try {
-        return JSON.parse(localStorage.getItem(RESPONDED_STORAGE_KEY) || '{}');
-    } catch (e) {
-        return {};
-    }
-}
-
-function saveResponded(issueId, name) {
-    const map = getRespondedMap();
-    map[issueId] = name;
-    try {
-        localStorage.setItem(RESPONDED_STORAGE_KEY, JSON.stringify(map));
-    } catch (e) {}
-}
-
-function applyRespondedMap() {
-    const map = getRespondedMap();
-    issuesData.forEach(issue => {
-        if (map[issue.id] && !issue.respondedBy) {
-            issue.respondedBy = map[issue.id];
-        }
-    });
-}
-
 async function fetchData() {
     const refreshIcon = document.getElementById('refresh-icon');
     refreshIcon.classList.add('fa-spin');
@@ -1158,14 +1147,51 @@ async function fetchData() {
         issuesData.forEach((issue, i) => { issue.id = i + 1; issue.ticketId = generateTicketId(issue.date, i); });
     }
 
-    applyRespondedMap();
     document.getElementById('loading-state').classList.add('hidden');
     document.getElementById('view-tracker').classList.remove('hidden');
     updateStats();
+    updateResponseStats();
     renderTable();
     updateAnalytics();
     document.getElementById('last-refreshed').innerText = `Last refreshed: ${new Date().toLocaleTimeString()}`;
     refreshIcon.classList.remove('fa-spin');
+}
+
+function updateResponseStats() {
+    const responded = issuesData.filter(i => i.respondedBy);
+    const total = responded.length;
+    const todayStr = new Date().toDateString();
+    const today = responded.filter(i => i.respondedAt && new Date(i.respondedAt).toDateString() === todayStr).length;
+
+    document.getElementById('stat-responded-total').innerText = total;
+    document.getElementById('stat-responded-today').innerText = today;
+
+    // Group by day (YYYY-MM-DD), most recent first
+    const byDay = {};
+    responded.forEach(issue => {
+        if (!issue.respondedAt) return;
+        const d = new Date(issue.respondedAt);
+        const key = d.toISOString().slice(0, 10);
+        byDay[key] = (byDay[key] || 0) + 1;
+    });
+    const days = Object.keys(byDay).sort((a, b) => b.localeCompare(a));
+    const container = document.getElementById('responded-daily-breakdown');
+    if (days.length === 0) {
+        container.innerHTML = `<p class="text-xs theme-transition" style="color: var(--text-muted);">No responses recorded yet.</p>`;
+        return;
+    }
+    container.innerHTML = days.map(day => {
+        const label = new Date(day + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        const count = byDay[day];
+        const isToday = day === new Date().toISOString().slice(0, 10);
+        return `
+            <div class="flex items-center justify-between px-3 py-2 rounded-lg theme-transition" style="background-color: var(--bg-input);">
+                <span class="text-xs font-medium theme-transition" style="color: var(--text-primary);">
+                    ${label}${isToday ? ' <span class="text-gold">(Today)</span>' : ''}
+                </span>
+                <span class="text-xs font-bold px-2 py-0.5 rounded-full" style="background: rgba(255,204,0,0.15); color: var(--gold, #ffcc00);">${count} responded</span>
+            </div>`;
+    }).join('');
 }
 
 function updateStats() {
@@ -1303,10 +1329,11 @@ function updateStatus(newStatus) {
     else if (newStatus === 'Resolved') { currentModalIssue.inProcess = false; currentModalIssue.solved = true; }
     const responderName = currentUser ? currentUser.name : 'Unknown';
     currentModalIssue.respondedBy = responderName;
-    saveResponded(currentModalIssue.id, responderName);
+    currentModalIssue.respondedAt = new Date().toISOString();
     document.getElementById('modal-responder').innerText = responderName;
     updateModalButtons(currentModalIssue);
     updateStats();
+    updateResponseStats();
     renderTable();
     updateAnalytics();
     updateStatusOnServer(currentModalIssue, newStatus, responderName);
@@ -1323,6 +1350,15 @@ async function updateStatusOnServer(issue, newStatus, responderName) {
             const err = await response.json().catch(() => ({}));
             throw new Error(err.error || `Server responded ${response.status}`);
         }
+        const saved = await response.json();
+        // Sync the authoritative respondedBy/respondedAt from the database
+        // in case the server timestamp differs slightly from our optimistic one.
+        const localIssue = issuesData.find(i => i.id === issue.id);
+        if (localIssue) {
+            localIssue.respondedBy = saved.respondedBy;
+            localIssue.respondedAt = saved.respondedAt;
+        }
+        updateResponseStats();
         showToast(`Status saved: ${newStatus}`, 'success');
     } catch (err) {
         console.error('Update status error:', err);
