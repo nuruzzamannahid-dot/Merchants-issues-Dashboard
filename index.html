@@ -690,6 +690,7 @@ body {
                                     <th class="p-4 w-36">Tag</th>
                                     <th class="p-4">Details</th>
                                     <th class="p-4 w-28">Status</th>
+                                    <th class="p-4 w-36">Responded By</th>
                                     <th class="p-4 w-20 text-right">Action</th>
                                 </tr>
                             </thead>
@@ -785,6 +786,10 @@ body {
                     <div>
                         <p class="text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Submitted At</p>
                         <p class="text-sm font-medium theme-transition" style="color: var(--text-primary);" id="modal-date">-</p>
+                    </div>
+                    <div>
+                        <p class="text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Responded By</p>
+                        <p class="text-sm font-medium theme-transition" style="color: var(--text-primary);" id="modal-responder">-</p>
                     </div>
                 </div>
                 <div>
@@ -1212,6 +1217,7 @@ function renderTable() {
                             ${status}
                         </span>
                     </td>
+                    <td class="p-4 text-xs theme-transition" style="color: var(--text-secondary);">${issue.respondedBy ? `<span class="inline-flex items-center gap-1.5"><i class="fa-solid fa-user-check text-gold"></i> ${issue.respondedBy}</span>` : '<span style="color: var(--text-muted);">-</span>'}</td>
                     <td class="p-4 text-right">
                         <button onclick="openModal('${issue.ticketId}')" class="text-gold hover:opacity-80 text-xs font-bold uppercase tracking-wider transition-colors">View</button>
                     </td>
@@ -1233,6 +1239,7 @@ function openModal(ticketId) {
     document.getElementById('modal-tag').className = `tag-pill border ${getTagColor(issue.issueTag)}`;
     document.getElementById('modal-date').innerText = `${issue.date} ${issue.timestamp}`;
     document.getElementById('modal-details').innerText = issue.details || '-';
+    document.getElementById('modal-responder').innerText = issue.respondedBy || 'Not yet responded';
     updateModalButtons(issue);
     document.getElementById('issueModal').classList.remove('hidden');
 }
@@ -1261,19 +1268,22 @@ function updateStatus(newStatus) {
     if (newStatus === 'Open') { currentModalIssue.inProcess = false; currentModalIssue.solved = false; }
     else if (newStatus === 'In Progress') { currentModalIssue.inProcess = true; currentModalIssue.solved = false; }
     else if (newStatus === 'Resolved') { currentModalIssue.inProcess = false; currentModalIssue.solved = true; }
+    const responderName = currentUser ? currentUser.name : 'Unknown';
+    currentModalIssue.respondedBy = responderName;
+    document.getElementById('modal-responder').innerText = responderName;
     updateModalButtons(currentModalIssue);
     updateStats();
     renderTable();
     updateAnalytics();
-    updateStatusOnServer(currentModalIssue, newStatus);
+    updateStatusOnServer(currentModalIssue, newStatus, responderName);
 }
 
-async function updateStatusOnServer(issue, newStatus) {
+async function updateStatusOnServer(issue, newStatus, responderName) {
     try {
         const response = await fetch(`${API_BASE_URL}/api/issues/${issue.id}/status`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: newStatus })
+            body: JSON.stringify({ status: newStatus, respondedBy: responderName })
         });
         if (!response.ok) {
             const err = await response.json().catch(() => ({}));
@@ -1433,11 +1443,12 @@ function switchView(view) {
 
 function exportCSV() {
     let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "Ticket ID,Date,Time,Merchant,Consignment,Tag,Status,Details,Remarks\n";
+    csvContent += "Ticket ID,Date,Time,Merchant,Consignment,Tag,Status,Responded By,Details,Remarks\n";
     issuesData.forEach(row => {
         const details = (row.details || '').replace(/"/g, '""');
         const remarks = (row.remarks || '').replace(/"/g, '""');
-        csvContent += `${row.ticketId},${row.date},${row.timestamp},${row.merchant},${row.consignmentId},${row.issueTag},${getStatus(row)},"${details}","${remarks}"\n`;
+        const respondedBy = (row.respondedBy || '').replace(/"/g, '""');
+        csvContent += `${row.ticketId},${row.date},${row.timestamp},${row.merchant},${row.consignmentId},${row.issueTag},${getStatus(row)},"${respondedBy}","${details}","${remarks}"\n`;
     });
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
