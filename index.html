@@ -1098,6 +1098,38 @@ function getTagColor(tag) {
     return TAG_COLORS[tag] || 'bg-gray-200 text-gray-600 border-gray-300';
 }
 
+// ==================== RESPONDED-BY LOCAL PERSISTENCE ====================
+// NOTE: The backend API does not yet store a "respondedBy" field, so it
+// disappears on refresh. As a stop-gap, we cache it locally in this browser
+// so it survives refreshes here. For it to persist across all devices/users,
+// the backend (/api/issues/:id/status) needs a respondedBy column added.
+const RESPONDED_STORAGE_KEY = 'carrybee-responded-by';
+
+function getRespondedMap() {
+    try {
+        return JSON.parse(localStorage.getItem(RESPONDED_STORAGE_KEY) || '{}');
+    } catch (e) {
+        return {};
+    }
+}
+
+function saveResponded(issueId, name) {
+    const map = getRespondedMap();
+    map[issueId] = name;
+    try {
+        localStorage.setItem(RESPONDED_STORAGE_KEY, JSON.stringify(map));
+    } catch (e) {}
+}
+
+function applyRespondedMap() {
+    const map = getRespondedMap();
+    issuesData.forEach(issue => {
+        if (map[issue.id] && !issue.respondedBy) {
+            issue.respondedBy = map[issue.id];
+        }
+    });
+}
+
 async function fetchData() {
     const refreshIcon = document.getElementById('refresh-icon');
     refreshIcon.classList.add('fa-spin');
@@ -1126,6 +1158,7 @@ async function fetchData() {
         issuesData.forEach((issue, i) => { issue.id = i + 1; issue.ticketId = generateTicketId(issue.date, i); });
     }
 
+    applyRespondedMap();
     document.getElementById('loading-state').classList.add('hidden');
     document.getElementById('view-tracker').classList.remove('hidden');
     updateStats();
@@ -1270,6 +1303,7 @@ function updateStatus(newStatus) {
     else if (newStatus === 'Resolved') { currentModalIssue.inProcess = false; currentModalIssue.solved = true; }
     const responderName = currentUser ? currentUser.name : 'Unknown';
     currentModalIssue.respondedBy = responderName;
+    saveResponded(currentModalIssue.id, responderName);
     document.getElementById('modal-responder').innerText = responderName;
     updateModalButtons(currentModalIssue);
     updateStats();
