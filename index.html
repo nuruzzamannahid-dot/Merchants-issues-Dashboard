@@ -569,6 +569,9 @@ body {
             <a href="#" onclick="switchView('analytics')" id="nav-analytics" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium">
                 <i class="fa-solid fa-chart-pie w-5 text-center"></i> Analytics
             </a>
+            <a href="#" onclick="switchView('activity')" id="nav-activity" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium">
+                <i class="fa-solid fa-user-check w-5 text-center"></i> Activity
+            </a>
             <a href="#" onclick="showRaiseIssue()" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium">
                 <i class="fa-solid fa-plus-circle w-5 text-center"></i> Raise Issue
             </a>
@@ -657,35 +660,6 @@ body {
                         <div class="absolute bottom-0 left-0 w-full h-1" style="background: var(--border-color);">
                             <div class="h-full w-0 transition-all duration-1000" style="background: #22c55e;" id="bar-resolved"></div>
                         </div>
-                    </div>
-                </div>
-                <div class="card-gradient p-5 rounded-xl border relative overflow-hidden theme-transition" style="border-color: var(--border-color); box-shadow: var(--shadow-sm);">
-                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-                        <div>
-                            <p class="text-xs font-semibold uppercase tracking-wider theme-transition" style="color: var(--text-muted);">Response Activity</p>
-                            <div class="flex items-baseline gap-2 mt-1">
-                                <h3 class="text-3xl font-bold theme-transition" style="color: var(--text-primary);" id="stat-responded-total">0</h3>
-                                <span class="text-xs theme-transition" style="color: var(--text-muted);">total responded</span>
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <i class="fa-solid fa-calendar-day text-gold"></i>
-                            <div>
-                                <h3 class="text-2xl font-bold text-gold" id="stat-responded-today">0</h3>
-                                <p class="text-xs theme-transition" style="color: var(--text-muted);">responded today</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div id="responded-daily-breakdown" class="space-y-2 max-h-56 overflow-y-auto pr-1">
-                        <!-- Daily breakdown rows injected by JS -->
-                    </div>
-                </div>
-                <div class="card-gradient p-5 rounded-xl border relative overflow-hidden theme-transition" style="border-color: var(--border-color); box-shadow: var(--shadow-sm);">
-                    <p class="text-xs font-semibold uppercase tracking-wider mb-3 theme-transition" style="color: var(--text-muted);">
-                        <i class="fa-solid fa-users mr-1"></i> Responses by Team Member
-                    </p>
-                    <div id="responded-by-person" class="space-y-2 max-h-56 overflow-y-auto pr-1">
-                        <!-- Per-person breakdown rows injected by JS -->
                     </div>
                 </div>
                 <div class="flex flex-col sm:flex-row gap-3">
@@ -777,6 +751,37 @@ body {
                                 <span class="text-xs theme-transition" style="color: var(--text-muted);">Resolved</span>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+            <div id="view-activity" class="hidden fade-in space-y-6">
+                <div class="card-gradient p-5 rounded-xl border relative overflow-hidden theme-transition" style="border-color: var(--border-color); box-shadow: var(--shadow-sm);">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-wider theme-transition" style="color: var(--text-muted);">Response Activity</p>
+                            <div class="flex items-baseline gap-2 mt-1">
+                                <h3 class="text-3xl font-bold theme-transition" style="color: var(--text-primary);" id="stat-responded-total">0</h3>
+                                <span class="text-xs theme-transition" style="color: var(--text-muted);">total responded</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-calendar-day text-gold"></i>
+                            <div>
+                                <h3 class="text-2xl font-bold text-gold" id="stat-responded-today">0</h3>
+                                <p class="text-xs theme-transition" style="color: var(--text-muted);">responded today</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="responded-daily-breakdown" class="space-y-2 max-h-56 overflow-y-auto pr-1">
+                        <!-- Daily breakdown rows injected by JS -->
+                    </div>
+                </div>
+                <div class="card-gradient p-5 rounded-xl border relative overflow-hidden theme-transition" style="border-color: var(--border-color); box-shadow: var(--shadow-sm);">
+                    <p class="text-xs font-semibold uppercase tracking-wider mb-3 theme-transition" style="color: var(--text-muted);">
+                        <i class="fa-solid fa-users mr-1"></i> Responses by Team Member
+                    </p>
+                    <div id="responded-by-person" class="space-y-2 max-h-56 overflow-y-auto pr-1">
+                        <!-- Per-person breakdown rows injected by JS -->
                     </div>
                 </div>
             </div>
@@ -1544,13 +1549,19 @@ function renderResolutionChart() {
 function switchView(view) {
     document.getElementById('view-tracker').classList.add('hidden');
     document.getElementById('view-analytics').classList.add('hidden');
+    document.getElementById('view-activity').classList.add('hidden');
     document.getElementById('nav-tracker').classList.remove('active');
     document.getElementById('nav-analytics').classList.remove('active');
+    document.getElementById('nav-activity').classList.remove('active');
     document.getElementById(`view-${view}`).classList.remove('hidden');
     document.getElementById(`nav-${view}`).classList.add('active');
-    document.getElementById('page-title').innerText = view === 'tracker' ? 'Issue Tracker' : 'Analytics';
+    const titles = { tracker: 'Issue Tracker', analytics: 'Analytics', activity: 'Activity' };
+    document.getElementById('page-title').innerText = titles[view] || 'Issue Tracker';
     if (view === 'analytics') {
         setTimeout(() => { Object.values(charts).forEach(c => { if(c) c.resize(); }); }, 100);
+    }
+    if (view === 'activity') {
+        updateResponseStats();
     }
 }
 
