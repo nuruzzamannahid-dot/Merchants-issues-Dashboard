@@ -680,6 +680,14 @@ body {
                         <!-- Daily breakdown rows injected by JS -->
                     </div>
                 </div>
+                <div class="card-gradient p-5 rounded-xl border relative overflow-hidden theme-transition" style="border-color: var(--border-color); box-shadow: var(--shadow-sm);">
+                    <p class="text-xs font-semibold uppercase tracking-wider mb-3 theme-transition" style="color: var(--text-muted);">
+                        <i class="fa-solid fa-users mr-1"></i> Responses by Team Member
+                    </p>
+                    <div id="responded-by-person" class="space-y-2 max-h-56 overflow-y-auto pr-1">
+                        <!-- Per-person breakdown rows injected by JS -->
+                    </div>
+                </div>
                 <div class="flex flex-col sm:flex-row gap-3">
                     <div class="relative flex-1">
                         <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 theme-transition" style="color: var(--text-muted);"></i>
@@ -1176,8 +1184,10 @@ function updateResponseStats() {
     });
     const days = Object.keys(byDay).sort((a, b) => b.localeCompare(a));
     const container = document.getElementById('responded-daily-breakdown');
+    const personContainer = document.getElementById('responded-by-person');
     if (days.length === 0) {
         container.innerHTML = `<p class="text-xs theme-transition" style="color: var(--text-muted);">No responses recorded yet.</p>`;
+        personContainer.innerHTML = `<p class="text-xs theme-transition" style="color: var(--text-muted);">No responses recorded yet.</p>`;
         return;
     }
     container.innerHTML = days.map(day => {
@@ -1190,6 +1200,38 @@ function updateResponseStats() {
                     ${label}${isToday ? ' <span class="text-gold">(Today)</span>' : ''}
                 </span>
                 <span class="text-xs font-bold px-2 py-0.5 rounded-full" style="background: rgba(255,204,0,0.15); color: var(--gold, #ffcc00);">${count} responded</span>
+            </div>`;
+    }).join('');
+
+    // Group by responder name, most active first
+    const byPerson = {};
+    responded.forEach(issue => {
+        const name = (issue.respondedBy || '').trim();
+        if (!name) return;
+        if (!byPerson[name]) byPerson[name] = { total: 0, today: 0 };
+        byPerson[name].total += 1;
+        if (issue.respondedAt && new Date(issue.respondedAt).toDateString() === todayStr) {
+            byPerson[name].today += 1;
+        }
+    });
+    const people = Object.keys(byPerson).sort((a, b) => byPerson[b].total - byPerson[a].total);
+    if (people.length === 0) {
+        personContainer.innerHTML = `<p class="text-xs theme-transition" style="color: var(--text-muted);">No responses recorded yet.</p>`;
+        return;
+    }
+    personContainer.innerHTML = people.map(name => {
+        const stats = byPerson[name];
+        const initials = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+        return `
+            <div class="flex items-center justify-between px-3 py-2 rounded-lg theme-transition" style="background-color: var(--bg-input);">
+                <div class="flex items-center gap-2">
+                    <span class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold" style="background: rgba(255,204,0,0.15); color: var(--gold, #ffcc00);">${initials}</span>
+                    <span class="text-xs font-medium theme-transition" style="color: var(--text-primary);">${name}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    ${stats.today > 0 ? `<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full text-gold" style="background: rgba(255,204,0,0.1);">+${stats.today} today</span>` : ''}
+                    <span class="text-xs font-bold px-2 py-0.5 rounded-full" style="background: rgba(34,197,94,0.15); color: #22c55e;">${stats.total} total</span>
+                </div>
             </div>`;
     }).join('');
 }
@@ -1232,8 +1274,9 @@ function renderTable() {
     tbody.innerHTML = '';
     const tagSelect = document.getElementById('tagFilter');
     const currentTag = tagSelect.value;
+    const uniqueTags = [...new Set(issuesData.map(i => (i.issueTag || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
     tagSelect.innerHTML = '<option value="All">All Issue Tags</option>';
-    Object.keys(TAG_COLORS).forEach(tag => {
+    uniqueTags.forEach(tag => {
         tagSelect.innerHTML += `<option value="${tag}" ${tag === currentTag ? 'selected' : ''}>${tag}</option>`;
     });
 
@@ -1245,7 +1288,7 @@ function renderTable() {
             (issue.consignmentId && issue.consignmentId.toLowerCase().includes(search)) ||
             (issue.details && issue.details.toLowerCase().includes(search));
         const matchesStatus = statusFilter === 'All' || status === statusFilter;
-        const matchesTag = tagFilter === 'All' || issue.issueTag === tagFilter;
+        const matchesTag = tagFilter === 'All' || (issue.issueTag || '').trim() === tagFilter;
         return matchesSearch && matchesStatus && matchesTag;
     });
 
