@@ -557,7 +557,7 @@ body {
     <aside class="w-64 theme-transition border-r flex flex-col flex-shrink-0" style="background-color: var(--bg-sidebar); border-color: var(--border-color);">
         <div class="p-5 flex items-center justify-between gap-3">
             <img src="carrybee-logo.png" alt="CarryBee" class="logo-img">
-            <button onclick="toggleTheme()" class="theme-toggle" title="Toggle Dark Mode">
+            <button onclick="toggleTheme()" class="theme-toggle" title="Toggle Dark Mode" aria-label="Toggle theme">
                 <i class="fa-solid fa-moon" id="theme-icon"></i>
             </button>
         </div>
@@ -665,18 +665,18 @@ body {
                 <div class="flex flex-col sm:flex-row gap-3">
                     <div class="relative flex-1">
                         <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 theme-transition" style="color: var(--text-muted);"></i>
-                        <input type="text" id="searchInput" onkeyup="renderTable()" placeholder="Search by Ticket ID, Merchant, Consignment, or Details..."
+                        <input type="text" id="searchInput" onkeyup="renderTable()" placeholder="Search by Ticket ID, Merchant, Consignment, or Details..." aria-label="Search issues"
                             class="w-full rounded-lg pl-10 pr-4 py-2.5 text-sm placeholder-slate-400 focus:outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/50 transition-all theme-transition"
                             style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
                     </div>
-                    <select id="statusFilter" onchange="renderTable()" class="rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
+                    <select id="statusFilter" onchange="renderTable()" class="rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition" aria-label="Filter issues by status"
                         style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
                         <option value="All">All Statuses</option>
                         <option value="Open">Open</option>
                         <option value="In Progress">In Progress</option>
                         <option value="Resolved">Resolved</option>
                     </select>
-                    <select id="tagFilter" onchange="renderTable()" class="rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
+                    <select id="tagFilter" onchange="renderTable()" class="rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition" aria-label="Filter issues by tag"
                         style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
                         <option value="All">All Issue Tags</option>
                     </select>
@@ -799,7 +799,7 @@ body {
                     <p class="text-gold text-xs font-mono mb-1" id="modal-ticket-id">CB-0000-00000</p>
                     <h3 class="text-xl font-bold theme-transition" style="color: var(--text-primary);">Issue Details</h3>
                 </div>
-                <button onclick="closeModal()" class="theme-transition" style="color: var(--text-muted);">
+                <button onclick="closeModal()" class="theme-transition" style="color: var(--text-muted);" aria-label="Close modal">
                     <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
             </div>
@@ -856,7 +856,7 @@ body {
         <div class="rounded-2xl shadow-2xl overflow-hidden theme-transition" style="background-color: var(--bg-modal); border: 1px solid var(--border-color);">
             <div class="p-6 border-b flex justify-between items-center theme-transition" style="border-color: var(--border-color);">
                 <h3 class="text-xl font-bold theme-transition" style="color: var(--text-primary);">Raise New Issue</h3>
-                <button onclick="closeRaiseIssue()" class="theme-transition" style="color: var(--text-muted);">
+                <button onclick="closeRaiseIssue()" class="theme-transition" style="color: var(--text-muted);" aria-label="Close modal">
                     <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
             </div>
@@ -892,7 +892,7 @@ body {
                     <textarea id="new-details" rows="4" class="w-full rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-gold/50 resize-none theme-transition"
                         style="background-color: var(--bg-modal-content); color: var(--text-primary); border: 1px solid var(--border-input);" placeholder="Describe the issue in detail..."></textarea>
                 </div>
-                <button onclick="submitNewIssue()" class="w-full py-2.5 rounded-lg bg-gold hover:opacity-90 text-sm font-bold transition-colors" style="color: var(--cb-black);">
+                <button id="submitIssueBtn" onclick="submitNewIssue()" class="w-full py-2.5 rounded-lg bg-gold hover:opacity-90 text-sm font-bold transition-colors flex items-center justify-center gap-2" style="color: var(--cb-black);">
                     Submit Issue
                 </button>
             </div>
@@ -1426,6 +1426,12 @@ async function submitNewIssue() {
     const details = document.getElementById('new-details').value;
     if (!merchant || !consignment || !details) { showToast('Please fill all fields', 'error'); return; }
 
+    const btn = document.getElementById('submitIssueBtn');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.style.opacity = '0.7';
+    btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Submitting...`;
+
     try {
         const response = await fetch(`${API_BASE_URL}/api/issues`, {
             method: 'POST',
@@ -1445,6 +1451,10 @@ async function submitNewIssue() {
     } catch (err) {
         console.error('Create issue error:', err);
         showToast('Failed to raise issue: ' + err.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.style.opacity = '';
+        btn.innerHTML = originalText;
     }
 }
 
