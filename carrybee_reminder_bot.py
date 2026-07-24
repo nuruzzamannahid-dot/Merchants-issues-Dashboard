@@ -4,6 +4,8 @@ CarryBee Issue Reminder Bot
 Reads Google Sheet for "In Progress" issues and sends deadline reminders via Telegram.
 """
 
+import os
+import sys
 import requests
 import csv
 import json
@@ -13,8 +15,14 @@ from collections import defaultdict
 
 # ==================== CONFIGURATION ====================
 
-# Your Telegram Bot Token
-BOT_TOKEN = "8851597317:AAGAjKaTjxp8oJga0reO64se9VhEBf2gYUc"
+# Your Telegram Bot Token (loaded from environment variable for security)
+BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+
+if not BOT_TOKEN:
+    print("[ERROR] TELEGRAM_BOT_TOKEN environment variable is not set!")
+    print("[ERROR] Please set the TELEGRAM_BOT_TOKEN environment variable and try again.")
+    print("[ERROR] Example: export TELEGRAM_BOT_TOKEN='your_bot_token'")
+    sys.exit(1)
 
 # Your Google Sheet CSV URL (same as dashboard)
 SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSybJkSsKQxyczJc4Llsa10ywnR7YL3JNWN3Yx7RCc3GGWBOt4O43sSOMy2cNgYVQRtoAakguvAqgsy/pub?output=csv"
@@ -326,7 +334,7 @@ def run_scheduled_mode():
     if not CHAT_IDS:
         print("\n[SETUP REQUIRED]")
         print("1. Message your bot on Telegram")
-        print("2. Visit: https://api.telegram.org/bot8851597317:AAGAjKaTjxp8oJga0reO64se9VhEBf2gYUc/getUpdates")
+        print(f"2. Visit: https://api.telegram.org/bot{BOT_TOKEN}/getUpdates")
         print("3. Find your 'chat.id' in the response")
         print("4. Add it to CHAT_IDS list in this script")
         print("="*60)

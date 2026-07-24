@@ -56,12 +56,25 @@ Automatically sends deadline reminders for "In Progress" issues.
    pip install -r requirements.txt
    ```
 
-2. **Run the bot:**
+2. **Configure the Environment:**
+   Set the `TELEGRAM_BOT_TOKEN` environment variable:
+   ```bash
+   # On Linux/macOS
+   export TELEGRAM_BOT_TOKEN="your_telegram_bot_token"
+
+   # On Windows (Command Prompt)
+   set TELEGRAM_BOT_TOKEN=your_telegram_bot_token
+
+   # On Windows (PowerShell)
+   $env:TELEGRAM_BOT_TOKEN="your_telegram_bot_token"
+   ```
+
+3. **Run the bot:**
    ```bash
    python carrybee_reminder_bot.py
    ```
 
-3. **Keep it running 24/7** (see hosting options below)
+4. **Keep it running 24/7** (see hosting options below)
 
 ---
 
@@ -71,16 +84,17 @@ Automatically sends deadline reminders for "In Progress" issues.
 - Sign up at [pythonanywhere.com](https://www.pythonanywhere.com)
 - Upload files via the Files tab
 - Install: `pip install requests`
+- Set the environment variable `TELEGRAM_BOT_TOKEN` in your PythonAnywhere environment or load it from a `.env` file or environment settings.
 - Go to **Tasks → Always-on tasks** → Add your script
 - Done!
 
 ### Option 2: Your Computer (Free)
 ```bash
-# Windows - run in background
+# Windows - run in background (ensure environment variable is set first)
 pythonw carrybee_reminder_bot.py
 
-# Mac/Linux - run in background
-nohup python carrybee_reminder_bot.py &
+# Mac/Linux - run in background (ensure environment variable is set first)
+TELEGRAM_BOT_TOKEN="your_telegram_bot_token" nohup python carrybee_reminder_bot.py &
 ```
 
 ### Option 3: Railway.app / Render.com
@@ -101,7 +115,7 @@ https://docs.google.com/spreadsheets/d/e/2PACX-1vSybJkSsKQxyczJc4Llsa10ywnR7YL3J
 Make sure your sheet is **published to the web** as CSV.
 
 ### Telegram Bot
-- Bot Token: `8851597317:AAGAjKaTjxp8oJga0reO64se9VhEBf2gYUc`
+- Bot Token: Configured securely via the `TELEGRAM_BOT_TOKEN` environment variable.
 - Chat IDs configured: `8485545697`, `8839924588`
 
 To add more recipients, edit `CHAT_IDS` in `carrybee_reminder_bot.py`.
