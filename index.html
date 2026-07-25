@@ -557,7 +557,7 @@ body {
     <aside class="w-64 theme-transition border-r flex flex-col flex-shrink-0" style="background-color: var(--bg-sidebar); border-color: var(--border-color);">
         <div class="p-5 flex items-center justify-between gap-3">
             <img src="carrybee-logo.png" alt="CarryBee" class="logo-img">
-            <button onclick="toggleTheme()" class="theme-toggle" title="Toggle Dark Mode">
+            <button onclick="toggleTheme()" class="theme-toggle" title="Toggle Dark Mode" aria-label="Toggle Dark Mode">
                 <i class="fa-solid fa-moon" id="theme-icon"></i>
             </button>
         </div>
@@ -799,7 +799,7 @@ body {
                     <p class="text-gold text-xs font-mono mb-1" id="modal-ticket-id">CB-0000-00000</p>
                     <h3 class="text-xl font-bold theme-transition" style="color: var(--text-primary);">Issue Details</h3>
                 </div>
-                <button onclick="closeModal()" class="theme-transition" style="color: var(--text-muted);">
+                <button onclick="closeModal()" class="theme-transition" style="color: var(--text-muted);" aria-label="Close modal">
                     <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
             </div>
@@ -856,23 +856,23 @@ body {
         <div class="rounded-2xl shadow-2xl overflow-hidden theme-transition" style="background-color: var(--bg-modal); border: 1px solid var(--border-color);">
             <div class="p-6 border-b flex justify-between items-center theme-transition" style="border-color: var(--border-color);">
                 <h3 class="text-xl font-bold theme-transition" style="color: var(--text-primary);">Raise New Issue</h3>
-                <button onclick="closeRaiseIssue()" class="theme-transition" style="color: var(--text-muted);">
+                <button onclick="closeRaiseIssue()" class="theme-transition" style="color: var(--text-muted);" aria-label="Close modal">
                     <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
             </div>
             <div class="p-6 space-y-4">
                 <div>
-                    <label class="block text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Merchant Name</label>
+                    <label for="new-merchant" class="block text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Merchant Name</label>
                     <input type="text" id="new-merchant" class="w-full rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-gold/50 theme-transition"
                         style="background-color: var(--bg-modal-content); color: var(--text-primary); border: 1px solid var(--border-input);" placeholder="Enter merchant name">
                 </div>
                 <div>
-                    <label class="block text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Consignment ID</label>
+                    <label for="new-consignment" class="block text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Consignment ID</label>
                     <input type="text" id="new-consignment" class="w-full rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-gold/50 theme-transition"
                         style="background-color: var(--bg-modal-content); color: var(--text-primary); border: 1px solid var(--border-input);" placeholder="Enter consignment ID">
                 </div>
                 <div>
-                    <label class="block text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Issue Tag</label>
+                    <label for="new-tag" class="block text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Issue Tag</label>
                     <select id="new-tag" class="w-full rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-gold/50 theme-transition"
                         style="background-color: var(--bg-modal-content); color: var(--text-primary); border: 1px solid var(--border-input);">
                         <option value="Delivery delay">Delivery delay</option>
@@ -888,7 +888,7 @@ body {
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Issue Details</label>
+                    <label for="new-details" class="block text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Issue Details</label>
                     <textarea id="new-details" rows="4" class="w-full rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-gold/50 resize-none theme-transition"
                         style="background-color: var(--bg-modal-content); color: var(--text-primary); border: 1px solid var(--border-input);" placeholder="Describe the issue in detail..."></textarea>
                 </div>
