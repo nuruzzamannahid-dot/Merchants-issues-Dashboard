@@ -4,6 +4,8 @@ CarryBee Issue Reminder Bot
 Reads Google Sheet for "In Progress" issues and sends deadline reminders via Telegram.
 """
 
+import os
+import sys
 import requests
 import csv
 import json
@@ -13,8 +15,25 @@ from collections import defaultdict
 
 # ==================== CONFIGURATION ====================
 
-# Your Telegram Bot Token
-BOT_TOKEN = "8851597317:AAGAjKaTjxp8oJga0reO64se9VhEBf2gYUc"
+def load_bot_token():
+    """Load Telegram Bot Token securely from environment variable or local .env file"""
+    token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    if token:
+        return token
+    if os.path.exists(".env"):
+        try:
+            with open(".env", "r") as f:
+                for line in f:
+                    if line.strip() and not line.startswith("#") and "=" in line:
+                        key, val = line.strip().split("=", 1)
+                        if key.strip() == "TELEGRAM_BOT_TOKEN":
+                            return val.strip().strip('"').strip("'")
+        except Exception:
+            pass
+    return None
+
+# Securely loaded Bot Token
+BOT_TOKEN = load_bot_token()
 
 # Your Google Sheet CSV URL (same as dashboard)
 SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSybJkSsKQxyczJc4Llsa10ywnR7YL3JNWN3Yx7RCc3GGWBOt4O43sSOMy2cNgYVQRtoAakguvAqgsy/pub?output=csv"
@@ -314,6 +333,11 @@ REMINDER_TIMES = [
 
 def run_scheduled_mode():
     """Run bot in scheduled mode - check at specific times"""
+    if not BOT_TOKEN:
+        print("[ERROR] Telegram Bot Token is not configured.")
+        print("Please set the TELEGRAM_BOT_TOKEN environment variable or add it to a .env file.")
+        sys.exit(1)
+
     print("="*60)
     print("CarryBee Issue Reminder Bot - Scheduled Mode")
     print("="*60)
@@ -326,7 +350,7 @@ def run_scheduled_mode():
     if not CHAT_IDS:
         print("\n[SETUP REQUIRED]")
         print("1. Message your bot on Telegram")
-        print("2. Visit: https://api.telegram.org/bot8851597317:AAGAjKaTjxp8oJga0reO64se9VhEBf2gYUc/getUpdates")
+        print(f"2. Visit: https://api.telegram.org/bot{BOT_TOKEN}/getUpdates")
         print("3. Find your 'chat.id' in the response")
         print("4. Add it to CHAT_IDS list in this script")
         print("="*60)
@@ -371,6 +395,11 @@ def run_scheduled_mode():
 
 def run_continuous_mode():
     """Run bot in continuous mode - check every 5 minutes"""
+    if not BOT_TOKEN:
+        print("[ERROR] Telegram Bot Token is not configured.")
+        print("Please set the TELEGRAM_BOT_TOKEN environment variable or add it to a .env file.")
+        sys.exit(1)
+
     print("="*60)
     print("CarryBee Issue Reminder Bot - Continuous Mode")
     print("="*60)
