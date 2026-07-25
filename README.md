@@ -101,7 +101,14 @@ https://docs.google.com/spreadsheets/d/e/2PACX-1vSybJkSsKQxyczJc4Llsa10ywnR7YL3J
 Make sure your sheet is **published to the web** as CSV.
 
 ### Telegram Bot
-- Bot Token: `8851597317:AAGAjKaTjxp8oJga0reO64se9VhEBf2gYUc`
+The bot token must be securely configured as an environment variable or in a local `.env` file to prevent exposing sensitive secrets.
+
+1. **Environment Variable:** Set `TELEGRAM_BOT_TOKEN` in your hosting environment (e.g. Render, Railway, PythonAnywhere).
+2. **Local .env File:** Create a `.env` file in the project root (this file is already ignored by Git):
+   ```env
+   TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
+   ```
+
 - Chat IDs configured: `8485545697`, `8839924588`
 
 To add more recipients, edit `CHAT_IDS` in `carrybee_reminder_bot.py`.
