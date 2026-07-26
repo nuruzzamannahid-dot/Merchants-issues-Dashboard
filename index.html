@@ -1164,6 +1164,7 @@ async function fetchData() {
     document.getElementById('view-tracker').classList.remove('hidden');
     updateStats();
     updateResponseStats();
+    renderTagFilter();
     renderTable();
     updateAnalytics();
     document.getElementById('last-refreshed').innerText = `Last refreshed: ${new Date().toLocaleTimeString()}`;
@@ -1271,19 +1272,24 @@ function animateValue(id, start, end, duration) {
     }, stepTime);
 }
 
+function renderTagFilter() {
+    const tagSelect = document.getElementById('tagFilter');
+    if (!tagSelect) return;
+    const currentTag = tagSelect.value;
+    const uniqueTags = [...new Set(issuesData.map(i => (i.issueTag || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+    let selectHtml = '<option value="All">All Issue Tags</option>';
+    uniqueTags.forEach(tag => {
+        selectHtml += `<option value="${tag}" ${tag === currentTag ? 'selected' : ''}>${tag}</option>`;
+    });
+    tagSelect.innerHTML = selectHtml;
+}
+
 function renderTable() {
     const tbody = document.getElementById('issuesTableBody');
+    if (!tbody) return;
     const search = document.getElementById('searchInput').value.toLowerCase();
     const statusFilter = document.getElementById('statusFilter').value;
     const tagFilter = document.getElementById('tagFilter').value;
-    tbody.innerHTML = '';
-    const tagSelect = document.getElementById('tagFilter');
-    const currentTag = tagSelect.value;
-    const uniqueTags = [...new Set(issuesData.map(i => (i.issueTag || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-    tagSelect.innerHTML = '<option value="All">All Issue Tags</option>';
-    uniqueTags.forEach(tag => {
-        tagSelect.innerHTML += `<option value="${tag}" ${tag === currentTag ? 'selected' : ''}>${tag}</option>`;
-    });
 
     let filtered = issuesData.filter(issue => {
         const status = getStatus(issue);
@@ -1298,9 +1304,11 @@ function renderTable() {
     });
 
     if (filtered.length === 0) {
+        tbody.innerHTML = '';
         document.getElementById('emptyState').classList.remove('hidden');
     } else {
         document.getElementById('emptyState').classList.add('hidden');
+        let accumulatedHtml = '';
         filtered.forEach(issue => {
             const status = getStatus(issue);
             let statusClass = '', statusDot = '';
@@ -1308,7 +1316,7 @@ function renderTable() {
             else if (status === 'In Progress') { statusClass = 'status-progress'; statusDot = 'bg-blue-500'; }
             else if (status === 'Resolved') { statusClass = 'status-resolved'; statusDot = 'bg-green-500'; }
             const detailsText = issue.details || '-';
-            const row = `
+            accumulatedHtml += `
                 <tr class="hover-row transition-colors border-b last:border-0 theme-transition" style="border-color: var(--border-color);">
                     <td class="p-4 font-mono text-gold font-medium text-xs">${issue.ticketId || '-'}</td>
                     <td class="p-4 text-xs theme-transition" style="color: var(--text-muted);">${issue.date}<br><span class="text-xs opacity-70">${issue.timestamp}</span></td>
@@ -1330,8 +1338,8 @@ function renderTable() {
                     </td>
                 </tr>
             `;
-            tbody.innerHTML += row;
         });
+        tbody.innerHTML = accumulatedHtml;
     }
 }
 
@@ -1521,15 +1529,17 @@ function renderTopMerchants() {
     issuesData.forEach(i => { if (i.merchant) merchants[i.merchant] = (merchants[i.merchant] || 0) + 1; });
     const sorted = Object.entries(merchants).sort((a,b) => b[1] - a[1]).slice(0, 6);
     const container = document.getElementById('topMerchantsList');
-    container.innerHTML = '';
+    if (!container) return;
+    let accumulatedHtml = '';
     sorted.forEach(([name, count]) => {
-        container.innerHTML += `
+        accumulatedHtml += `
             <div class="flex items-center justify-between p-3 rounded-lg border theme-transition" style="background: var(--bg-modal-content); border-color: var(--border-color);">
                 <span class="text-sm font-medium theme-transition" style="color: var(--text-primary);">${name}</span>
                 <span class="text-xs font-bold text-gold bg-gold/10 px-2 py-1 rounded-full">${count} issue${count > 1 ? 's' : ''}</span>
             </div>
         `;
     });
+    container.innerHTML = accumulatedHtml;
 }
 
 function renderResolutionChart() {
