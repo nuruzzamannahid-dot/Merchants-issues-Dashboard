@@ -665,7 +665,7 @@ body {
                 <div class="flex flex-col sm:flex-row gap-3">
                     <div class="relative flex-1">
                         <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 theme-transition" style="color: var(--text-muted);"></i>
-                        <input type="text" id="searchInput" onkeyup="renderTable()" placeholder="Search by Ticket ID, Merchant, Consignment, or Details..."
+                        <input type="text" id="searchInput" onkeyup="debouncedRenderTable()" placeholder="Search by Ticket ID, Merchant, Consignment, or Details..."
                             class="w-full rounded-lg pl-10 pr-4 py-2.5 text-sm placeholder-slate-400 focus:outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/50 transition-all theme-transition"
                             style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
                     </div>
@@ -1271,19 +1271,32 @@ function animateValue(id, start, end, duration) {
     }, stepTime);
 }
 
+// Performance Optimization: Debounce helper to reduce frequency of heavy filtering/rendering
+function debounce(func, wait) {
+    let timeout;
+    return function(...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), wait);
+    };
+}
+
+const debouncedRenderTable = debounce(renderTable, 150);
+
 function renderTable() {
     const tbody = document.getElementById('issuesTableBody');
     const search = document.getElementById('searchInput').value.toLowerCase();
     const statusFilter = document.getElementById('statusFilter').value;
     const tagFilter = document.getElementById('tagFilter').value;
-    tbody.innerHTML = '';
+
     const tagSelect = document.getElementById('tagFilter');
     const currentTag = tagSelect.value;
     const uniqueTags = [...new Set(issuesData.map(i => (i.issueTag || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-    tagSelect.innerHTML = '<option value="All">All Issue Tags</option>';
-    uniqueTags.forEach(tag => {
-        tagSelect.innerHTML += `<option value="${tag}" ${tag === currentTag ? 'selected' : ''}>${tag}</option>`;
-    });
+
+    // Performance Optimization: Batch tagSelect options construction and perform a single write
+    const tagOptions = ['<option value="All">All Issue Tags</option>']
+        .concat(uniqueTags.map(tag => `<option value="${tag}" ${tag === currentTag ? 'selected' : ''}>${tag}</option>`))
+        .join('');
+    tagSelect.innerHTML = tagOptions;
 
     let filtered = issuesData.filter(issue => {
         const status = getStatus(issue);
@@ -1298,17 +1311,20 @@ function renderTable() {
     });
 
     if (filtered.length === 0) {
+        tbody.innerHTML = '';
         document.getElementById('emptyState').classList.remove('hidden');
     } else {
         document.getElementById('emptyState').classList.add('hidden');
-        filtered.forEach(issue => {
+        // Performance Optimization: Map over filtered issues and join them into a single string
+        // instead of appending to innerHTML in a loop (which triggers expensive layout recalcs/reflows)
+        const rowsHtml = filtered.map(issue => {
             const status = getStatus(issue);
             let statusClass = '', statusDot = '';
             if (status === 'Open') { statusClass = 'status-open'; statusDot = 'bg-yellow-500'; }
             else if (status === 'In Progress') { statusClass = 'status-progress'; statusDot = 'bg-blue-500'; }
             else if (status === 'Resolved') { statusClass = 'status-resolved'; statusDot = 'bg-green-500'; }
             const detailsText = issue.details || '-';
-            const row = `
+            return `
                 <tr class="hover-row transition-colors border-b last:border-0 theme-transition" style="border-color: var(--border-color);">
                     <td class="p-4 font-mono text-gold font-medium text-xs">${issue.ticketId || '-'}</td>
                     <td class="p-4 text-xs theme-transition" style="color: var(--text-muted);">${issue.date}<br><span class="text-xs opacity-70">${issue.timestamp}</span></td>
@@ -1330,8 +1346,8 @@ function renderTable() {
                     </td>
                 </tr>
             `;
-            tbody.innerHTML += row;
-        });
+        }).join('');
+        tbody.innerHTML = rowsHtml;
     }
 }
 
@@ -1521,15 +1537,14 @@ function renderTopMerchants() {
     issuesData.forEach(i => { if (i.merchant) merchants[i.merchant] = (merchants[i.merchant] || 0) + 1; });
     const sorted = Object.entries(merchants).sort((a,b) => b[1] - a[1]).slice(0, 6);
     const container = document.getElementById('topMerchantsList');
-    container.innerHTML = '';
-    sorted.forEach(([name, count]) => {
-        container.innerHTML += `
-            <div class="flex items-center justify-between p-3 rounded-lg border theme-transition" style="background: var(--bg-modal-content); border-color: var(--border-color);">
-                <span class="text-sm font-medium theme-transition" style="color: var(--text-primary);">${name}</span>
-                <span class="text-xs font-bold text-gold bg-gold/10 px-2 py-1 rounded-full">${count} issue${count > 1 ? 's' : ''}</span>
-            </div>
-        `;
-    });
+    // Performance Optimization: Map and join into a single string to perform a single write to innerHTML
+    const merchantsHtml = sorted.map(([name, count]) => `
+        <div class="flex items-center justify-between p-3 rounded-lg border theme-transition" style="background: var(--bg-modal-content); border-color: var(--border-color);">
+            <span class="text-sm font-medium theme-transition" style="color: var(--text-primary);">${name}</span>
+            <span class="text-xs font-bold text-gold bg-gold/10 px-2 py-1 rounded-full">${count} issue${count > 1 ? 's' : ''}</span>
+        </div>
+    `).join('');
+    container.innerHTML = merchantsHtml;
 }
 
 function renderResolutionChart() {
