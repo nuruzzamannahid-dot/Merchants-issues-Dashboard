@@ -4,17 +4,20 @@ CarryBee Issue Reminder Bot
 Reads Google Sheet for "In Progress" issues and sends deadline reminders via Telegram.
 """
 
+import os
+import sys
 import requests
 import csv
 import json
 import time
+import html
 from datetime import datetime, timedelta
 from collections import defaultdict
 
 # ==================== CONFIGURATION ====================
 
-# Your Telegram Bot Token
-BOT_TOKEN = "8851597317:AAGAjKaTjxp8oJga0reO64se9VhEBf2gYUc"
+# Load Telegram Bot Token from environment variable for security
+BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 
 # Your Google Sheet CSV URL (same as dashboard)
 SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSybJkSsKQxyczJc4Llsa10ywnR7YL3JNWN3Yx7RCc3GGWBOt4O43sSOMy2cNgYVQRtoAakguvAqgsy/pub?output=csv"
@@ -187,6 +190,9 @@ def format_datetime(dt):
 
 def send_telegram_message(chat_id, message, parse_mode="HTML"):
     """Send message via Telegram Bot API"""
+    if not BOT_TOKEN:
+        print("[ERROR] TELEGRAM_BOT_TOKEN environment variable is not set. Cannot send message.")
+        return False
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     payload = {
         "chat_id": chat_id,
@@ -205,18 +211,27 @@ def send_telegram_message(chat_id, message, parse_mode="HTML"):
         print(f"[ERROR] Failed to send Telegram message: {e}")
         return False
 
+def escape_html(text):
+    """Helper to escape HTML characters in dynamic strings for Telegram HTML parse_mode"""
+    if text is None:
+        return ""
+    return html.escape(str(text))
+
 def build_reminder_message(issue, deadline, is_urgent=False):
-    """Build formatted reminder message"""
+    """Build formatted reminder message with escaped dynamic fields to prevent HTML injection/parsing errors"""
     status_emoji = "⚠️" if is_urgent else "⏰"
     urgency_text = "<b>🔴 URGENT: DEADLINE APPROACHING!</b>\n\n" if is_urgent else ""
 
-    tag = issue.get('issueTag', 'General')
-    merchant = issue.get('merchant', 'Unknown')
-    consignment = issue.get('consignmentId', 'N/A')
-    details = issue.get('details', 'No details')[:100]  # Truncate
+    tag = escape_html(issue.get('issueTag', 'General'))
+    merchant = escape_html(issue.get('merchant', 'Unknown'))
+    consignment = escape_html(issue.get('consignmentId', 'N/A'))
+
+    # Escape details and then truncate to avoid breaking tags
+    raw_details = issue.get('details', 'No details')
+    details = escape_html(raw_details[:100])
 
     deadline_str = format_deadline(deadline)
-    submitted = f"{issue.get('date', 'N/A')} {issue.get('timestamp', 'N/A')}"
+    submitted = f"{escape_html(issue.get('date', 'N/A'))} {escape_html(issue.get('timestamp', 'N/A'))}"
 
     message = f"""{status_emoji} <b>CarryBee Issue Reminder</b> {status_emoji}
 
@@ -315,6 +330,9 @@ REMINDER_TIMES = [
 
 def run_scheduled_mode():
     """Run bot in scheduled mode - check at specific times"""
+    if not BOT_TOKEN:
+        print("[FATAL ERROR] TELEGRAM_BOT_TOKEN environment variable is not set. Please set it before running the bot.")
+        sys.exit(1)
     print("="*60)
     print("CarryBee Issue Reminder Bot - Scheduled Mode")
     print("="*60)
@@ -327,7 +345,7 @@ def run_scheduled_mode():
     if not CHAT_IDS:
         print("\n[SETUP REQUIRED]")
         print("1. Message your bot on Telegram")
-        print("2. Visit: https://api.telegram.org/bot8851597317:AAGAjKaTjxp8oJga0reO64se9VhEBf2gYUc/getUpdates")
+        print("2. Visit: https://api.telegram.org/bot<YOUR_TOKEN>/getUpdates")
         print("3. Find your 'chat.id' in the response")
         print("4. Add it to CHAT_IDS list in this script")
         print("="*60)
@@ -372,6 +390,9 @@ def run_scheduled_mode():
 
 def run_continuous_mode():
     """Run bot in continuous mode - check every 5 minutes"""
+    if not BOT_TOKEN:
+        print("[FATAL ERROR] TELEGRAM_BOT_TOKEN environment variable is not set. Please set it before running the bot.")
+        sys.exit(1)
     print("="*60)
     print("CarryBee Issue Reminder Bot - Continuous Mode")
     print("="*60)
