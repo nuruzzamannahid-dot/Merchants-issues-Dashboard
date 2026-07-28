@@ -504,6 +504,10 @@ body {
     .login-card-wrap.visible { transform: translate(-50%, -50%) translateY(0) scale(1); }
     .login-card { width: 86vw; max-width: 320px; }
 }
+*:focus-visible {
+    outline: 3px solid var(--cb-yellow) !important;
+    outline-offset: 2px !important;
+}
 </style>
 </head>
 <body>
@@ -533,9 +537,11 @@ body {
             <div class="login-error" id="loginError"></div>
             <div class="login-success-msg" id="loginSuccess">Signing in...</div>
             <div class="login-field">
+                <label for="loginEmail" class="sr-only">Email Address</label>
                 <input type="email" id="loginEmail" placeholder="Email address" autocomplete="email">
             </div>
             <div class="login-field">
+                <label for="pwField" class="sr-only">Password</label>
                 <input type="password" placeholder="Password" id="pwField" autocomplete="current-password">
                 <button class="login-eye-toggle" data-target="pwField" aria-label="Show password">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
@@ -601,19 +607,19 @@ body {
                     <i class="fa-solid fa-download"></i> Export CSV
                 </button>
                 <div class="relative" id="userMenuContainer">
-                    <div class="user-avatar" id="userAvatar" onclick="toggleUserMenu()">U</div>
+                    <div class="user-avatar" id="userAvatar" onclick="toggleUserMenu()" tabindex="0" role="button" aria-haspopup="true" aria-expanded="false" aria-label="User menu">U</div>
                     <div class="user-dropdown" id="userDropdown">
                         <div class="px-4 py-2">
                             <p class="text-xs font-medium theme-transition" style="color: var(--text-primary);" id="dropdownName">User</p>
                             <p class="text-xs theme-transition" style="color: var(--text-muted);" id="dropdownEmail">user@carrybee.com</p>
                         </div>
                         <div class="user-dropdown-divider"></div>
-                        <div class="user-dropdown-item" onclick="toggleTheme()">
+                        <button class="user-dropdown-item w-full text-left font-normal bg-transparent border-0" onclick="toggleTheme()" aria-label="Toggle Theme">
                             <i class="fa-solid fa-moon"></i> Toggle Theme
-                        </div>
-                        <div class="user-dropdown-item logout" onclick="handleLogout()">
+                        </button>
+                        <button class="user-dropdown-item logout w-full text-left font-normal bg-transparent border-0" onclick="handleLogout()" aria-label="Sign Out">
                             <i class="fa-solid fa-arrow-right-from-bracket"></i> Sign Out
-                        </div>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -664,11 +670,13 @@ body {
                 </div>
                 <div class="flex flex-col sm:flex-row gap-3">
                     <div class="relative flex-1">
+                        <label for="searchInput" class="sr-only">Search by Ticket ID, Merchant, Consignment, or Details</label>
                         <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 theme-transition" style="color: var(--text-muted);"></i>
                         <input type="text" id="searchInput" onkeyup="renderTable()" placeholder="Search by Ticket ID, Merchant, Consignment, or Details..."
                             class="w-full rounded-lg pl-10 pr-4 py-2.5 text-sm placeholder-slate-400 focus:outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/50 transition-all theme-transition"
                             style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
                     </div>
+                    <label for="statusFilter" class="sr-only">Filter by Status</label>
                     <select id="statusFilter" onchange="renderTable()" class="rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
                         style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
                         <option value="All">All Statuses</option>
@@ -676,6 +684,7 @@ body {
                         <option value="In Progress">In Progress</option>
                         <option value="Resolved">Resolved</option>
                     </select>
+                    <label for="tagFilter" class="sr-only">Filter by Tag</label>
                     <select id="tagFilter" onchange="renderTable()" class="rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
                         style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
                         <option value="All">All Issue Tags</option>
@@ -992,17 +1001,36 @@ function updateUserUI() {
 }
 
 function toggleUserMenu() {
-    document.getElementById('userDropdown').classList.toggle('show');
+    const dropdown = document.getElementById('userDropdown');
+    dropdown.classList.toggle('show');
+    const isShow = dropdown.classList.contains('show');
+    document.getElementById('userAvatar').setAttribute('aria-expanded', isShow ? 'true' : 'false');
 }
 
 function hideUserMenu() {
-    document.getElementById('userDropdown').classList.remove('show');
+    const dropdown = document.getElementById('userDropdown');
+    if (dropdown) dropdown.classList.remove('show');
+    const avatar = document.getElementById('userAvatar');
+    if (avatar) avatar.setAttribute('aria-expanded', 'false');
 }
 
 document.addEventListener('click', (e) => {
     const container = document.getElementById('userMenuContainer');
     if (container && !container.contains(e.target)) {
         hideUserMenu();
+    }
+});
+
+// Keydown event listener for the user profile avatar button
+window.addEventListener('DOMContentLoaded', () => {
+    const avatar = document.getElementById('userAvatar');
+    if (avatar) {
+        avatar.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                toggleUserMenu();
+            }
+        });
     }
 });
 
