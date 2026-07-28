@@ -1,3 +1,7 @@
 ## 2026-07-25 - [Optimize CSV Parsing using Standard Library csv.reader]
 **Learning:** Hand-rolled character-by-character string parsers implemented in pure Python have massive performance overhead (taking O(N) in Python bytecode with lots of string object copying and conditionals) and can easily fail on edge cases like embedded commas or multiline quoted columns. Using standard library `csv.reader` (which is written in optimized C) is ~3x to 12x faster, and handles complex RFC 4180 parsing correctly.
 **Action:** Always prefer standard library, C-implemented parsing modules (like `csv`, `json`, `xml.etree.ElementTree`) over hand-rolled parsing logic for processing structured data formats.
+
+## 2026-10-24 - [Avoid Redundant Dropdown Rebuilding and Batch DOM Mutations]
+**Learning:** Rebuilding DOM elements (like drop-down select options) and performing incremental `Element.innerHTML += str` updates within hot execution paths (such as table-filtering/searching loops) causes massive layout reflows and browser repaints. Moving static or slow-changing dropdown generation out of the rendering loop and batching DOM insertions into a single operation via `Array.join('')` or a single document write drastically reduces page stuttering and script CPU usage.
+**Action:** Extract dynamic-but-stable filter generation outside of highly-frequent event callbacks and compile multi-row tables into a single HTML string block before committing it to the DOM.
