@@ -665,7 +665,7 @@ body {
                 <div class="flex flex-col sm:flex-row gap-3">
                     <div class="relative flex-1">
                         <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 theme-transition" style="color: var(--text-muted);"></i>
-                        <input type="text" id="searchInput" onkeyup="renderTable()" placeholder="Search by Ticket ID, Merchant, Consignment, or Details..."
+                        <input type="text" id="searchInput" onkeyup="debouncedRenderTable()" placeholder="Search by Ticket ID, Merchant, Consignment, or Details..."
                             class="w-full rounded-lg pl-10 pr-4 py-2.5 text-sm placeholder-slate-400 focus:outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/50 transition-all theme-transition"
                             style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
                     </div>
@@ -1132,6 +1132,40 @@ function getTagColor(tag) {
     return TAG_COLORS[tag] || 'bg-gray-200 text-gray-600 border-gray-300';
 }
 
+function escapeHTML(str) {
+    if (!str) return '';
+    return str.toString()
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function debounce(func, wait) {
+    let timeout;
+    return function(...args) {
+        const context = this;
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(context, args), wait);
+    };
+}
+
+const debouncedRenderTable = debounce(renderTable, 150);
+
+function populateTagFilter() {
+    const tagSelect = document.getElementById('tagFilter');
+    if (!tagSelect) return;
+    const currentTag = tagSelect.value || 'All';
+    const uniqueTags = [...new Set(issuesData.map(i => (i.issueTag || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+    let html = '<option value="All">All Issue Tags</option>';
+    uniqueTags.forEach(tag => {
+        const escapedTag = escapeHTML(tag);
+        html += `<option value="${escapedTag}" ${tag === currentTag ? 'selected' : ''}>${escapedTag}</option>`;
+    });
+    tagSelect.innerHTML = html;
+}
+
 async function fetchData() {
     const refreshIcon = document.getElementById('refresh-icon');
     refreshIcon.classList.add('fa-spin');
@@ -1162,6 +1196,7 @@ async function fetchData() {
 
     document.getElementById('loading-state').classList.add('hidden');
     document.getElementById('view-tracker').classList.remove('hidden');
+    populateTagFilter();
     updateStats();
     updateResponseStats();
     renderTable();
@@ -1277,13 +1312,6 @@ function renderTable() {
     const statusFilter = document.getElementById('statusFilter').value;
     const tagFilter = document.getElementById('tagFilter').value;
     tbody.innerHTML = '';
-    const tagSelect = document.getElementById('tagFilter');
-    const currentTag = tagSelect.value;
-    const uniqueTags = [...new Set(issuesData.map(i => (i.issueTag || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-    tagSelect.innerHTML = '<option value="All">All Issue Tags</option>';
-    uniqueTags.forEach(tag => {
-        tagSelect.innerHTML += `<option value="${tag}" ${tag === currentTag ? 'selected' : ''}>${tag}</option>`;
-    });
 
     let filtered = issuesData.filter(issue => {
         const status = getStatus(issue);
@@ -1301,20 +1329,21 @@ function renderTable() {
         document.getElementById('emptyState').classList.remove('hidden');
     } else {
         document.getElementById('emptyState').classList.add('hidden');
+        const rows = [];
         filtered.forEach(issue => {
             const status = getStatus(issue);
             let statusClass = '', statusDot = '';
             if (status === 'Open') { statusClass = 'status-open'; statusDot = 'bg-yellow-500'; }
             else if (status === 'In Progress') { statusClass = 'status-progress'; statusDot = 'bg-blue-500'; }
             else if (status === 'Resolved') { statusClass = 'status-resolved'; statusDot = 'bg-green-500'; }
-            const detailsText = issue.details || '-';
+            const detailsText = escapeHTML(issue.details || '-');
             const row = `
                 <tr class="hover-row transition-colors border-b last:border-0 theme-transition" style="border-color: var(--border-color);">
-                    <td class="p-4 font-mono text-gold font-medium text-xs">${issue.ticketId || '-'}</td>
-                    <td class="p-4 text-xs theme-transition" style="color: var(--text-muted);">${issue.date}<br><span class="text-xs opacity-70">${issue.timestamp}</span></td>
-                    <td class="p-4 font-medium text-sm theme-transition" style="color: var(--text-primary);">${issue.merchant || '-'}</td>
-                    <td class="p-4 font-mono text-xs theme-transition" style="color: var(--text-muted);">${issue.consignmentId || '-'}</td>
-                    <td class="p-4"><span class="tag-pill border ${getTagColor(issue.issueTag)}">${issue.issueTag || 'General'}</span></td>
+                    <td class="p-4 font-mono text-gold font-medium text-xs">${escapeHTML(issue.ticketId || '-')}</td>
+                    <td class="p-4 text-xs theme-transition" style="color: var(--text-muted);">${escapeHTML(issue.date)}<br><span class="text-xs opacity-70">${escapeHTML(issue.timestamp)}</span></td>
+                    <td class="p-4 font-medium text-sm theme-transition" style="color: var(--text-primary);">${escapeHTML(issue.merchant || '-')}</td>
+                    <td class="p-4 font-mono text-xs theme-transition" style="color: var(--text-muted);">${escapeHTML(issue.consignmentId || '-')}</td>
+                    <td class="p-4"><span class="tag-pill border ${getTagColor(issue.issueTag)}">${escapeHTML(issue.issueTag || 'General')}</span></td>
                     <td class="p-4 details-cell">
                         <div class="details-preview text-xs theme-transition" style="color: var(--text-muted);">${detailsText}</div>
                     </td>
@@ -1324,14 +1353,15 @@ function renderTable() {
                             ${status}
                         </span>
                     </td>
-                    <td class="p-4 text-xs theme-transition" style="color: var(--text-secondary);">${issue.respondedBy ? `<span class="inline-flex items-center gap-1.5"><i class="fa-solid fa-user-check text-gold"></i> ${issue.respondedBy}</span>` : '<span style="color: var(--text-muted);">-</span>'}</td>
+                    <td class="p-4 text-xs theme-transition" style="color: var(--text-secondary);">${issue.respondedBy ? `<span class="inline-flex items-center gap-1.5"><i class="fa-solid fa-user-check text-gold"></i> ${escapeHTML(issue.respondedBy)}</span>` : '<span style="color: var(--text-muted);">-</span>'}</td>
                     <td class="p-4 text-right">
-                        <button onclick="openModal('${issue.ticketId}')" class="text-gold hover:opacity-80 text-xs font-bold uppercase tracking-wider transition-colors">View</button>
+                        <button onclick="openModal('${escapeHTML(issue.ticketId)}')" class="text-gold hover:opacity-80 text-xs font-bold uppercase tracking-wider transition-colors">View</button>
                     </td>
                 </tr>
             `;
-            tbody.innerHTML += row;
+            rows.push(row);
         });
+        tbody.innerHTML = rows.join('');
     }
 }
 
