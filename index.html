@@ -706,7 +706,10 @@ body {
                             <i class="fa-solid fa-inbox text-2xl theme-transition" style="color: var(--text-muted);"></i>
                         </div>
                         <h3 class="text-lg font-medium theme-transition" style="color: var(--text-primary);">No issues found</h3>
-                        <p class="text-sm mt-1 theme-transition" style="color: var(--text-muted);">Try adjusting your search or filters</p>
+                        <p class="text-sm mt-1 mb-4 theme-transition" style="color: var(--text-muted);">Try adjusting your search or filters</p>
+                        <button onclick="resetFilters()" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gold hover:opacity-90 text-sm font-bold transition-colors" style="color: var(--cb-black);" aria-label="Clear all search filters and text input">
+                            <i class="fa-solid fa-filter-circle-xmark"></i> Clear Filters
+                        </button>
                     </div>
                 </div>
             </div>
@@ -1269,6 +1272,16 @@ function animateValue(id, start, end, duration) {
         obj.innerHTML = current;
         if (current == end) clearInterval(timer);
     }, stepTime);
+}
+
+function resetFilters() {
+    const searchInput = document.getElementById('searchInput');
+    const statusFilter = document.getElementById('statusFilter');
+    const tagFilter = document.getElementById('tagFilter');
+    if (searchInput) searchInput.value = '';
+    if (statusFilter) statusFilter.value = 'All';
+    if (tagFilter) tagFilter.value = 'All';
+    renderTable();
 }
 
 function renderTable() {
