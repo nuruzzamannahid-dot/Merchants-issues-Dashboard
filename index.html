@@ -1132,6 +1132,32 @@ function getTagColor(tag) {
     return TAG_COLORS[tag] || 'bg-gray-200 text-gray-600 border-gray-300';
 }
 
+/* Performance & Security Optimization: HTML escape dynamic values to prevent XSS */
+function escapeHTML(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+/* Performance Optimization: Pull expensive filter-building routines out of high-frequency render triggers */
+function updateTagFilterOptions() {
+    const tagSelect = document.getElementById('tagFilter');
+    if (!tagSelect) return;
+    const currentTag = tagSelect.value;
+    const uniqueTags = [...new Set(issuesData.map(i => (i.issueTag || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+    const options = ['<option value="All">All Issue Tags</option>'];
+    uniqueTags.forEach(tag => {
+        const escapedTag = escapeHTML(tag);
+        options.push(`<option value="${escapedTag}" ${tag === currentTag ? 'selected' : ''}>${escapedTag}</option>`);
+    });
+    // Single batch write to minimize UI repaints/reflows
+    tagSelect.innerHTML = options.join('');
+}
+
 async function fetchData() {
     const refreshIcon = document.getElementById('refresh-icon');
     refreshIcon.classList.add('fa-spin');
@@ -1164,6 +1190,7 @@ async function fetchData() {
     document.getElementById('view-tracker').classList.remove('hidden');
     updateStats();
     updateResponseStats();
+    updateTagFilterOptions();
     renderTable();
     updateAnalytics();
     document.getElementById('last-refreshed').innerText = `Last refreshed: ${new Date().toLocaleTimeString()}`;
@@ -1276,14 +1303,6 @@ function renderTable() {
     const search = document.getElementById('searchInput').value.toLowerCase();
     const statusFilter = document.getElementById('statusFilter').value;
     const tagFilter = document.getElementById('tagFilter').value;
-    tbody.innerHTML = '';
-    const tagSelect = document.getElementById('tagFilter');
-    const currentTag = tagSelect.value;
-    const uniqueTags = [...new Set(issuesData.map(i => (i.issueTag || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-    tagSelect.innerHTML = '<option value="All">All Issue Tags</option>';
-    uniqueTags.forEach(tag => {
-        tagSelect.innerHTML += `<option value="${tag}" ${tag === currentTag ? 'selected' : ''}>${tag}</option>`;
-    });
 
     let filtered = issuesData.filter(issue => {
         const status = getStatus(issue);
@@ -1298,25 +1317,37 @@ function renderTable() {
     });
 
     if (filtered.length === 0) {
+        tbody.innerHTML = '';
         document.getElementById('emptyState').classList.remove('hidden');
     } else {
         document.getElementById('emptyState').classList.add('hidden');
+        const rows = [];
         filtered.forEach(issue => {
             const status = getStatus(issue);
             let statusClass = '', statusDot = '';
             if (status === 'Open') { statusClass = 'status-open'; statusDot = 'bg-yellow-500'; }
             else if (status === 'In Progress') { statusClass = 'status-progress'; statusDot = 'bg-blue-500'; }
             else if (status === 'Resolved') { statusClass = 'status-resolved'; statusDot = 'bg-green-500'; }
-            const detailsText = issue.details || '-';
+
+            // Performance & Security: HTML escape dynamic values to prevent XSS
+            const ticketIdEsc = escapeHTML(issue.ticketId);
+            const dateEsc = escapeHTML(issue.date);
+            const timestampEsc = escapeHTML(issue.timestamp);
+            const merchantEsc = escapeHTML(issue.merchant);
+            const consignmentIdEsc = escapeHTML(issue.consignmentId);
+            const issueTagEsc = escapeHTML(issue.issueTag || 'General');
+            const detailsTextEsc = escapeHTML(issue.details);
+            const respondedByEsc = escapeHTML(issue.respondedBy);
+
             const row = `
                 <tr class="hover-row transition-colors border-b last:border-0 theme-transition" style="border-color: var(--border-color);">
-                    <td class="p-4 font-mono text-gold font-medium text-xs">${issue.ticketId || '-'}</td>
-                    <td class="p-4 text-xs theme-transition" style="color: var(--text-muted);">${issue.date}<br><span class="text-xs opacity-70">${issue.timestamp}</span></td>
-                    <td class="p-4 font-medium text-sm theme-transition" style="color: var(--text-primary);">${issue.merchant || '-'}</td>
-                    <td class="p-4 font-mono text-xs theme-transition" style="color: var(--text-muted);">${issue.consignmentId || '-'}</td>
-                    <td class="p-4"><span class="tag-pill border ${getTagColor(issue.issueTag)}">${issue.issueTag || 'General'}</span></td>
+                    <td class="p-4 font-mono text-gold font-medium text-xs">${ticketIdEsc || '-'}</td>
+                    <td class="p-4 text-xs theme-transition" style="color: var(--text-muted);">${dateEsc}<br><span class="text-xs opacity-70">${timestampEsc}</span></td>
+                    <td class="p-4 font-medium text-sm theme-transition" style="color: var(--text-primary);">${merchantEsc || '-'}</td>
+                    <td class="p-4 font-mono text-xs theme-transition" style="color: var(--text-muted);">${consignmentIdEsc || '-'}</td>
+                    <td class="p-4"><span class="tag-pill border ${getTagColor(issue.issueTag)}">${issueTagEsc}</span></td>
                     <td class="p-4 details-cell">
-                        <div class="details-preview text-xs theme-transition" style="color: var(--text-muted);">${detailsText}</div>
+                        <div class="details-preview text-xs theme-transition" style="color: var(--text-muted);">${detailsTextEsc || '-'}</div>
                     </td>
                     <td class="p-4">
                         <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${statusClass}">
@@ -1324,14 +1355,16 @@ function renderTable() {
                             ${status}
                         </span>
                     </td>
-                    <td class="p-4 text-xs theme-transition" style="color: var(--text-secondary);">${issue.respondedBy ? `<span class="inline-flex items-center gap-1.5"><i class="fa-solid fa-user-check text-gold"></i> ${issue.respondedBy}</span>` : '<span style="color: var(--text-muted);">-</span>'}</td>
+                    <td class="p-4 text-xs theme-transition" style="color: var(--text-secondary);">${issue.respondedBy ? `<span class="inline-flex items-center gap-1.5"><i class="fa-solid fa-user-check text-gold"></i> ${respondedByEsc}</span>` : '<span style="color: var(--text-muted);">-</span>'}</td>
                     <td class="p-4 text-right">
-                        <button onclick="openModal('${issue.ticketId}')" class="text-gold hover:opacity-80 text-xs font-bold uppercase tracking-wider transition-colors">View</button>
+                        <button onclick="openModal('${ticketIdEsc}')" class="text-gold hover:opacity-80 text-xs font-bold uppercase tracking-wider transition-colors">View</button>
                     </td>
                 </tr>
             `;
-            tbody.innerHTML += row;
+            rows.push(row);
         });
+        // Batch write to innerHTML to minimize browser reflows & repaints (achieves O(N) rendering performance)
+        tbody.innerHTML = rows.join('');
     }
 }
 
