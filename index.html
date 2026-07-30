@@ -132,6 +132,8 @@ body {
     transition: all 0.2s; flex-shrink: 0;
 }
 .theme-toggle:hover { background: var(--cb-yellow); color: var(--cb-black); border-color: var(--cb-yellow); }
+.theme-toggle:focus-visible { outline: none; --tw-ring-offset-width: 2px; --tw-ring-color: #FFCC00; box-shadow: 0 0 0 var(--tw-ring-offset-width) var(--bg-body), 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color); }
+#pullZone:focus-visible { outline: none; border-radius: 8px; box-shadow: 0 0 0 2px #FFCC00; }
 .theme-transition {
     transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
@@ -533,9 +535,11 @@ body {
             <div class="login-error" id="loginError"></div>
             <div class="login-success-msg" id="loginSuccess">Signing in...</div>
             <div class="login-field">
+                <label for="loginEmail" class="sr-only">Email address</label>
                 <input type="email" id="loginEmail" placeholder="Email address" autocomplete="email">
             </div>
             <div class="login-field">
+                <label for="pwField" class="sr-only">Password</label>
                 <input type="password" placeholder="Password" id="pwField" autocomplete="current-password">
                 <button class="login-eye-toggle" data-target="pwField" aria-label="Show password">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
@@ -665,10 +669,12 @@ body {
                 <div class="flex flex-col sm:flex-row gap-3">
                     <div class="relative flex-1">
                         <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 theme-transition" style="color: var(--text-muted);"></i>
+                        <label for="searchInput" class="sr-only">Search issues</label>
                         <input type="text" id="searchInput" onkeyup="renderTable()" placeholder="Search by Ticket ID, Merchant, Consignment, or Details..."
                             class="w-full rounded-lg pl-10 pr-4 py-2.5 text-sm placeholder-slate-400 focus:outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/50 transition-all theme-transition"
                             style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
                     </div>
+                    <label for="statusFilter" class="sr-only">Filter by status</label>
                     <select id="statusFilter" onchange="renderTable()" class="rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
                         style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
                         <option value="All">All Statuses</option>
@@ -676,6 +682,7 @@ body {
                         <option value="In Progress">In Progress</option>
                         <option value="Resolved">Resolved</option>
                     </select>
+                    <label for="tagFilter" class="sr-only">Filter by issue tag</label>
                     <select id="tagFilter" onchange="renderTable()" class="rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
                         style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
                         <option value="All">All Issue Tags</option>
