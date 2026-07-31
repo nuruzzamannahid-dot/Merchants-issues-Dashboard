@@ -8,13 +8,15 @@ import requests
 import csv
 import json
 import time
+import os
+import html
 from datetime import datetime, timedelta
 from collections import defaultdict
 
 # ==================== CONFIGURATION ====================
 
-# Your Telegram Bot Token
-BOT_TOKEN = "8851597317:AAGAjKaTjxp8oJga0reO64se9VhEBf2gYUc"
+# Your Telegram Bot Token - securely loads from environment variable
+BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 
 # Your Google Sheet CSV URL (same as dashboard)
 SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSybJkSsKQxyczJc4Llsa10ywnR7YL3JNWN3Yx7RCc3GGWBOt4O43sSOMy2cNgYVQRtoAakguvAqgsy/pub?output=csv"
@@ -210,10 +212,10 @@ def build_reminder_message(issue, deadline, is_urgent=False):
     status_emoji = "⚠️" if is_urgent else "⏰"
     urgency_text = "<b>🔴 URGENT: DEADLINE APPROACHING!</b>\n\n" if is_urgent else ""
 
-    tag = issue.get('issueTag', 'General')
-    merchant = issue.get('merchant', 'Unknown')
-    consignment = issue.get('consignmentId', 'N/A')
-    details = issue.get('details', 'No details')[:100]  # Truncate
+    tag = html.escape(issue.get('issueTag', 'General'))
+    merchant = html.escape(issue.get('merchant', 'Unknown'))
+    consignment = html.escape(issue.get('consignmentId', 'N/A'))
+    details = html.escape(issue.get('details', 'No details')[:100])  # Truncate
 
     deadline_str = format_deadline(deadline)
     submitted = f"{issue.get('date', 'N/A')} {issue.get('timestamp', 'N/A')}"
@@ -327,7 +329,7 @@ def run_scheduled_mode():
     if not CHAT_IDS:
         print("\n[SETUP REQUIRED]")
         print("1. Message your bot on Telegram")
-        print("2. Visit: https://api.telegram.org/bot8851597317:AAGAjKaTjxp8oJga0reO64se9VhEBf2gYUc/getUpdates")
+        print(f"2. Visit: https://api.telegram.org/bot{BOT_TOKEN}/getUpdates")
         print("3. Find your 'chat.id' in the response")
         print("4. Add it to CHAT_IDS list in this script")
         print("="*60)
@@ -387,6 +389,13 @@ def run_continuous_mode():
 
 if __name__ == "__main__":
     import sys
+
+    # Exit with a clean error message if BOT_TOKEN is not configured
+    if not BOT_TOKEN:
+        print("[ERROR] TELEGRAM_BOT_TOKEN environment variable is not set!")
+        print("Please configure your Telegram Bot Token in the environment:")
+        print("  export TELEGRAM_BOT_TOKEN='<YOUR_BOT_TOKEN>'")
+        sys.exit(1)
 
     # Default: scheduled mode (recommended)
     mode = sys.argv[1] if len(sys.argv) > 1 else "scheduled"
