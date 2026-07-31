@@ -488,6 +488,14 @@ body {
     margin: 6px 0;
 }
 
+.theme-toggle:focus-visible,
+.pull-string-zone:focus-visible,
+.login-eye-toggle:focus-visible,
+.user-avatar:focus-visible {
+    outline: 3px solid var(--cb-yellow);
+    outline-offset: 2px;
+}
+
 @media (prefers-reduced-motion: reduce) {
     .login-card-wrap, .light-cone, .lamp-bulb-glow, .lamp-shade::after, .pull-string, .pull-knob {
         transition: none !important;
@@ -601,7 +609,7 @@ body {
                     <i class="fa-solid fa-download"></i> Export CSV
                 </button>
                 <div class="relative" id="userMenuContainer">
-                    <div class="user-avatar" id="userAvatar" onclick="toggleUserMenu()">U</div>
+                    <div class="user-avatar" id="userAvatar" onclick="toggleUserMenu()" role="button" tabindex="0" aria-label="User menu" aria-haspopup="true">U</div>
                     <div class="user-dropdown" id="userDropdown">
                         <div class="px-4 py-2">
                             <p class="text-xs font-medium theme-transition" style="color: var(--text-primary);" id="dropdownName">User</p>
@@ -1005,6 +1013,16 @@ document.addEventListener('click', (e) => {
         hideUserMenu();
     }
 });
+
+const userAvatar = document.getElementById('userAvatar');
+if (userAvatar) {
+    userAvatar.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            toggleUserMenu();
+        }
+    });
+}
 
 // ==================== LOGIN LAMP ANIMATION ====================
 const pullZone   = document.getElementById('pullZone');
