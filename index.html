@@ -504,6 +504,15 @@ body {
     .login-card-wrap.visible { transform: translate(-50%, -50%) translateY(0) scale(1); }
     .login-card { width: 86vw; max-width: 320px; }
 }
+
+/* Keyboard focus visible styles */
+#pullZone:focus-visible,
+.theme-toggle:focus-visible,
+.login-eye-toggle:focus-visible,
+.user-avatar:focus-visible {
+    outline: 2px solid var(--cb-yellow);
+    outline-offset: 2px;
+}
 </style>
 </head>
 <body>
@@ -533,9 +542,11 @@ body {
             <div class="login-error" id="loginError"></div>
             <div class="login-success-msg" id="loginSuccess">Signing in...</div>
             <div class="login-field">
+                <label for="loginEmail" class="sr-only">Email address</label>
                 <input type="email" id="loginEmail" placeholder="Email address" autocomplete="email">
             </div>
             <div class="login-field">
+                <label for="pwField" class="sr-only">Password</label>
                 <input type="password" placeholder="Password" id="pwField" autocomplete="current-password">
                 <button class="login-eye-toggle" data-target="pwField" aria-label="Show password">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
@@ -601,7 +612,7 @@ body {
                     <i class="fa-solid fa-download"></i> Export CSV
                 </button>
                 <div class="relative" id="userMenuContainer">
-                    <div class="user-avatar" id="userAvatar" onclick="toggleUserMenu()">U</div>
+                    <div class="user-avatar" id="userAvatar" onclick="toggleUserMenu()" role="button" tabindex="0" aria-label="User profile menu" aria-haspopup="true" aria-expanded="false">U</div>
                     <div class="user-dropdown" id="userDropdown">
                         <div class="px-4 py-2">
                             <p class="text-xs font-medium theme-transition" style="color: var(--text-primary);" id="dropdownName">User</p>
@@ -992,11 +1003,20 @@ function updateUserUI() {
 }
 
 function toggleUserMenu() {
-    document.getElementById('userDropdown').classList.toggle('show');
+    const dropdown = document.getElementById('userDropdown');
+    const isShowing = dropdown.classList.toggle('show');
+    const avatar = document.getElementById('userAvatar');
+    if (avatar) {
+        avatar.setAttribute('aria-expanded', isShowing ? 'true' : 'false');
+    }
 }
 
 function hideUserMenu() {
     document.getElementById('userDropdown').classList.remove('show');
+    const avatar = document.getElementById('userAvatar');
+    if (avatar) {
+        avatar.setAttribute('aria-expanded', 'false');
+    }
 }
 
 document.addEventListener('click', (e) => {
@@ -1594,7 +1614,18 @@ function showToast(message, type) {
     setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateX(100%)'; setTimeout(() => toast.remove(), 300); }, 3000);
 }
 
-window.addEventListener('DOMContentLoaded', () => { checkAuth(); });
+window.addEventListener('DOMContentLoaded', () => {
+    checkAuth();
+    const userAvatar = document.getElementById('userAvatar');
+    if (userAvatar) {
+        userAvatar.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                toggleUserMenu();
+            }
+        });
+    }
+});
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') { closeModal(); closeRaiseIssue(); }
     if (e.ctrlKey && e.key === 'r') { e.preventDefault(); fetchData(); }
