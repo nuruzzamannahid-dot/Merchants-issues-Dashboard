@@ -1132,6 +1132,20 @@ function getTagColor(tag) {
     return TAG_COLORS[tag] || 'bg-gray-200 text-gray-600 border-gray-300';
 }
 
+// Performance Optimization: Populate the issue tags select options only once when issuesData is fetched/loaded.
+// This prevents expensive O(N) array mapping, filtering, sorting, and DOM re-insertion during keystrokes in search input.
+function populateTagFilter() {
+    const tagSelect = document.getElementById('tagFilter');
+    if (!tagSelect) return;
+    const currentTag = tagSelect.value;
+    const uniqueTags = [...new Set(issuesData.map(i => (i.issueTag || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+    const options = ['<option value="All">All Issue Tags</option>'];
+    uniqueTags.forEach(tag => {
+        options.push(`<option value="${tag}" ${tag === currentTag ? 'selected' : ''}>${tag}</option>`);
+    });
+    tagSelect.innerHTML = options.join('');
+}
+
 async function fetchData() {
     const refreshIcon = document.getElementById('refresh-icon');
     refreshIcon.classList.add('fa-spin');
@@ -1162,6 +1176,7 @@ async function fetchData() {
 
     document.getElementById('loading-state').classList.add('hidden');
     document.getElementById('view-tracker').classList.remove('hidden');
+    populateTagFilter(); // Populate unique tags filter dynamically once on load/refresh
     updateStats();
     updateResponseStats();
     renderTable();
@@ -1271,19 +1286,16 @@ function animateValue(id, start, end, duration) {
     }, stepTime);
 }
 
+// Performance Optimization: renderTable is invoked on high-frequency search keyup events.
+// Instead of modifying the DOM with `innerHTML +=` in a loop, we filter the issues first,
+// accumulate the generated HTML rows into an array, and perform a single batch `innerHTML` update to achieve O(N) rendering.
+// Additionally, the expensive unique tag filter reconstruction has been moved out of this function.
 function renderTable() {
     const tbody = document.getElementById('issuesTableBody');
+    if (!tbody) return;
     const search = document.getElementById('searchInput').value.toLowerCase();
     const statusFilter = document.getElementById('statusFilter').value;
     const tagFilter = document.getElementById('tagFilter').value;
-    tbody.innerHTML = '';
-    const tagSelect = document.getElementById('tagFilter');
-    const currentTag = tagSelect.value;
-    const uniqueTags = [...new Set(issuesData.map(i => (i.issueTag || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-    tagSelect.innerHTML = '<option value="All">All Issue Tags</option>';
-    uniqueTags.forEach(tag => {
-        tagSelect.innerHTML += `<option value="${tag}" ${tag === currentTag ? 'selected' : ''}>${tag}</option>`;
-    });
 
     let filtered = issuesData.filter(issue => {
         const status = getStatus(issue);
@@ -1298,9 +1310,11 @@ function renderTable() {
     });
 
     if (filtered.length === 0) {
+        tbody.innerHTML = '';
         document.getElementById('emptyState').classList.remove('hidden');
     } else {
         document.getElementById('emptyState').classList.add('hidden');
+        const rows = [];
         filtered.forEach(issue => {
             const status = getStatus(issue);
             let statusClass = '', statusDot = '';
@@ -1330,8 +1344,9 @@ function renderTable() {
                     </td>
                 </tr>
             `;
-            tbody.innerHTML += row;
+            rows.push(row);
         });
+        tbody.innerHTML = rows.join('');
     }
 }
 
@@ -1516,20 +1531,24 @@ function renderTimeChart() {
     });
 }
 
+// Performance Optimization: Prevent layout thrashing and repetitive paint cycles.
+// We accumulate list items into an array and perform a single batch update to container.innerHTML.
 function renderTopMerchants() {
     const merchants = {};
     issuesData.forEach(i => { if (i.merchant) merchants[i.merchant] = (merchants[i.merchant] || 0) + 1; });
     const sorted = Object.entries(merchants).sort((a,b) => b[1] - a[1]).slice(0, 6);
     const container = document.getElementById('topMerchantsList');
-    container.innerHTML = '';
+    if (!container) return;
+    const cards = [];
     sorted.forEach(([name, count]) => {
-        container.innerHTML += `
+        cards.push(`
             <div class="flex items-center justify-between p-3 rounded-lg border theme-transition" style="background: var(--bg-modal-content); border-color: var(--border-color);">
                 <span class="text-sm font-medium theme-transition" style="color: var(--text-primary);">${name}</span>
                 <span class="text-xs font-bold text-gold bg-gold/10 px-2 py-1 rounded-full">${count} issue${count > 1 ? 's' : ''}</span>
             </div>
-        `;
+        `);
     });
+    container.innerHTML = cards.join('');
 }
 
 function renderResolutionChart() {
