@@ -1,3 +1,7 @@
 ## 2026-07-25 - [Optimize CSV Parsing using Standard Library csv.reader]
 **Learning:** Hand-rolled character-by-character string parsers implemented in pure Python have massive performance overhead (taking O(N) in Python bytecode with lots of string object copying and conditionals) and can easily fail on edge cases like embedded commas or multiline quoted columns. Using standard library `csv.reader` (which is written in optimized C) is ~3x to 12x faster, and handles complex RFC 4180 parsing correctly.
 **Action:** Always prefer standard library, C-implemented parsing modules (like `csv`, `json`, `xml.etree.ElementTree`) over hand-rolled parsing logic for processing structured data formats.
+
+## 2026-08-02 - [Eliminate High-Frequency DOM Repaints and Redundant Filter Rebuilding]
+**Learning:** In static frontend dashboards, invoking DOM modification loops like `innerHTML +=` inside user-input event triggers (such as keyup-based searching) forces frequent, expensive layout recalculations and repaints. Rebuilding form filter dropdowns on every search keystroke adds unnecessary computation overhead and risks focus jitter. Moving filter population to data-load triggers and compiling table rows into a memory array for a single batch `innerHTML` write eliminates the layout thrashing bottleneck completely.
+**Action:** Move static dropdown population logic out of high-frequency render paths (e.g., search keyup handlers) and perform single batch `innerHTML` writes instead of iterative row appends inside loops.
