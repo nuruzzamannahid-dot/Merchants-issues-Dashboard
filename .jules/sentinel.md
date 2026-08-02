@@ -1,0 +1,4 @@
+## 2026-06-29 - Telegram Bot Token Leak and Graceful Environment Configuration
+**Vulnerability:** The Telegram Bot API Token was hardcoded directly in `carrybee_reminder_bot.py` and `README.md`. Anyone with read access to the repository could compromise the bot.
+**Learning:** Hardcoding secrets is a common convenience anti-pattern. While loading secrets dynamically from environment variables resolves the leak, doing so at the module-level with an immediate `sys.exit()` causes unintended test failures when unit tests or other tools import components of the module.
+**Prevention:** Load secrets dynamically from environment variables, and perform validation/exits only inside the script execution boundary (`if __name__ == "__main__":`), or lazily during initialization, keeping the module importable for testing and isolated usage.
