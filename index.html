@@ -1132,6 +1132,22 @@ function getTagColor(tag) {
     return TAG_COLORS[tag] || 'bg-gray-200 text-gray-600 border-gray-300';
 }
 
+// Performance Optimization: Populate tag filter once when data is fetched,
+// rather than on every keyup search event in renderTable().
+// Also uses a single batch innerHTML write to prevent iterative DOM manipulation.
+function populateTagFilter() {
+    const tagSelect = document.getElementById('tagFilter');
+    if (!tagSelect) return;
+    const currentTag = tagSelect.value;
+    const uniqueTags = [...new Set(issuesData.map(i => (i.issueTag || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+
+    const options = ['<option value="All">All Issue Tags</option>'];
+    uniqueTags.forEach(tag => {
+        options.push(`<option value="${tag}" ${tag === currentTag ? 'selected' : ''}>${tag}</option>`);
+    });
+    tagSelect.innerHTML = options.join('');
+}
+
 async function fetchData() {
     const refreshIcon = document.getElementById('refresh-icon');
     refreshIcon.classList.add('fa-spin');
@@ -1162,6 +1178,7 @@ async function fetchData() {
 
     document.getElementById('loading-state').classList.add('hidden');
     document.getElementById('view-tracker').classList.remove('hidden');
+    populateTagFilter(); // Refresh options for dropdown filter
     updateStats();
     updateResponseStats();
     renderTable();
@@ -1271,19 +1288,15 @@ function animateValue(id, start, end, duration) {
     }, stepTime);
 }
 
+// Performance Optimization: renderTable handles frequent updates (e.g., search keyup).
+// We removed tag filter option rebuilding from here to populateTagFilter().
+// We also use an array to batch all table row innerHTML insertions at once, achieving O(N) rendering.
 function renderTable() {
     const tbody = document.getElementById('issuesTableBody');
     const search = document.getElementById('searchInput').value.toLowerCase();
     const statusFilter = document.getElementById('statusFilter').value;
     const tagFilter = document.getElementById('tagFilter').value;
     tbody.innerHTML = '';
-    const tagSelect = document.getElementById('tagFilter');
-    const currentTag = tagSelect.value;
-    const uniqueTags = [...new Set(issuesData.map(i => (i.issueTag || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-    tagSelect.innerHTML = '<option value="All">All Issue Tags</option>';
-    uniqueTags.forEach(tag => {
-        tagSelect.innerHTML += `<option value="${tag}" ${tag === currentTag ? 'selected' : ''}>${tag}</option>`;
-    });
 
     let filtered = issuesData.filter(issue => {
         const status = getStatus(issue);
@@ -1301,6 +1314,7 @@ function renderTable() {
         document.getElementById('emptyState').classList.remove('hidden');
     } else {
         document.getElementById('emptyState').classList.add('hidden');
+        const rows = [];
         filtered.forEach(issue => {
             const status = getStatus(issue);
             let statusClass = '', statusDot = '';
@@ -1330,8 +1344,9 @@ function renderTable() {
                     </td>
                 </tr>
             `;
-            tbody.innerHTML += row;
+            rows.push(row);
         });
+        tbody.innerHTML = rows.join('');
     }
 }
 
