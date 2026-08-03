@@ -135,6 +135,11 @@ body {
 .theme-transition {
     transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
+.theme-toggle:focus, .login-eye-toggle:focus, .user-avatar:focus, .pull-string-zone:focus { outline: none; }
+.theme-toggle:focus-visible { outline: 2px solid var(--cb-yellow); outline-offset: 2px; }
+.login-eye-toggle:focus-visible { outline: 2px solid #8b6cf2; outline-offset: 2px; border-radius: 4px; }
+.user-avatar:focus-visible { outline: 2px solid var(--cb-yellow); outline-offset: 2px; }
+.pull-string-zone:focus-visible { outline: 2px dashed rgba(220, 210, 195, 0.6); outline-offset: 4px; border-radius: 8px; }
 
 /* ========== LOGIN SCREEN ========== */
 .login-screen {
@@ -601,7 +606,7 @@ body {
                     <i class="fa-solid fa-download"></i> Export CSV
                 </button>
                 <div class="relative" id="userMenuContainer">
-                    <div class="user-avatar" id="userAvatar" onclick="toggleUserMenu()">U</div>
+                    <div class="user-avatar" id="userAvatar" onclick="toggleUserMenu()" role="button" tabindex="0" aria-haspopup="true" aria-expanded="false" aria-label="User profile and settings">U</div>
                     <div class="user-dropdown" id="userDropdown">
                         <div class="px-4 py-2">
                             <p class="text-xs font-medium theme-transition" style="color: var(--text-primary);" id="dropdownName">User</p>
@@ -992,11 +997,20 @@ function updateUserUI() {
 }
 
 function toggleUserMenu() {
-    document.getElementById('userDropdown').classList.toggle('show');
+    const dropdown = document.getElementById('userDropdown');
+    const isShowing = dropdown.classList.toggle('show');
+    const avatar = document.getElementById('userAvatar');
+    if (avatar) avatar.setAttribute('aria-expanded', isShowing ? 'true' : 'false');
 }
 
+// Global window reference for user menu toggle
+window.toggleUserMenu = toggleUserMenu;
+
 function hideUserMenu() {
-    document.getElementById('userDropdown').classList.remove('show');
+    const dropdown = document.getElementById('userDropdown');
+    if (dropdown) dropdown.classList.remove('show');
+    const avatar = document.getElementById('userAvatar');
+    if (avatar) avatar.setAttribute('aria-expanded', 'false');
 }
 
 document.addEventListener('click', (e) => {
@@ -1594,7 +1608,18 @@ function showToast(message, type) {
     setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateX(100%)'; setTimeout(() => toast.remove(), 300); }, 3000);
 }
 
-window.addEventListener('DOMContentLoaded', () => { checkAuth(); });
+window.addEventListener('DOMContentLoaded', () => {
+    checkAuth();
+    const avatar = document.getElementById('userAvatar');
+    if (avatar) {
+        avatar.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                toggleUserMenu();
+            }
+        });
+    }
+});
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') { closeModal(); closeRaiseIssue(); }
     if (e.ctrlKey && e.key === 'r') { e.preventDefault(); fetchData(); }
