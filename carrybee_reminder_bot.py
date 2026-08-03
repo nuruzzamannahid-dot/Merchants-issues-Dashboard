@@ -8,13 +8,14 @@ import requests
 import csv
 import json
 import time
+import os
 from datetime import datetime, timedelta
 from collections import defaultdict
 
 # ==================== CONFIGURATION ====================
 
-# Your Telegram Bot Token
-BOT_TOKEN = "8851597317:AAGAjKaTjxp8oJga0reO64se9VhEBf2gYUc"
+# Your Telegram Bot Token (loaded dynamically from environment)
+BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 
 # Your Google Sheet CSV URL (same as dashboard)
 SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSybJkSsKQxyczJc4Llsa10ywnR7YL3JNWN3Yx7RCc3GGWBOt4O43sSOMy2cNgYVQRtoAakguvAqgsy/pub?output=csv"
@@ -318,7 +319,8 @@ def run_scheduled_mode():
     print("="*60)
     print("CarryBee Issue Reminder Bot - Scheduled Mode")
     print("="*60)
-    print(f"Bot Token: {BOT_TOKEN[:20]}...")
+    token_display = BOT_TOKEN[:20] if BOT_TOKEN else "None"
+    print(f"Bot Token: {token_display}...")
     print(f"Timezone: UTC+{TIMEZONE_OFFSET} (BST/Dhaka)")
     print(f"Reminder times: {[f'{h:02d}:{m:02d}' for h, m in REMINDER_TIMES]}")
     print(f"Chat IDs: {CHAT_IDS if CHAT_IDS else 'NOT CONFIGURED'}")
@@ -327,7 +329,7 @@ def run_scheduled_mode():
     if not CHAT_IDS:
         print("\n[SETUP REQUIRED]")
         print("1. Message your bot on Telegram")
-        print("2. Visit: https://api.telegram.org/bot8851597317:AAGAjKaTjxp8oJga0reO64se9VhEBf2gYUc/getUpdates")
+        print(f"2. Visit: https://api.telegram.org/bot{BOT_TOKEN}/getUpdates")
         print("3. Find your 'chat.id' in the response")
         print("4. Add it to CHAT_IDS list in this script")
         print("="*60)
@@ -387,6 +389,12 @@ def run_continuous_mode():
 
 if __name__ == "__main__":
     import sys
+
+    # Validate environment variable
+    if not BOT_TOKEN:
+        print("[ERROR] TELEGRAM_BOT_TOKEN environment variable is not set.", file=sys.stderr)
+        print("[INFO] Please set the TELEGRAM_BOT_TOKEN environment variable and try again.", file=sys.stderr)
+        sys.exit(1)
 
     # Default: scheduled mode (recommended)
     mode = sys.argv[1] if len(sys.argv) > 1 else "scheduled"
