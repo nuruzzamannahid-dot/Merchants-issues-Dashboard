@@ -1164,6 +1164,7 @@ async function fetchData() {
     document.getElementById('view-tracker').classList.remove('hidden');
     updateStats();
     updateResponseStats();
+    updateTagFilterOptions();
     renderTable();
     updateAnalytics();
     document.getElementById('last-refreshed').innerText = `Last refreshed: ${new Date().toLocaleTimeString()}`;
@@ -1271,19 +1272,26 @@ function animateValue(id, start, end, duration) {
     }, stepTime);
 }
 
+function updateTagFilterOptions() {
+    const tagSelect = document.getElementById('tagFilter');
+    if (!tagSelect) return;
+    const currentTag = tagSelect.value;
+    const uniqueTags = [...new Set(issuesData.map(i => (i.issueTag || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+
+    // Performance Optimization: build options in a single string batch instead of iterative innerHTML +=
+    let optionsHtml = '<option value="All">All Issue Tags</option>';
+    uniqueTags.forEach(tag => {
+        optionsHtml += `<option value="${tag}" ${tag === currentTag ? 'selected' : ''}>${tag}</option>`;
+    });
+    tagSelect.innerHTML = optionsHtml;
+}
+
 function renderTable() {
     const tbody = document.getElementById('issuesTableBody');
     const search = document.getElementById('searchInput').value.toLowerCase();
     const statusFilter = document.getElementById('statusFilter').value;
     const tagFilter = document.getElementById('tagFilter').value;
     tbody.innerHTML = '';
-    const tagSelect = document.getElementById('tagFilter');
-    const currentTag = tagSelect.value;
-    const uniqueTags = [...new Set(issuesData.map(i => (i.issueTag || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-    tagSelect.innerHTML = '<option value="All">All Issue Tags</option>';
-    uniqueTags.forEach(tag => {
-        tagSelect.innerHTML += `<option value="${tag}" ${tag === currentTag ? 'selected' : ''}>${tag}</option>`;
-    });
 
     let filtered = issuesData.filter(issue => {
         const status = getStatus(issue);
@@ -1301,6 +1309,8 @@ function renderTable() {
         document.getElementById('emptyState').classList.remove('hidden');
     } else {
         document.getElementById('emptyState').classList.add('hidden');
+        // Performance Optimization: Gather HTML templates in an array and set innerHTML once
+        const rows = [];
         filtered.forEach(issue => {
             const status = getStatus(issue);
             let statusClass = '', statusDot = '';
@@ -1330,8 +1340,9 @@ function renderTable() {
                     </td>
                 </tr>
             `;
-            tbody.innerHTML += row;
+            rows.push(row);
         });
+        tbody.innerHTML = rows.join('');
     }
 }
 
@@ -1521,15 +1532,15 @@ function renderTopMerchants() {
     issuesData.forEach(i => { if (i.merchant) merchants[i.merchant] = (merchants[i.merchant] || 0) + 1; });
     const sorted = Object.entries(merchants).sort((a,b) => b[1] - a[1]).slice(0, 6);
     const container = document.getElementById('topMerchantsList');
-    container.innerHTML = '';
-    sorted.forEach(([name, count]) => {
-        container.innerHTML += `
-            <div class="flex items-center justify-between p-3 rounded-lg border theme-transition" style="background: var(--bg-modal-content); border-color: var(--border-color);">
-                <span class="text-sm font-medium theme-transition" style="color: var(--text-primary);">${name}</span>
-                <span class="text-xs font-bold text-gold bg-gold/10 px-2 py-1 rounded-full">${count} issue${count > 1 ? 's' : ''}</span>
-            </div>
-        `;
-    });
+
+    // Performance Optimization: Gather HTML in map/join and set innerHTML in a single write operation
+    const itemsHtml = sorted.map(([name, count]) => `
+        <div class="flex items-center justify-between p-3 rounded-lg border theme-transition" style="background: var(--bg-modal-content); border-color: var(--border-color);">
+            <span class="text-sm font-medium theme-transition" style="color: var(--text-primary);">${name}</span>
+            <span class="text-xs font-bold text-gold bg-gold/10 px-2 py-1 rounded-full">${count} issue${count > 1 ? 's' : ''}</span>
+        </div>
+    `).join('');
+    container.innerHTML = itemsHtml;
 }
 
 function renderResolutionChart() {
