@@ -1,0 +1,4 @@
+## 2026-06-29 - [DOM-based XSS Prevention in Issue Tracker Dashboard]
+**Vulnerability:** DOM-based Cross-Site Scripting (XSS) in `index.html`. Unsanitized dynamic data fetched from Google Sheets / external Turso database APIs (such as merchant name, consignment ID, details, and responder names) were directly interpolated into HTML string templates and written to elements using `.innerHTML`.
+**Learning:** This occurred because the template literals used directly inside high-frequency rendering functions like `renderTable()`, `updateResponseStats()`, and `renderTopMerchants()` lacked proper HTML-encoding/escaping wrappers, assuming the data coming from external sheets/databases was safe.
+**Prevention:** Always implement a centralized `escapeHTML` utility function in static client dashboards to sanitize any dynamic strings before constructing HTML strings and writing them to the DOM via `.innerHTML`.
