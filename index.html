@@ -901,6 +901,17 @@ body {
 </div>
 
 <script>
+// ==================== SECURITY UTILITIES ====================
+function escapeHTML(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 // ==================== AUTHENTICATION ====================
 const USERS = [
     { email: 'nuruzzaman.nahid@carrybee.com', password: 'CL-84175', name: 'Nuruzzaman Nahid' },
@@ -1227,11 +1238,13 @@ function updateResponseStats() {
     personContainer.innerHTML = people.map(name => {
         const stats = byPerson[name];
         const initials = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+        const escapedName = escapeHTML(name);
+        const escapedInitials = escapeHTML(initials);
         return `
             <div class="flex items-center justify-between px-3 py-2 rounded-lg theme-transition" style="background-color: var(--bg-input);">
                 <div class="flex items-center gap-2">
-                    <span class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold" style="background: rgba(255,204,0,0.15); color: var(--gold, #ffcc00);">${initials}</span>
-                    <span class="text-xs font-medium theme-transition" style="color: var(--text-primary);">${name}</span>
+                    <span class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold" style="background: rgba(255,204,0,0.15); color: var(--gold, #ffcc00);">${escapedInitials}</span>
+                    <span class="text-xs font-medium theme-transition" style="color: var(--text-primary);">${escapedName}</span>
                 </div>
                 <div class="flex items-center gap-2">
                     ${stats.today > 0 ? `<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full text-gold" style="background: rgba(255,204,0,0.1);">+${stats.today} today</span>` : ''}
@@ -1308,15 +1321,24 @@ function renderTable() {
             else if (status === 'In Progress') { statusClass = 'status-progress'; statusDot = 'bg-blue-500'; }
             else if (status === 'Resolved') { statusClass = 'status-resolved'; statusDot = 'bg-green-500'; }
             const detailsText = issue.details || '-';
+            const escapedTicketId = escapeHTML(issue.ticketId);
+            const escapedDate = escapeHTML(issue.date);
+            const escapedTimestamp = escapeHTML(issue.timestamp);
+            const escapedMerchant = escapeHTML(issue.merchant);
+            const escapedConsignmentId = escapeHTML(issue.consignmentId);
+            const escapedIssueTag = escapeHTML(issue.issueTag || 'General');
+            const escapedDetailsText = escapeHTML(detailsText);
+            const escapedRespondedBy = escapeHTML(issue.respondedBy);
+
             const row = `
                 <tr class="hover-row transition-colors border-b last:border-0 theme-transition" style="border-color: var(--border-color);">
-                    <td class="p-4 font-mono text-gold font-medium text-xs">${issue.ticketId || '-'}</td>
-                    <td class="p-4 text-xs theme-transition" style="color: var(--text-muted);">${issue.date}<br><span class="text-xs opacity-70">${issue.timestamp}</span></td>
-                    <td class="p-4 font-medium text-sm theme-transition" style="color: var(--text-primary);">${issue.merchant || '-'}</td>
-                    <td class="p-4 font-mono text-xs theme-transition" style="color: var(--text-muted);">${issue.consignmentId || '-'}</td>
-                    <td class="p-4"><span class="tag-pill border ${getTagColor(issue.issueTag)}">${issue.issueTag || 'General'}</span></td>
+                    <td class="p-4 font-mono text-gold font-medium text-xs">${escapedTicketId || '-'}</td>
+                    <td class="p-4 text-xs theme-transition" style="color: var(--text-muted);">${escapedDate}<br><span class="text-xs opacity-70">${escapedTimestamp}</span></td>
+                    <td class="p-4 font-medium text-sm theme-transition" style="color: var(--text-primary);">${escapedMerchant || '-'}</td>
+                    <td class="p-4 font-mono text-xs theme-transition" style="color: var(--text-muted);">${escapedConsignmentId || '-'}</td>
+                    <td class="p-4"><span class="tag-pill border ${getTagColor(issue.issueTag)}">${escapedIssueTag}</span></td>
                     <td class="p-4 details-cell">
-                        <div class="details-preview text-xs theme-transition" style="color: var(--text-muted);">${detailsText}</div>
+                        <div class="details-preview text-xs theme-transition" style="color: var(--text-muted);">${escapedDetailsText}</div>
                     </td>
                     <td class="p-4">
                         <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${statusClass}">
@@ -1324,9 +1346,9 @@ function renderTable() {
                             ${status}
                         </span>
                     </td>
-                    <td class="p-4 text-xs theme-transition" style="color: var(--text-secondary);">${issue.respondedBy ? `<span class="inline-flex items-center gap-1.5"><i class="fa-solid fa-user-check text-gold"></i> ${issue.respondedBy}</span>` : '<span style="color: var(--text-muted);">-</span>'}</td>
+                    <td class="p-4 text-xs theme-transition" style="color: var(--text-secondary);">${issue.respondedBy ? `<span class="inline-flex items-center gap-1.5"><i class="fa-solid fa-user-check text-gold"></i> ${escapedRespondedBy}</span>` : '<span style="color: var(--text-muted);">-</span>'}</td>
                     <td class="p-4 text-right">
-                        <button onclick="openModal('${issue.ticketId}')" class="text-gold hover:opacity-80 text-xs font-bold uppercase tracking-wider transition-colors">View</button>
+                        <button onclick="openModal('${escapedTicketId}')" class="text-gold hover:opacity-80 text-xs font-bold uppercase tracking-wider transition-colors">View</button>
                     </td>
                 </tr>
             `;
@@ -1523,9 +1545,10 @@ function renderTopMerchants() {
     const container = document.getElementById('topMerchantsList');
     container.innerHTML = '';
     sorted.forEach(([name, count]) => {
+        const escapedName = escapeHTML(name);
         container.innerHTML += `
             <div class="flex items-center justify-between p-3 rounded-lg border theme-transition" style="background: var(--bg-modal-content); border-color: var(--border-color);">
-                <span class="text-sm font-medium theme-transition" style="color: var(--text-primary);">${name}</span>
+                <span class="text-sm font-medium theme-transition" style="color: var(--text-primary);">${escapedName}</span>
                 <span class="text-xs font-bold text-gold bg-gold/10 px-2 py-1 rounded-full">${count} issue${count > 1 ? 's' : ''}</span>
             </div>
         `;
