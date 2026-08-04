@@ -449,6 +449,13 @@ body {
     transition: transform 0.2s;
 }
 .user-avatar:hover { transform: scale(1.05); }
+#pullZone:focus-visible,
+.theme-toggle:focus-visible,
+.login-eye-toggle:focus-visible,
+.user-avatar:focus-visible {
+    outline: 2px solid var(--cb-yellow);
+    outline-offset: 2px;
+}
 .user-dropdown {
     position: absolute;
     top: 48px; right: 0;
@@ -601,7 +608,7 @@ body {
                     <i class="fa-solid fa-download"></i> Export CSV
                 </button>
                 <div class="relative" id="userMenuContainer">
-                    <div class="user-avatar" id="userAvatar" onclick="toggleUserMenu()">U</div>
+                    <div class="user-avatar" id="userAvatar" onclick="toggleUserMenu()" tabindex="0" role="button" aria-label="User menu">U</div>
                     <div class="user-dropdown" id="userDropdown">
                         <div class="px-4 py-2">
                             <p class="text-xs font-medium theme-transition" style="color: var(--text-primary);" id="dropdownName">User</p>
@@ -1005,6 +1012,16 @@ document.addEventListener('click', (e) => {
         hideUserMenu();
     }
 });
+
+const userAvatar = document.getElementById('userAvatar');
+if (userAvatar) {
+    userAvatar.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            toggleUserMenu();
+        }
+    });
+}
 
 // ==================== LOGIN LAMP ANIMATION ====================
 const pullZone   = document.getElementById('pullZone');
