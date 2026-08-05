@@ -1164,10 +1164,23 @@ async function fetchData() {
     document.getElementById('view-tracker').classList.remove('hidden');
     updateStats();
     updateResponseStats();
+    populateTagFilter();
     renderTable();
     updateAnalytics();
     document.getElementById('last-refreshed').innerText = `Last refreshed: ${new Date().toLocaleTimeString()}`;
     refreshIcon.classList.remove('fa-spin');
+}
+
+function populateTagFilter() {
+    const tagSelect = document.getElementById('tagFilter');
+    if (!tagSelect) return;
+    const currentTag = tagSelect.value || 'All';
+    const uniqueTags = [...new Set(issuesData.map(i => (i.issueTag || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+    let optionsHTML = '<option value="All">All Issue Tags</option>';
+    uniqueTags.forEach(tag => {
+        optionsHTML += `<option value="${tag}" ${tag === currentTag ? 'selected' : ''}>${tag}</option>`;
+    });
+    tagSelect.innerHTML = optionsHTML;
 }
 
 function updateResponseStats() {
@@ -1276,14 +1289,6 @@ function renderTable() {
     const search = document.getElementById('searchInput').value.toLowerCase();
     const statusFilter = document.getElementById('statusFilter').value;
     const tagFilter = document.getElementById('tagFilter').value;
-    tbody.innerHTML = '';
-    const tagSelect = document.getElementById('tagFilter');
-    const currentTag = tagSelect.value;
-    const uniqueTags = [...new Set(issuesData.map(i => (i.issueTag || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-    tagSelect.innerHTML = '<option value="All">All Issue Tags</option>';
-    uniqueTags.forEach(tag => {
-        tagSelect.innerHTML += `<option value="${tag}" ${tag === currentTag ? 'selected' : ''}>${tag}</option>`;
-    });
 
     let filtered = issuesData.filter(issue => {
         const status = getStatus(issue);
@@ -1298,17 +1303,20 @@ function renderTable() {
     });
 
     if (filtered.length === 0) {
+        tbody.innerHTML = '';
         document.getElementById('emptyState').classList.remove('hidden');
     } else {
         document.getElementById('emptyState').classList.add('hidden');
-        filtered.forEach(issue => {
+        // Performance Optimization: Gather row strings and perform a single batch write to tbody.innerHTML
+        // This is O(N) rendering performance instead of O(N^2) caused by iterative innerHTML += inside loops.
+        const rows = filtered.map(issue => {
             const status = getStatus(issue);
             let statusClass = '', statusDot = '';
             if (status === 'Open') { statusClass = 'status-open'; statusDot = 'bg-yellow-500'; }
             else if (status === 'In Progress') { statusClass = 'status-progress'; statusDot = 'bg-blue-500'; }
             else if (status === 'Resolved') { statusClass = 'status-resolved'; statusDot = 'bg-green-500'; }
             const detailsText = issue.details || '-';
-            const row = `
+            return `
                 <tr class="hover-row transition-colors border-b last:border-0 theme-transition" style="border-color: var(--border-color);">
                     <td class="p-4 font-mono text-gold font-medium text-xs">${issue.ticketId || '-'}</td>
                     <td class="p-4 text-xs theme-transition" style="color: var(--text-muted);">${issue.date}<br><span class="text-xs opacity-70">${issue.timestamp}</span></td>
@@ -1330,8 +1338,8 @@ function renderTable() {
                     </td>
                 </tr>
             `;
-            tbody.innerHTML += row;
         });
+        tbody.innerHTML = rows.join('');
     }
 }
 
