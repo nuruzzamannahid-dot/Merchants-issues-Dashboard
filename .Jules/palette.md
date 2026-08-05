@@ -3,3 +3,7 @@
 ## 2026-07-25 - [Form Accessibility in Issue Tracker Dashboard]
 **Learning:** Found that the "Raise New Issue" form has form label elements that are visually descriptive but lack programmatic connection (the `for` attribute) to their target form inputs, dropdown, and textareas. This degrades the user experience for assistive technology users (like screen reader users) and prevents clicking on labels to focus fields.
 **Action:** Always associate `<label>` elements with their target inputs using the `for` attribute referencing the exact `id` of the target elements. Also ensure icon-only interactive controls (such as the dark/light theme toggles and modal close buttons) are fully equipped with `aria-label` attributes for clear context.
+
+## 2026-08-05 - [Accessible Control & Focus Indicator Styling]
+**Learning:** Custom visual containers (like `#userAvatar` used as dropdown menu buttons) are completely ignored by screen readers and keyboard navigation unless equipped with `tabindex="0"`, `role="button"`, and appropriate event listeners. Furthermore, custom styles that override default browser focus styles can render focus visually invisible, which must be remedied by explicit `:focus-visible` CSS configurations.
+**Action:** Configure custom interactive divs with keydown handlers and `aria-label` attributes, and supplement with global `:focus-visible` high-contrast outlines for accessible visual cues.
