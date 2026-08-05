@@ -1,0 +1,4 @@
+## 2026-03-01 - Preventing Hardcoded Credentials and Securing Imported Python Modules
+**Vulnerability:** Hardcoded Telegram Bot API token in configuration variable `BOT_TOKEN` within the core `carrybee_reminder_bot.py` script and documented in `README.md`.
+**Learning:** Hardcoding API keys or other credentials makes them visible to anyone with access to the source repository, increasing the risk of unauthorized API usage and credential leak. When moving credentials to environment variables, performing validation checks at the module root level can cause test suites and importers to crash if the variable is not set.
+**Prevention:** Always retrieve secrets dynamically from environment variables (e.g., `os.environ.get()`). Perform any startup validation and process termination logic strictly within the `if __name__ == '__main__':` boundary to allow clean imports and prevent unit test runners from exiting unexpectedly.
