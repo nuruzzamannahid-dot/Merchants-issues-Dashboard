@@ -132,6 +132,24 @@ body {
     transition: all 0.2s; flex-shrink: 0;
 }
 .theme-toggle:hover { background: var(--cb-yellow); color: var(--cb-black); border-color: var(--cb-yellow); }
+.theme-toggle:focus-visible {
+    outline: 2px solid var(--cb-yellow);
+    outline-offset: 2px;
+}
+.pull-string-zone:focus-visible {
+    outline: 2px solid var(--cb-yellow);
+    outline-offset: 4px;
+    border-radius: 8px;
+}
+.login-eye-toggle:focus-visible {
+    outline: 2px solid #8b6cf2;
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+.user-avatar:focus-visible {
+    outline: 2px solid var(--cb-yellow);
+    outline-offset: 2px;
+}
 .theme-transition {
     transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
@@ -601,7 +619,7 @@ body {
                     <i class="fa-solid fa-download"></i> Export CSV
                 </button>
                 <div class="relative" id="userMenuContainer">
-                    <div class="user-avatar" id="userAvatar" onclick="toggleUserMenu()">U</div>
+                    <div class="user-avatar" id="userAvatar" onclick="toggleUserMenu()" tabindex="0" role="button" aria-label="User profile and actions menu">U</div>
                     <div class="user-dropdown" id="userDropdown">
                         <div class="px-4 py-2">
                             <p class="text-xs font-medium theme-transition" style="color: var(--text-primary);" id="dropdownName">User</p>
@@ -994,6 +1012,19 @@ function updateUserUI() {
 function toggleUserMenu() {
     document.getElementById('userDropdown').classList.toggle('show');
 }
+
+// Keyboard navigation support for user-avatar
+document.addEventListener('DOMContentLoaded', () => {
+    const userAvatar = document.getElementById('userAvatar');
+    if (userAvatar) {
+        userAvatar.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                toggleUserMenu();
+            }
+        });
+    }
+});
 
 function hideUserMenu() {
     document.getElementById('userDropdown').classList.remove('show');
