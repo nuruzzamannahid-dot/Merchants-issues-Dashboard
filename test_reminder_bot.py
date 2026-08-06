@@ -1,6 +1,34 @@
 import unittest
 import csv
-from carrybee_reminder_bot import parse_csv_line
+from datetime import datetime
+from carrybee_reminder_bot import parse_csv_line, build_reminder_message
+
+class TestReminderBotMessageBuilder(unittest.TestCase):
+    def test_build_reminder_message_escapes_html(self):
+        issue = {
+            'issueTag': '<b>Urgent</b>',
+            'merchant': 'A & B Corp',
+            'consignmentId': 'CB-123 <script>',
+            'details': 'Please "fix" this immediately!',
+            'date': '2026-06-29',
+            'timestamp': '10:00:00'
+        }
+        deadline = datetime(2026, 6, 29, 11, 30)
+        message = build_reminder_message(issue, deadline, is_urgent=False)
+
+        # Verify that original tags are escaped and not rendered raw
+        self.assertNotIn("<b>Urgent</b>", message)
+        self.assertIn("&lt;b&gt;Urgent&lt;/b&gt;", message)
+
+        self.assertNotIn("A & B Corp", message)
+        self.assertIn("A &amp; B Corp", message)
+
+        self.assertNotIn("CB-123 <script>", message)
+        self.assertIn("CB-123 &lt;script&gt;", message)
+
+        self.assertNotIn('Please "fix"', message)
+        self.assertIn("Please &quot;fix&quot;", message)
+
 
 class TestReminderBotCSVParser(unittest.TestCase):
     def test_parse_simple_line(self):
