@@ -1,3 +1,7 @@
 ## 2026-07-25 - [Optimize CSV Parsing using Standard Library csv.reader]
 **Learning:** Hand-rolled character-by-character string parsers implemented in pure Python have massive performance overhead (taking O(N) in Python bytecode with lots of string object copying and conditionals) and can easily fail on edge cases like embedded commas or multiline quoted columns. Using standard library `csv.reader` (which is written in optimized C) is ~3x to 12x faster, and handles complex RFC 4180 parsing correctly.
 **Action:** Always prefer standard library, C-implemented parsing modules (like `csv`, `json`, `xml.etree.ElementTree`) over hand-rolled parsing logic for processing structured data formats.
+
+## 2026-07-26 - [Batch DOM Updates and Extract Filters Out of Render Loops]
+**Learning:** Iterative DOM manipulations using `innerHTML +=` inside loops (such as rendering table rows, selectors, or list containers) trigger frequent UI repaints and expensive browser style recalculations, degrading rendering performance to O(N^2). Gathering element strings in arrays or map operations and executing a single batch write to `innerHTML` drastically improves rendering to O(N) efficiency. Additionally, extracting static or low-frequency filter-building routines out of high-frequency events (like keyup search triggers) avoids redundant computation on every user keystroke.
+**Action:** Always collect HTML segments in arrays and perform batch innerHTML updates, and lift data preprocessing/filter-building out of high-frequency render triggers.
