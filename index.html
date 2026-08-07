@@ -132,6 +132,23 @@ body {
     transition: all 0.2s; flex-shrink: 0;
 }
 .theme-toggle:hover { background: var(--cb-yellow); color: var(--cb-black); border-color: var(--cb-yellow); }
+.theme-toggle:focus-visible {
+    outline: 2px solid var(--cb-yellow);
+    outline-offset: 2px;
+}
+#userAvatar:focus-visible {
+    outline: 2px solid var(--cb-yellow);
+    outline-offset: 2px;
+}
+.login-eye-toggle:focus-visible {
+    outline: 2px solid #8b6cf2;
+    outline-offset: 2px;
+}
+#pullZone:focus-visible {
+    outline: 2px solid #d9b25c;
+    outline-offset: 4px;
+    border-radius: 8px;
+}
 .theme-transition {
     transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
@@ -601,7 +618,7 @@ body {
                     <i class="fa-solid fa-download"></i> Export CSV
                 </button>
                 <div class="relative" id="userMenuContainer">
-                    <div class="user-avatar" id="userAvatar" onclick="toggleUserMenu()">U</div>
+                    <div class="user-avatar" id="userAvatar" onclick="toggleUserMenu()" role="button" tabindex="0" aria-label="User menu">U</div>
                     <div class="user-dropdown" id="userDropdown">
                         <div class="px-4 py-2">
                             <p class="text-xs font-medium theme-transition" style="color: var(--text-primary);" id="dropdownName">User</p>
@@ -1003,6 +1020,19 @@ document.addEventListener('click', (e) => {
     const container = document.getElementById('userMenuContainer');
     if (container && !container.contains(e.target)) {
         hideUserMenu();
+    }
+});
+
+// Add keydown event listener for userAvatar accessibility
+document.addEventListener('DOMContentLoaded', () => {
+    const userAvatar = document.getElementById('userAvatar');
+    if (userAvatar) {
+        userAvatar.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                toggleUserMenu();
+            }
+        });
     }
 });
 
