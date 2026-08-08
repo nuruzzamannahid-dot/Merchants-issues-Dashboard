@@ -1223,6 +1223,7 @@ async function fetchData(silent = false) {
     document.getElementById('view-tracker').classList.remove('hidden');
     updateStats();
     updateResponseStats();
+    updateTagFilterOptions();
     renderTable();
     updateAnalytics();
     document.getElementById('last-refreshed').innerText = `Last refreshed: ${new Date().toLocaleTimeString()}`;
@@ -1343,16 +1344,11 @@ function animateValue(id, start, end, duration) {
     }, stepTime);
 }
 
-function renderTable() {
-    const tbody = document.getElementById('issuesTableBody');
-    const search = document.getElementById('searchInput').value.toLowerCase();
-    const statusFilter = document.getElementById('statusFilter').value;
-    const tagFilter = document.getElementById('tagFilter').value;
-    tbody.innerHTML = '';
+function updateTagFilterOptions() {
     const tagSelect = document.getElementById('tagFilter');
-    const currentTag = tagSelect.value;
-    // Build the tag filter from data, deduplicated case-insensitively so
-    // "Delivery Delay" and "Delivery delay" appear once with a canonical label.
+    if (!tagSelect) return;
+    const currentTag = tagSelect.value || 'All';
+
     const seen = new Map();
     issuesData.forEach(i => {
         const t = (i.issueTag || '').trim();
@@ -1361,10 +1357,29 @@ function renderTable() {
         if (!seen.has(k)) seen.set(k, (TAG_LOOKUP[k] && TAG_LOOKUP[k].label) || t);
     });
     const uniqueTags = [...seen.values()].sort((a, b) => a.localeCompare(b));
-    tagSelect.innerHTML = '<option value="All">All Issue Tags</option>';
-    uniqueTags.forEach(tag => {
-        tagSelect.innerHTML += `<option value="${escapeHTML(tag)}" ${normalizeTag(tag) === normalizeTag(currentTag) ? 'selected' : ''}>${escapeHTML(tag)}</option>`;
-    });
+
+    // Performance Optimization: Batch innerHTML assignment to prevent layout triggers/reflows.
+    const optionsHtml = ['<option value="All">All Issue Tags</option>'].concat(
+        uniqueTags.map(tag => `<option value="${escapeHTML(tag)}">${escapeHTML(tag)}</option>`)
+    ).join('');
+
+    tagSelect.innerHTML = optionsHtml;
+    // Restore the selection if it still exists
+    if (uniqueTags.some(tag => normalizeTag(tag) === normalizeTag(currentTag))) {
+        tagSelect.value = currentTag;
+    } else {
+        tagSelect.value = 'All';
+    }
+}
+
+function renderTable() {
+    const tbody = document.getElementById('issuesTableBody');
+    const search = document.getElementById('searchInput').value.toLowerCase();
+    const statusFilter = document.getElementById('statusFilter').value;
+    const tagFilter = document.getElementById('tagFilter').value;
+
+    // Clear beforehand
+    tbody.innerHTML = '';
 
     let filtered = issuesData.filter(issue => {
         const status = getStatus(issue);
@@ -1382,7 +1397,9 @@ function renderTable() {
         document.getElementById('emptyState').classList.remove('hidden');
     } else {
         document.getElementById('emptyState').classList.add('hidden');
-        filtered.forEach(issue => {
+        // Performance Optimization: Gather rows into an array and perform a single batch write.
+        // This achieves O(N) rendering performance instead of O(N^2) reflows.
+        const rowsHtml = filtered.map(issue => {
             const status = getStatus(issue);
             let statusClass = '', statusDot = '';
             if (status === 'Open') { statusClass = 'status-open'; statusDot = 'bg-yellow-500'; }
@@ -1392,7 +1409,7 @@ function renderTable() {
             const respondedBy = issue.respondedBy
                 ? `<span class="inline-flex items-center gap-1.5"><i class="fa-solid fa-user-check text-gold"></i> ${escapeHTML(issue.respondedBy)}</span>`
                 : '<span style="color: var(--text-muted);">-</span>';
-            const row = `
+            return `
                 <tr class="hover-row transition-colors border-b last:border-0 theme-transition" style="border-color: var(--border-color);">
                     <td class="p-4 font-mono text-gold font-medium text-xs">${escapeHTML(issue.ticketId || '-')}</td>
                     <td class="p-4 text-xs theme-transition" style="color: var(--text-muted);">${escapeHTML(issue.date)}<br><span class="text-xs opacity-70">${escapeHTML(issue.timestamp)}</span></td>
@@ -1414,8 +1431,8 @@ function renderTable() {
                     </td>
                 </tr>
             `;
-            tbody.innerHTML += row;
-        });
+        }).join('');
+        tbody.innerHTML = rowsHtml;
     }
 }
 
@@ -1643,15 +1660,15 @@ function renderTopMerchants() {
     issuesData.forEach(i => { if (i.merchant) merchants[i.merchant] = (merchants[i.merchant] || 0) + 1; });
     const sorted = Object.entries(merchants).sort((a,b) => b[1] - a[1]).slice(0, 6);
     const container = document.getElementById('topMerchantsList');
-    container.innerHTML = '';
-    sorted.forEach(([name, count]) => {
-        container.innerHTML += `
-            <div class="flex items-center justify-between p-3 rounded-lg border theme-transition" style="background: var(--bg-modal-content); border-color: var(--border-color);">
-                <span class="text-sm font-medium theme-transition" style="color: var(--text-primary);">${escapeHTML(name)}</span>
-                <span class="text-xs font-bold text-gold bg-gold/10 px-2 py-1 rounded-full">${count} issue${count > 1 ? 's' : ''}</span>
-            </div>
-        `;
-    });
+
+    // Performance Optimization: Gather cards into an array and perform a single batch write.
+    const cardsHtml = sorted.map(([name, count]) => `
+        <div class="flex items-center justify-between p-3 rounded-lg border theme-transition" style="background: var(--bg-modal-content); border-color: var(--border-color);">
+            <span class="text-sm font-medium theme-transition" style="color: var(--text-primary);">${escapeHTML(name)}</span>
+            <span class="text-xs font-bold text-gold bg-gold/10 px-2 py-1 rounded-full">${count} issue${count > 1 ? 's' : ''}</span>
+        </div>
+    `).join('');
+    container.innerHTML = cardsHtml;
 }
 
 function renderResolutionChart() {
