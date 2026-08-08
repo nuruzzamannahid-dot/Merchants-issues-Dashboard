@@ -22,5 +22,24 @@ class TestReminderBotCSVParser(unittest.TestCase):
         expected = ["Line 1\nLine 2", "field2"]
         self.assertEqual(parse_csv_line(line), expected)
 
+    def test_env_var_token_loading(self):
+        """Verify that carrybee_reminder_bot loads BOT_TOKEN from TELEGRAM_BOT_TOKEN environment variable."""
+        import os
+        import importlib
+        import carrybee_reminder_bot
+
+        # Save existing env if any
+        old_token = os.environ.get("TELEGRAM_BOT_TOKEN")
+        try:
+            os.environ["TELEGRAM_BOT_TOKEN"] = "test_env_token_123"
+            importlib.reload(carrybee_reminder_bot)
+            self.assertEqual(carrybee_reminder_bot.BOT_TOKEN, "test_env_token_123")
+        finally:
+            if old_token is not None:
+                os.environ["TELEGRAM_BOT_TOKEN"] = old_token
+            else:
+                os.environ.pop("TELEGRAM_BOT_TOKEN", None)
+            importlib.reload(carrybee_reminder_bot)
+
 if __name__ == '__main__':
     unittest.main()

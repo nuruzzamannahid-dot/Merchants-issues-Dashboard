@@ -57,7 +57,9 @@ Automatically sends deadline reminders for "In Progress" issues.
    ```
 
 2. **Run the bot:**
+   Configure the `TELEGRAM_BOT_TOKEN` environment variable and run the script:
    ```bash
+   export TELEGRAM_BOT_TOKEN="your_bot_token_here"
    python carrybee_reminder_bot.py
    ```
 
@@ -101,7 +103,7 @@ https://docs.google.com/spreadsheets/d/e/2PACX-1vSybJkSsKQxyczJc4Llsa10ywnR7YL3J
 Make sure your sheet is **published to the web** as CSV.
 
 ### Telegram Bot
-- Bot Token: `8851597317:AAGAjKaTjxp8oJga0reO64se9VhEBf2gYUc`
+- Bot Token: Configured dynamically via the `TELEGRAM_BOT_TOKEN` environment variable.
 - Chat IDs configured: `8485545697`, `8839924588`
 
 To add more recipients, edit `CHAT_IDS` in `carrybee_reminder_bot.py`.
