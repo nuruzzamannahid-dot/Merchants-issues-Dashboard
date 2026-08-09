@@ -558,9 +558,11 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
             <div class="login-error" id="loginError"></div>
             <div class="login-success-msg" id="loginSuccess">Signing in...</div>
             <div class="login-field">
+                <label for="loginEmail" class="sr-only">Email address</label>
                 <input type="email" id="loginEmail" placeholder="Email address" autocomplete="email">
             </div>
             <div class="login-field">
+                <label for="pwField" class="sr-only">Password</label>
                 <input type="password" placeholder="Password" id="pwField" autocomplete="current-password">
                 <button class="login-eye-toggle" data-target="pwField" aria-label="Show password">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
@@ -626,19 +628,19 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                     <i class="fa-solid fa-download"></i> Export CSV
                 </button>
                 <div class="relative" id="userMenuContainer">
-                    <div class="user-avatar" id="userAvatar" onclick="toggleUserMenu()">U</div>
+                    <div class="user-avatar" id="userAvatar" onclick="toggleUserMenu()" tabindex="0" role="button" aria-label="User menu">U</div>
                     <div class="user-dropdown" id="userDropdown">
                         <div class="px-4 py-2">
                             <p class="text-xs font-medium theme-transition" style="color: var(--text-primary);" id="dropdownName">User</p>
                             <p class="text-xs theme-transition" style="color: var(--text-muted);" id="dropdownEmail">user@carrybee.com</p>
                         </div>
                         <div class="user-dropdown-divider"></div>
-                        <div class="user-dropdown-item" onclick="toggleTheme()">
+                        <button class="user-dropdown-item w-full text-left" onclick="toggleTheme()" type="button">
                             <i class="fa-solid fa-moon"></i> Toggle Theme
-                        </div>
-                        <div class="user-dropdown-item logout" onclick="handleLogout()">
+                        </button>
+                        <button class="user-dropdown-item logout w-full text-left" onclick="handleLogout()" type="button">
                             <i class="fa-solid fa-arrow-right-from-bracket"></i> Sign Out
-                        </div>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -693,22 +695,29 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                 </div>
                 <div class="flex flex-col sm:flex-row gap-3">
                     <div class="relative flex-1">
+                        <label for="searchInput" class="sr-only">Search Issues</label>
                         <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 theme-transition" style="color: var(--text-muted);"></i>
                         <input type="text" id="searchInput" onkeyup="renderTable()" placeholder="Search by Ticket ID, Merchant, Consignment, or Details..."
                             class="w-full rounded-lg pl-10 pr-4 py-2.5 text-sm placeholder-slate-400 focus:outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/50 transition-all theme-transition"
                             style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
                     </div>
-                    <select id="statusFilter" onchange="renderTable()" class="rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
-                        style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
-                        <option value="All">All Statuses</option>
-                        <option value="Open">Open</option>
-                        <option value="In Progress">In Progress</option>
-                        <option value="Resolved">Resolved</option>
-                    </select>
-                    <select id="tagFilter" onchange="renderTable()" class="rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
-                        style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
-                        <option value="All">All Issue Tags</option>
-                    </select>
+                    <div>
+                        <label for="statusFilter" class="sr-only">Filter by Status</label>
+                        <select id="statusFilter" onchange="renderTable()" class="rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
+                            style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
+                            <option value="All">All Statuses</option>
+                            <option value="Open">Open</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Resolved">Resolved</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="tagFilter" class="sr-only">Filter by Issue Tag</label>
+                        <select id="tagFilter" onchange="renderTable()" class="rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
+                            style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
+                            <option value="All">All Issue Tags</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="glass-panel rounded-xl overflow-hidden">
                     <div class="overflow-x-auto">
@@ -1028,6 +1037,19 @@ function updateUserUI() {
 function toggleUserMenu() {
     document.getElementById('userDropdown').classList.toggle('show');
 }
+
+// Add keyboard activation to user avatar
+document.addEventListener('DOMContentLoaded', () => {
+    const avatar = document.getElementById('userAvatar');
+    if (avatar) {
+        avatar.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                toggleUserMenu();
+            }
+        });
+    }
+});
 
 function hideUserMenu() {
     document.getElementById('userDropdown').classList.remove('show');
