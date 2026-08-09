@@ -1,3 +1,7 @@
 ## 2026-07-25 - [Optimize CSV Parsing using Standard Library csv.reader]
 **Learning:** Hand-rolled character-by-character string parsers implemented in pure Python have massive performance overhead (taking O(N) in Python bytecode with lots of string object copying and conditionals) and can easily fail on edge cases like embedded commas or multiline quoted columns. Using standard library `csv.reader` (which is written in optimized C) is ~3x to 12x faster, and handles complex RFC 4180 parsing correctly.
 **Action:** Always prefer standard library, C-implemented parsing modules (like `csv`, `json`, `xml.etree.ElementTree`) over hand-rolled parsing logic for processing structured data formats.
+
+## 2026-07-26 - [Batch DOM Updates and Segregate Input Triggers]
+**Learning:** Performing iterative `innerHTML +=` DOM manipulations inside loops triggers excessive UI repaints and layout recalculations, degrading rendering to O(N) DOM writes. Furthermore, running expensive filtering/select-building routines on high-frequency UI events (such as keyup search) leads to severe input lag. Separating dropdown-populating routines into data-fetch triggers and accumulating HTML templates into arrays for single-assignment batch writes yields a massive, smooth performance boost.
+**Action:** Always map elements and perform batch assignments for DOM injection. Pull heavy filter-building routines out of high-frequency render triggers.
