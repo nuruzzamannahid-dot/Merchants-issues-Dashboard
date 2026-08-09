@@ -4,6 +4,7 @@ CarryBee Issue Reminder Bot
 Reads Google Sheet for "In Progress" issues and sends deadline reminders via Telegram.
 """
 
+import os
 import requests
 import csv
 import json
@@ -14,7 +15,7 @@ from collections import defaultdict
 # ==================== CONFIGURATION ====================
 
 # Your Telegram Bot Token
-BOT_TOKEN = "8851597317:AAGAjKaTjxp8oJga0reO64se9VhEBf2gYUc"
+BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 
 # Your Google Sheet CSV URL (same as dashboard)
 SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSybJkSsKQxyczJc4Llsa10ywnR7YL3JNWN3Yx7RCc3GGWBOt4O43sSOMy2cNgYVQRtoAakguvAqgsy/pub?output=csv"
@@ -327,7 +328,7 @@ def run_scheduled_mode():
     if not CHAT_IDS:
         print("\n[SETUP REQUIRED]")
         print("1. Message your bot on Telegram")
-        print("2. Visit: https://api.telegram.org/bot8851597317:AAGAjKaTjxp8oJga0reO64se9VhEBf2gYUc/getUpdates")
+        print(f"2. Visit: https://api.telegram.org/bot{BOT_TOKEN}/getUpdates")
         print("3. Find your 'chat.id' in the response")
         print("4. Add it to CHAT_IDS list in this script")
         print("="*60)
@@ -387,6 +388,10 @@ def run_continuous_mode():
 
 if __name__ == "__main__":
     import sys
+
+    if not BOT_TOKEN:
+        print("[ERROR] TELEGRAM_BOT_TOKEN environment variable is not set. Exiting.")
+        sys.exit(1)
 
     # Default: scheduled mode (recommended)
     mode = sys.argv[1] if len(sys.argv) > 1 else "scheduled"
