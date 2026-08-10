@@ -1,3 +1,7 @@
+## 2026-08-10 - [Optimize Keyup DOM Rendering and Filter Calculations in HTML Dashboard]
+**Learning:** Performing iterative DOM manipulations (like `innerHTML +=`) inside a loop on frequent event triggers (like search inputs' `keyup` event) causes high CPU overhead and page-freezing layout thrashing. Rebuilding static filters (like select options from global data) on every keystroke is highly redundant when data hasn't changed.
+**Action:** Extract filter-building routines out of high-frequency render triggers to execute only when the dataset changes. Accumulate all dynamic HTML elements in an array and use a single batch `innerHTML = array.join('')` write to achieve O(N) rendering performance.
+
 ## 2026-07-25 - [Optimize CSV Parsing using Standard Library csv.reader]
 **Learning:** Hand-rolled character-by-character string parsers implemented in pure Python have massive performance overhead (taking O(N) in Python bytecode with lots of string object copying and conditionals) and can easily fail on edge cases like embedded commas or multiline quoted columns. Using standard library `csv.reader` (which is written in optimized C) is ~3x to 12x faster, and handles complex RFC 4180 parsing correctly.
 **Action:** Always prefer standard library, C-implemented parsing modules (like `csv`, `json`, `xml.etree.ElementTree`) over hand-rolled parsing logic for processing structured data formats.
