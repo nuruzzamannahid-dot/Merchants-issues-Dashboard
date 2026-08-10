@@ -510,7 +510,8 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
     cursor: pointer;
     transition: transform 0.2s;
 }
-.user-avatar:hover { transform: scale(1.05); }
+.user-avatar:hover, .user-avatar:focus-visible { transform: scale(1.05); }
+.user-avatar:focus-visible { border-radius: 50% !important; }
 .user-dropdown {
     position: absolute;
     top: 48px; right: 0;
@@ -666,17 +667,17 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                     <i class="fa-solid fa-download"></i> Export CSV
                 </button>
                 <div class="relative" id="userMenuContainer">
-                    <div class="user-avatar" id="userAvatar" onclick="toggleUserMenu()">U</div>
+                    <div class="user-avatar" id="userAvatar" onclick="toggleUserMenu()" onkeydown="if(event.key === 'Enter' || event.key === ' ') { toggleUserMenu(); event.preventDefault(); }" tabindex="0" role="button" aria-label="User Profile Menu">U</div>
                     <div class="user-dropdown" id="userDropdown">
                         <div class="px-4 py-2">
                             <p class="text-xs font-medium theme-transition" style="color: var(--text-primary);" id="dropdownName">User</p>
                             <p class="text-xs theme-transition" style="color: var(--text-muted);" id="dropdownEmail">user@carrybee.com</p>
                         </div>
                         <div class="user-dropdown-divider"></div>
-                        <div class="user-dropdown-item" onclick="toggleTheme()">
+                        <div class="user-dropdown-item" onclick="toggleTheme()" onkeydown="if(event.key === 'Enter' || event.key === ' ') { toggleTheme(); event.preventDefault(); }" tabindex="0" role="button">
                             <i class="fa-solid fa-moon"></i> Toggle Theme
                         </div>
-                        <div class="user-dropdown-item logout" onclick="handleLogout()">
+                        <div class="user-dropdown-item logout" onclick="handleLogout()" onkeydown="if(event.key === 'Enter' || event.key === ' ') { handleLogout(); event.preventDefault(); }" tabindex="0" role="button">
                             <i class="fa-solid fa-arrow-right-from-bracket"></i> Sign Out
                         </div>
                     </div>
