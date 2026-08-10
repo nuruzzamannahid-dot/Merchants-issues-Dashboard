@@ -1239,6 +1239,82 @@ const API_BASE_URL = 'https://merchant-issues-escalation-databash.onrender.com';
 // across the AD Team sheet's ISD, OSD, and Central tabs.
 const SHEET_LOOKUP_URL = 'https://script.google.com/macros/s/AKfycbxluUMkxZ5HAdh3vtPf3yxZxXvvhbw1rG1wgmkYR8j3MY3NtNrDpsyNNH5OJeMumlhiEA/exec';
 
+// Dedicated Turso database for KAM Remarks (remark text + auto timestamp + auto
+// followup timestamp). Queried directly from the browser via Turso's HTTP API —
+// isolated from the Issue Tracker's Express/Render backend above.
+const KAM_TURSO_URL = 'https://dashboard-kam-remarks-nuruzzamannahid-dot.aws-ap-south-1.turso.io/v2/pipeline';
+const KAM_TURSO_TOKEN = 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3ODYzNjc4OTQsImlkIjoiMDE5ZmViMDUtMDAwMS03Y2E4LWE2Y2UtOTE4MWE3NTk0ZjAzIiwia2lkIjoianJpQ3JvbGdhcHJHMDlHOXFsOWtNZDFlX2hiN1ZnUV9vYzJGNXlPdGVYWSIsInJpZCI6ImM4MzBhOTMxLWVlZjYtNGRjZC04NzNlLThlYjljNTE4ZGJiZSJ9.AXUJyPONrTtdnkmxATVcCfeakwxrIiUhI-fTe9Hh8-d4QGwz3b1aT0S9-tQVnqSwFPKovHRxm7V3Dr_5vG22BA';
+
+let kamTableReady = false;
+
+async function tursoQuery(sql, args = []) {
+    const stmt = { sql };
+    if (args.length) {
+        stmt.args = args.map(a => {
+            if (a === null || a === undefined) return { type: 'null', value: null };
+            if (typeof a === 'number') return { type: Number.isInteger(a) ? 'integer' : 'float', value: String(a) };
+            return { type: 'text', value: String(a) };
+        });
+    }
+    const res = await fetch(KAM_TURSO_URL, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${KAM_TURSO_TOKEN}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requests: [{ type: 'execute', stmt }, { type: 'close' }] })
+    });
+    if (!res.ok) throw new Error(`Turso HTTP ${res.status}`);
+    const data = await res.json();
+    const execResult = data.results && data.results[0];
+    if (!execResult || execResult.type === 'error') {
+        throw new Error((execResult && execResult.error && execResult.error.message) || 'Turso query failed');
+    }
+    const result = execResult.response.result;
+    const cols = (result.cols || []).map(c => c.name);
+    const rows = (result.rows || []).map(row => {
+        const obj = {};
+        row.forEach((cell, i) => { obj[cols[i]] = cell.type === 'null' ? null : cell.value; });
+        return obj;
+    });
+    return { rows, lastInsertRowid: result.last_insert_rowid };
+}
+
+// Creates the kam_remarks table on first use if it doesn't already exist —
+// no manual setup needed in the Turso dashboard.
+async function ensureKamRemarksTable() {
+    if (kamTableReady) return;
+    await tursoQuery(`CREATE TABLE IF NOT EXISTS kam_remarks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticket_id TEXT NOT NULL,
+        remark TEXT NOT NULL,
+        kam_by TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        followup_at TEXT NOT NULL
+    )`);
+    kamTableReady = true;
+}
+
+// Loads the latest KAM remark per issue from Turso and merges it onto issuesData
+// (one active remark per ticket — most recent created_at wins).
+async function loadKamRemarksFromTurso() {
+    try {
+        await ensureKamRemarksTable();
+        const { rows } = await tursoQuery('SELECT ticket_id, remark, kam_by, created_at, followup_at FROM kam_remarks ORDER BY created_at DESC');
+        const latestByTicket = new Map();
+        rows.forEach(r => { if (!latestByTicket.has(r.ticket_id)) latestByTicket.set(r.ticket_id, r); });
+        issuesData.forEach(issue => {
+            const r = latestByTicket.get(issue.ticketId);
+            if (r) {
+                issue.kamRemark = r.remark;
+                issue.kamRemarkBy = r.kam_by;
+                issue.kamRemarkAt = r.created_at;
+                issue.kamFollowupAt = r.followup_at;
+            }
+        });
+    } catch (e) {
+        console.error('KAM Remarks (Turso) fetch error:', e);
+        showToast('Could not reach the KAM Remarks database.', 'error');
+    }
+}
+
 // ==================== HELPERS ====================
 function escapeHTML(s) {
     return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -1342,6 +1418,7 @@ async function fetchData(silent = false) {
 
     applySessionResponses();
     await enrichWithSheetData();
+    await loadKamRemarksFromTurso();
 
     document.getElementById('loading-state').classList.add('hidden');
     document.getElementById('view-tracker').classList.remove('hidden');
@@ -1691,7 +1768,7 @@ function closeKamRemarkModal() {
     lastKamRemarkFocus = null;
 }
 
-function submitKamRemark() {
+async function submitKamRemark() {
     if (!currentKamRemarkIssue) return;
     if (currentKamRemarkIssue.demo) {
         showToast("Server offline — remarks aren't saved.", 'error');
@@ -1703,20 +1780,20 @@ function submitKamRemark() {
     const followupISO = computeFollowupTime(now).toISOString();
     const kamName = currentUser ? currentUser.name : 'Unknown';
     const nowISO = now.toISOString();
+    const issue = currentKamRemarkIssue;
 
     // Optimistic UI update.
-    currentKamRemarkIssue.kamRemark = text;
-    currentKamRemarkIssue.kamRemarkBy = kamName;
-    currentKamRemarkIssue.kamRemarkAt = nowISO;
-    currentKamRemarkIssue.kamFollowupAt = followupISO;
+    issue.kamRemark = text;
+    issue.kamRemarkBy = kamName;
+    issue.kamRemarkAt = nowISO;
+    issue.kamFollowupAt = followupISO;
 
     closeKamRemarkModal();
     renderTable();
-    showToast('KAM remark saved', 'success');
-    saveKamRemarkOnServer(issuesData.find(i => i.kamRemarkAt === nowISO) || currentKamRemarkIssue);
+    await saveKamRemarkToTurso(issue.ticketId, text, kamName, nowISO, followupISO);
 }
 
-function clearKamRemark() {
+async function clearKamRemark() {
     if (!currentKamRemarkIssue) return;
     if (currentKamRemarkIssue.demo) {
         showToast("Server offline — remarks aren't saved.", 'error');
@@ -1729,30 +1806,26 @@ function clearKamRemark() {
     issue.kamFollowupAt = null;
     closeKamRemarkModal();
     renderTable();
-    showToast('KAM remark cleared', 'success');
-    saveKamRemarkOnServer(issue);
+    try {
+        await ensureKamRemarksTable();
+        await tursoQuery('DELETE FROM kam_remarks WHERE ticket_id = ?', [issue.ticketId]);
+        showToast('KAM remark cleared', 'success');
+    } catch (err) {
+        console.error('Clear KAM remark error:', err);
+        showToast('Failed to clear remark in the database.', 'error');
+    }
 }
 
-// Persists the current KAM remark to Turso. Expects a backend route like:
-//   PATCH /api/issues/:id/kam-remark
-//   body: { kamRemark, kamRemarkBy, kamRemarkAt, kamFollowupAt }
-// Adjust the path/body below if your Express route uses different names.
-async function saveKamRemarkOnServer(issue) {
+// Persists the KAM remark directly to the dedicated KAM Remarks Turso database
+// (table auto-created on first use — see ensureKamRemarksTable above).
+async function saveKamRemarkToTurso(ticketId, remark, kamBy, createdAtISO, followupAtISO) {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/issues/${issue.id}/kam-remark`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                kamRemark: issue.kamRemark,
-                kamRemarkBy: issue.kamRemarkBy,
-                kamRemarkAt: issue.kamRemarkAt,
-                kamFollowupAt: issue.kamFollowupAt
-            })
-        });
-        if (!response.ok) {
-            const err = await response.json().catch(() => ({}));
-            throw new Error(err.error || `Server responded ${response.status}`);
-        }
+        await ensureKamRemarksTable();
+        await tursoQuery(
+            'INSERT INTO kam_remarks (ticket_id, remark, kam_by, created_at, followup_at) VALUES (?, ?, ?, ?, ?)',
+            [ticketId, remark, kamBy, createdAtISO, followupAtISO]
+        );
+        showToast('KAM remark saved', 'success');
     } catch (err) {
         console.error('Save KAM remark error:', err);
         showToast('Failed to save remark to the database. It may not persist after refresh.', 'error');
