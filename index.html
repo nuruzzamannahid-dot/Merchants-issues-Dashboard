@@ -981,9 +981,8 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                         style="background-color: var(--bg-modal-content); color: var(--text-primary); border: 1px solid var(--border-input);" placeholder="Add a KAM remark for this issue..." maxlength="1000"></textarea>
                 </div>
                 <div>
-                    <label for="kam-remark-followup" class="block text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Follow-up Date &amp; Time (optional)</label>
-                    <input type="datetime-local" id="kam-remark-followup" class="w-full rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-gold/50 theme-transition"
-                        style="background-color: var(--bg-modal-content); color: var(--text-primary); border: 1px solid var(--border-input);">
+                    <label class="block text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Next Follow-up (calculated automatically)</label>
+                    <div id="kam-remark-followup-preview" class="w-full rounded-lg px-4 py-2 text-sm theme-transition" style="background-color: var(--bg-modal-content); color: var(--text-primary); border: 1px solid var(--border-input);">-</div>
                 </div>
                 <div class="flex gap-2">
                     <button onclick="submitKamRemark()" class="flex-1 py-2.5 rounded-lg bg-gold hover:opacity-90 text-sm font-bold transition-colors" style="color: var(--cb-black);">
@@ -995,7 +994,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                 </div>
                 <p class="text-xs text-center italic theme-transition" style="color: var(--text-muted);">
                     <i class="fa-solid fa-circle-info mr-1"></i>
-                    Saved to the CarryBee database with your name and a timestamp.
+                    Timestamp and follow-up are saved automatically with your name.
                 </p>
             </div>
         </div>
@@ -1607,6 +1606,22 @@ function formatTimestamp(iso) {
     return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
+// Working hours are 10:00 AM - 5:00 PM.
+// - A remark added inside that window: Next Followup = remark time + 2 hours.
+// - A remark added outside that window (after 5 PM, or before 10 AM): Next
+//   Followup rolls to 10:00 AM (same day if before 10 AM, next day if 5 PM or later).
+function computeFollowupTime(remarkDate) {
+    const WORK_START = 10, WORK_END = 17;
+    const hour = remarkDate.getHours() + remarkDate.getMinutes() / 60;
+    if (hour >= WORK_START && hour < WORK_END) {
+        return new Date(remarkDate.getTime() + 2 * 60 * 60 * 1000);
+    }
+    const followup = new Date(remarkDate);
+    if (hour >= WORK_END) followup.setDate(followup.getDate() + 1);
+    followup.setHours(WORK_START, 0, 0, 0);
+    return followup;
+}
+
 function followupBadge(iso) {
     if (!iso) return '';
     const d = new Date(iso);
@@ -1645,18 +1660,9 @@ function openKamRemarkModal(ticketId) {
     document.getElementById('kamRemarkModalTicket').innerText = issue.ticketId;
     document.getElementById('kam-remark-text').value = issue.kamRemark || '';
 
-    const followupInput = document.getElementById('kam-remark-followup');
-    if (issue.kamFollowupAt) {
-        const d = new Date(issue.kamFollowupAt);
-        if (!isNaN(d.getTime())) {
-            const pad = n => String(n).padStart(2, '0');
-            followupInput.value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-        } else {
-            followupInput.value = '';
-        }
-    } else {
-        followupInput.value = '';
-    }
+    // Preview what the follow-up time will be if saved right now (recalculated
+    // live below in submitKamRemark, since the modal may stay open a while).
+    document.getElementById('kam-remark-followup-preview').innerText = formatTimestamp(computeFollowupTime(new Date()).toISOString());
 
     const existingBox = document.getElementById('kamRemarkExisting');
     const clearBtn = document.getElementById('kamRemarkClearBtn');
@@ -1693,10 +1699,10 @@ function submitKamRemark() {
     }
     const text = document.getElementById('kam-remark-text').value.trim();
     if (!text) { showToast('Please write a remark before saving', 'error'); return; }
-    const followupLocal = document.getElementById('kam-remark-followup').value;
-    const followupISO = followupLocal ? new Date(followupLocal).toISOString() : null;
+    const now = new Date();
+    const followupISO = computeFollowupTime(now).toISOString();
     const kamName = currentUser ? currentUser.name : 'Unknown';
-    const nowISO = new Date().toISOString();
+    const nowISO = now.toISOString();
 
     // Optimistic UI update.
     currentKamRemarkIssue.kamRemark = text;
