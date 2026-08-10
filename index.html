@@ -605,6 +605,9 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
             <a href="#" onclick="switchView('activity')" id="nav-activity" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium">
                 <i class="fa-solid fa-user-check w-5 text-center"></i> Activity
             </a>
+            <a href="#" onclick="switchView('kamremarks')" id="nav-kamremarks" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium">
+                <i class="fa-solid fa-comment-dots w-5 text-center"></i> KAM Remarks
+            </a>
             <a href="#" onclick="showRaiseIssue()" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium">
                 <i class="fa-solid fa-plus-circle w-5 text-center"></i> Raise Issue
             </a>
@@ -824,6 +827,68 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                     </p>
                     <div id="responded-by-person" class="space-y-2 max-h-56 overflow-y-auto pr-1">
                         <!-- Per-person breakdown rows injected by JS -->
+                    </div>
+                </div>
+            </div>
+            <div id="view-kamremarks" class="hidden fade-in space-y-6">
+                <div id="kamRemarksOfflineBanner" class="offline-banner hidden">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <span>Could not reach the KAM Remarks database — check your connection and try again.</span>
+                </div>
+                <div class="card-gradient p-5 rounded-xl border relative overflow-hidden theme-transition" style="border-color: var(--border-color); box-shadow: var(--shadow-sm);">
+                    <p class="text-xs font-semibold uppercase tracking-wider mb-4 theme-transition" style="color: var(--text-muted);">
+                        <i class="fa-solid fa-plus mr-1"></i> Add KAM Remark
+                    </p>
+                    <form id="kamRemarkForm" onsubmit="submitKamRemark(event)" class="grid grid-cols-1 sm:grid-cols-4 gap-3 items-start">
+                        <div class="sm:col-span-1">
+                            <label class="text-xs font-medium mb-1 block theme-transition" style="color: var(--text-muted);">Hub Name</label>
+                            <input type="text" id="kamRemarkHub" list="hubSuggestions" required placeholder="e.g. Mirpur Hub"
+                                class="w-full rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/50 transition-all theme-transition"
+                                style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
+                            <datalist id="hubSuggestions"></datalist>
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="text-xs font-medium mb-1 block theme-transition" style="color: var(--text-muted);">KAM Remarks</label>
+                            <textarea id="kamRemarkText" required rows="1" placeholder="Type the remark..."
+                                class="w-full rounded-lg px-3 py-2.5 text-sm resize-none focus:outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/50 transition-all theme-transition font-bangla"
+                                style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);"></textarea>
+                        </div>
+                        <div class="sm:col-span-1 flex flex-col justify-end h-full">
+                            <button type="submit" id="kamRemarkSubmitBtn" class="w-full py-2.5 rounded-lg bg-gold hover:opacity-90 text-sm font-bold transition-colors flex items-center justify-center gap-2" style="color: var(--cb-black);">
+                                <i class="fa-solid fa-paper-plane"></i> Submit
+                            </button>
+                        </div>
+                    </form>
+                    <p class="text-xs mt-3 theme-transition" style="color: var(--text-muted);">
+                        <i class="fa-solid fa-circle-info mr-1"></i>
+                        Timestamp is captured automatically. Next Followup: within working hours (10:00 AM&ndash;5:00 PM) it's set to remark time + 2 hours; outside that window it rolls to 10:00 AM the next day.
+                    </p>
+                </div>
+                <div class="glass-panel rounded-xl overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b text-xs uppercase font-semibold tracking-wider theme-transition" style="border-color: var(--border-color); color: var(--text-muted);">
+                                    <th class="p-4 w-40">Hub</th>
+                                    <th class="p-4">KAM Remarks</th>
+                                    <th class="p-4 w-44">Timestamp</th>
+                                    <th class="p-4 w-44">Next Followup</th>
+                                </tr>
+                            </thead>
+                            <tbody id="kamRemarksTableBody" class="text-sm divide-y theme-transition" style="color: var(--text-secondary); border-color: var(--border-color);">
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="kamRemarksEmptyState" class="hidden p-12 text-center">
+                        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 theme-transition" style="background: var(--border-color);">
+                            <i class="fa-solid fa-comment-slash text-2xl theme-transition" style="color: var(--text-muted);"></i>
+                        </div>
+                        <h3 class="text-lg font-medium theme-transition" style="color: var(--text-primary);">No KAM remarks yet</h3>
+                        <p class="text-sm mt-1 theme-transition" style="color: var(--text-muted);">Add the first remark using the form above</p>
+                    </div>
+                    <div id="kamRemarksLoading" class="p-12 text-center">
+                        <div class="loading-spinner mx-auto mb-3"></div>
+                        <p class="text-sm theme-transition" style="color: var(--text-muted);">Loading KAM remarks...</p>
                     </div>
                 </div>
             </div>
@@ -1125,6 +1190,12 @@ function updateThemeIcon() {
 // ==================== CONFIGURATION ====================
 // Your CarryBee backend (Express + Turso). Change this to your deployed Render URL.
 const API_BASE_URL = 'https://merchant-issues-escalation-databash.onrender.com';
+
+// Dedicated Turso database for the KAM Remarks section (isolated from the Issue
+// Tracker's backend/data pipeline above — queried directly from the browser via
+// Turso's HTTP API, no server needed).
+const KAM_TURSO_URL = 'https://dashboard-kam-remarks-nuruzzamannahid-dot.aws-ap-south-1.turso.io/v2/pipeline';
+const KAM_TURSO_TOKEN = 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3ODYzNTQ0MDksImlkIjoiMDE5ZmViMDUtMDAwMS03Y2E4LWE2Y2UtOTE4MWE3NTk0ZjAzIiwia2lkIjoianJpQ3JvbGdhcHJHMDlHOXFsOWtNZDFlX2hiN1ZnUV9vYzJGNXlPdGVYWSIsInJpZCI6ImM4MzBhOTMxLWVlZjYtNGRjZC04NzNlLThlYjljNTE4ZGJiZSJ9.vy8CcE7Pq3457xc8Kj4OHBIJJx6bVXnNN5lajqbzOomjQi3Sd6AU5i-5KayHna5K90PtEtWxolRPx8YEgtaPBQ';
 
 // ==================== HELPERS ====================
 function escapeHTML(s) {
@@ -1691,18 +1762,24 @@ function switchView(view) {
     document.getElementById('view-tracker').classList.add('hidden');
     document.getElementById('view-analytics').classList.add('hidden');
     document.getElementById('view-activity').classList.add('hidden');
+    document.getElementById('view-kamremarks').classList.add('hidden');
     document.getElementById('nav-tracker').classList.remove('active');
     document.getElementById('nav-analytics').classList.remove('active');
     document.getElementById('nav-activity').classList.remove('active');
+    document.getElementById('nav-kamremarks').classList.remove('active');
     document.getElementById(`view-${view}`).classList.remove('hidden');
     document.getElementById(`nav-${view}`).classList.add('active');
-    const titles = { tracker: 'Issue Tracker', analytics: 'Analytics', activity: 'Activity' };
+    const titles = { tracker: 'Issue Tracker', analytics: 'Analytics', activity: 'Activity', kamremarks: 'KAM Remarks' };
     document.getElementById('page-title').innerText = titles[view] || 'Issue Tracker';
     if (view === 'analytics') {
         setTimeout(() => { Object.values(charts).forEach(c => { if(c) c.resize(); }); }, 100);
     }
     if (view === 'activity') {
         updateResponseStats();
+    }
+    if (view === 'kamremarks') {
+        populateHubSuggestions();
+        loadKamRemarks();
     }
 }
 
@@ -1735,6 +1812,154 @@ function showToast(message, type) {
     toast.innerHTML = `<i class="fa-solid ${icon}"></i> ${escapeHTML(message)}`;
     document.body.appendChild(toast);
     setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateX(100%)'; setTimeout(() => toast.remove(), 300); }, 3000);
+}
+
+// ==================== KAM REMARKS (TURSO) ====================
+let kamRemarksData = [];
+let kamRemarksTableReady = false;
+
+async function tursoQuery(sql, args = []) {
+    const stmt = { sql };
+    if (args.length) {
+        stmt.args = args.map(a => {
+            if (a === null || a === undefined) return { type: 'null', value: null };
+            if (typeof a === 'number') return { type: Number.isInteger(a) ? 'integer' : 'float', value: String(a) };
+            return { type: 'text', value: String(a) };
+        });
+    }
+    const res = await fetch(KAM_TURSO_URL, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${KAM_TURSO_TOKEN}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requests: [{ type: 'execute', stmt }, { type: 'close' }] })
+    });
+    if (!res.ok) throw new Error(`Turso HTTP ${res.status}`);
+    const data = await res.json();
+    const execResult = data.results && data.results[0];
+    if (!execResult || execResult.type === 'error') {
+        throw new Error((execResult && execResult.error && execResult.error.message) || 'Turso query failed');
+    }
+    const result = execResult.response.result;
+    const cols = (result.cols || []).map(c => c.name);
+    const rows = (result.rows || []).map(row => {
+        const obj = {};
+        row.forEach((cell, i) => { obj[cols[i]] = cell.type === 'null' ? null : cell.value; });
+        return obj;
+    });
+    return { rows, lastInsertRowid: result.last_insert_rowid };
+}
+
+async function ensureKamRemarksTable() {
+    if (kamRemarksTableReady) return;
+    await tursoQuery(`CREATE TABLE IF NOT EXISTS kam_remarks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        hub TEXT NOT NULL,
+        remark TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        followup_at TEXT NOT NULL
+    )`);
+    kamRemarksTableReady = true;
+}
+
+// Working hours are 10:00 AM - 5:00 PM.
+// - A remark added inside that window: Next Followup = remark time + 2 hours.
+// - A remark added outside that window (after 5 PM, or before 10 AM): Next
+//   Followup rolls to 10:00 AM (same day if it's before 10 AM, next day if
+//   it's 5 PM or later).
+function computeFollowupTime(remarkDate) {
+    const WORK_START = 10, WORK_END = 17;
+    const hour = remarkDate.getHours() + remarkDate.getMinutes() / 60;
+    if (hour >= WORK_START && hour < WORK_END) {
+        return new Date(remarkDate.getTime() + 2 * 60 * 60 * 1000);
+    }
+    const followup = new Date(remarkDate);
+    if (hour >= WORK_END) followup.setDate(followup.getDate() + 1);
+    followup.setHours(WORK_START, 0, 0, 0);
+    return followup;
+}
+
+function populateHubSuggestions() {
+    const datalist = document.getElementById('hubSuggestions');
+    if (!datalist) return;
+    const hubs = [...new Set(issuesData.map(i => i.hub).filter(Boolean))].sort();
+    datalist.innerHTML = hubs.map(h => `<option value="${escapeHTML(h)}"></option>`).join('');
+}
+
+async function loadKamRemarks() {
+    const loadingEl = document.getElementById('kamRemarksLoading');
+    const emptyEl = document.getElementById('kamRemarksEmptyState');
+    const bannerEl = document.getElementById('kamRemarksOfflineBanner');
+    loadingEl.classList.remove('hidden');
+    emptyEl.classList.add('hidden');
+    try {
+        await ensureKamRemarksTable();
+        const { rows } = await tursoQuery('SELECT id, hub, remark, created_at, followup_at FROM kam_remarks ORDER BY created_at DESC');
+        kamRemarksData = rows;
+        bannerEl.classList.add('hidden');
+    } catch (e) {
+        console.error('KAM Remarks fetch error:', e);
+        bannerEl.classList.remove('hidden');
+        kamRemarksData = [];
+    }
+    loadingEl.classList.add('hidden');
+    renderKamRemarksTable();
+}
+
+function renderKamRemarksTable() {
+    const tbody = document.getElementById('kamRemarksTableBody');
+    const emptyEl = document.getElementById('kamRemarksEmptyState');
+    tbody.innerHTML = '';
+    if (!kamRemarksData.length) {
+        emptyEl.classList.remove('hidden');
+        return;
+    }
+    emptyEl.classList.add('hidden');
+    const now = new Date();
+    kamRemarksData.forEach(row => {
+        const created = new Date(row.created_at);
+        const followup = new Date(row.followup_at);
+        const overdue = now > followup;
+        const followupClass = overdue ? 'status-open' : 'status-resolved';
+        const followupLabel = followup.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        tbody.innerHTML += `
+            <tr class="hover-row theme-transition">
+                <td class="p-4 text-sm font-medium theme-transition" style="color: var(--text-primary);">${escapeHTML(row.hub)}</td>
+                <td class="p-4 text-sm theme-transition font-bangla" style="color: var(--text-secondary); white-space: pre-wrap;">${escapeHTML(row.remark)}</td>
+                <td class="p-4 text-xs theme-transition" style="color: var(--text-muted);">${created.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                <td class="p-4"><span class="tag-pill ${followupClass}">${overdue ? 'Overdue • ' : ''}${followupLabel}</span></td>
+            </tr>
+        `;
+    });
+}
+
+async function submitKamRemark(event) {
+    event.preventDefault();
+    const hubInput = document.getElementById('kamRemarkHub');
+    const remarkInput = document.getElementById('kamRemarkText');
+    const submitBtn = document.getElementById('kamRemarkSubmitBtn');
+    const hub = hubInput.value.trim();
+    const remark = remarkInput.value.trim();
+    if (!hub || !remark) return;
+
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+    try {
+        await ensureKamRemarksTable();
+        const now = new Date();
+        const followup = computeFollowupTime(now);
+        await tursoQuery(
+            'INSERT INTO kam_remarks (hub, remark, created_at, followup_at) VALUES (?, ?, ?, ?)',
+            [hub, remark, now.toISOString(), followup.toISOString()]
+        );
+        hubInput.value = '';
+        remarkInput.value = '';
+        showToast('KAM remark saved!', 'success');
+        await loadKamRemarks();
+    } catch (e) {
+        console.error('KAM Remark submit error:', e);
+        showToast('Could not save remark — check your connection.', 'error');
+    }
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Submit';
 }
 
 window.addEventListener('DOMContentLoaded', () => { checkAuth(); });
