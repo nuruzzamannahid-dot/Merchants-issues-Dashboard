@@ -1717,7 +1717,7 @@ function renderKamRemarkCell(issue) {
     const text = (issue.kamRemark || '').trim();
     const preview = text ? (text.length > 60 ? text.slice(0, 60) + '…' : text) : '+ Add remark';
     const ts = formatTimestamp(issue.kamRemarkAt);
-    const badge = followupBadge(issue.kamFollowupAt);
+    const badge = getStatus(issue) === 'Resolved' ? '' : followupBadge(issue.kamFollowupAt);
     return `
         <div class="flex flex-col gap-1 max-w-[220px]">
             <button type="button" onclick="openKamRemarkModal('${escapeHTML(issue.ticketId)}')" class="kam-remark-btn text-xs theme-transition" style="color: ${text ? 'var(--text-secondary)' : 'var(--cb-yellow)'};" title="${escapeHTML(text)}">
