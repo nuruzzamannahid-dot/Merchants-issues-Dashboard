@@ -1799,7 +1799,7 @@ function formatTimestamp(iso) {
     if (!iso) return '';
     const d = new Date(iso);
     if (isNaN(d.getTime())) return '';
-    return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    return d.toLocaleString('en-US', { timeZone: 'Asia/Dhaka', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
 // Working hours are 10:00 AM - 5:00 PM.
@@ -2115,7 +2115,7 @@ function formatDuration(ms) {
 function getOpenedAtISO(issue) {
     if (!issue.date) return null;
     const t = issue.timestamp || '00:00:00';
-    const d = new Date(`${issue.date}T${t}`);
+    const d = new Date(`${issue.date}T${t}Z`);
     return isNaN(d.getTime()) ? null : d.toISOString();
 }
 
