@@ -1752,10 +1752,15 @@ function renderTable() {
                 : '<span style="color: var(--text-muted);">-</span>';
             const opsRemarksText = (issue.remarks || issue.opsRemarks || issue.ops_remarks || '').trim();
             const hasOpsRemarks = opsRemarksText.length > 0;
+            // Backend stamps date/timestamp in UTC clock digits, not Dhaka wall-clock;
+            // getOpenedAtISO() now treats them as UTC and we display in Asia/Dhaka here.
+            const openedISO = getOpenedAtISO(issue);
+            const openedDateLabel = openedISO ? new Date(openedISO).toLocaleDateString('en-US', { timeZone: 'Asia/Dhaka', year: 'numeric', month: 'short', day: 'numeric' }) : (issue.date || '-');
+            const openedTimeLabel = openedISO ? new Date(openedISO).toLocaleTimeString('en-US', { timeZone: 'Asia/Dhaka', hour: 'numeric', minute: '2-digit', second: '2-digit' }) : (issue.timestamp || '');
             const row = `
                 <tr class="hover-row transition-colors border-b last:border-0 theme-transition" style="border-color: var(--border-color);">
                     <td class="p-4 font-mono text-gold font-medium text-xs">${escapeHTML(issue.ticketId || '-')}</td>
-                    <td class="p-4 text-xs theme-transition" style="color: var(--text-muted);">${escapeHTML(issue.date)}<br><span class="text-xs opacity-70">${escapeHTML(issue.timestamp)}</span></td>
+                    <td class="p-4 text-xs theme-transition" style="color: var(--text-muted);">${escapeHTML(openedDateLabel)}<br><span class="text-xs opacity-70">${escapeHTML(openedTimeLabel)}</span></td>
                     <td class="p-4 font-medium text-sm theme-transition" style="color: var(--text-primary);">${escapeHTML(issue.merchant || '-')}</td>
                     <td class="p-4 font-mono text-xs theme-transition" style="color: var(--text-muted);">${escapeHTML(issue.consignmentId || '-')}</td>
                     <td class="p-4"><span class="tag-pill border ${getTagColor(issue.issueTag)}">${escapeHTML(issue.issueTag || 'General')}</span></td>
@@ -1960,7 +1965,10 @@ function openModal(ticketId) {
     document.getElementById('modal-consignment').innerText = issue.consignmentId || '-';
     document.getElementById('modal-tag').innerText = issue.issueTag || 'General';
     document.getElementById('modal-tag').className = `tag-pill border ${getTagColor(issue.issueTag)}`;
-    document.getElementById('modal-date').innerText = `${issue.date} ${issue.timestamp}`;
+    const modalOpenedISO = getOpenedAtISO(issue);
+    document.getElementById('modal-date').innerText = modalOpenedISO
+        ? new Date(modalOpenedISO).toLocaleString('en-US', { timeZone: 'Asia/Dhaka', year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit' })
+        : `${issue.date} ${issue.timestamp}`;
     document.getElementById('modal-details').innerText = issue.details || '-';
     document.getElementById('modal-responder').innerText = issue.respondedBy || 'Not yet responded';
     updateModalButtons(issue);
@@ -2585,7 +2593,15 @@ function renderStatusChart() {
 function renderTimeChart() {
     const ctx = document.getElementById('timeChart').getContext('2d');
     const dates = {};
-    [...issuesData].sort((a,b) => new Date(a.date) - new Date(b.date)).forEach(i => { if (i.date) dates[i.date] = (dates[i.date] || 0) + 1; });
+    // Group by the Dhaka-corrected date (not the raw UTC-labeled field) so
+    // issues near midnight land on the correct day.
+    [...issuesData]
+        .map(i => ({ i, openedISO: getOpenedAtISO(i) }))
+        .sort((a, b) => new Date(a.openedISO || a.i.date) - new Date(b.openedISO || b.i.date))
+        .forEach(({ i, openedISO }) => {
+            const key = openedISO ? new Date(openedISO).toLocaleDateString('en-CA', { timeZone: 'Asia/Dhaka' }) : i.date;
+            if (key) dates[key] = (dates[key] || 0) + 1;
+        });
     const cc = getChartColors();
     if (charts.time) charts.time.destroy();
     charts.time = new Chart(ctx, {
@@ -2667,7 +2683,10 @@ function exportCSV() {
         const kamRemarkBy = (row.kamRemarkBy || '').replace(/"/g, '""');
         const kamRemarkAt = row.kamRemarkAt ? formatTimestamp(row.kamRemarkAt) : '';
         const followupAt = row.kamFollowupAt ? formatTimestamp(row.kamFollowupAt) : '';
-        csvContent += `${row.ticketId},${row.date},${row.timestamp},${row.merchant},${row.consignmentId},${row.issueTag},${getStatus(row)},"${respondedBy}",${row.hub || ''},"${kamRemark}","${kamRemarkBy}","${kamRemarkAt}","${followupAt}","${details}","${remarks}"\n`;
+        const rowOpenedISO = getOpenedAtISO(row);
+        const bdDate = rowOpenedISO ? new Date(rowOpenedISO).toLocaleDateString('en-CA', { timeZone: 'Asia/Dhaka' }) : row.date;
+        const bdTime = rowOpenedISO ? new Date(rowOpenedISO).toLocaleTimeString('en-GB', { timeZone: 'Asia/Dhaka', hour12: false }) : row.timestamp;
+        csvContent += `${row.ticketId},${bdDate},${bdTime},${row.merchant},${row.consignmentId},${row.issueTag},${getStatus(row)},"${respondedBy}",${row.hub || ''},"${kamRemark}","${kamRemarkBy}","${kamRemarkAt}","${followupAt}","${details}","${remarks}"\n`;
     });
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
