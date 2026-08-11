@@ -637,6 +637,9 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
             <a href="#" onclick="switchView('activity')" id="nav-activity" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium">
                 <i class="fa-solid fa-user-check w-5 text-center"></i> Activity
             </a>
+            <a href="#" onclick="switchView('performance')" id="nav-performance" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium">
+                <i class="fa-solid fa-gauge-high w-5 text-center"></i> Performance
+            </a>
             <a href="#" onclick="showRaiseIssue()" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium">
                 <i class="fa-solid fa-plus-circle w-5 text-center"></i> Raise Issue
             </a>
@@ -885,6 +888,69 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                     </p>
                     <div id="responded-by-person" class="space-y-2 max-h-56 overflow-y-auto pr-1">
                         <!-- Per-person breakdown rows injected by JS -->
+                    </div>
+                </div>
+            </div>
+            <div id="view-performance" class="hidden fade-in space-y-6">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <p class="text-xs theme-transition" style="color: var(--text-muted);">
+                        <i class="fa-solid fa-circle-info mr-1"></i>
+                        Tracks how long each issue took to move Open &rarr; In Progress &rarr; Resolved. Only counts changes made since this tab was added.
+                    </p>
+                    <button onclick="exportPerformanceCSV()" class="px-4 py-2 rounded-lg bg-gold hover:opacity-90 text-sm font-bold transition-colors flex items-center gap-2 self-start sm:self-auto" style="color: var(--cb-black);">
+                        <i class="fa-solid fa-download"></i> Export Performance CSV
+                    </button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="card-gradient p-5 rounded-xl border theme-transition" style="border-color: var(--border-color); box-shadow: var(--shadow-sm);">
+                        <p class="text-xs font-semibold uppercase tracking-wider theme-transition" style="color: var(--text-muted);">Avg Time to In Progress</p>
+                        <h3 class="text-2xl font-bold mt-1" style="color: #3b82f6;" id="perf-avg-progress">-</h3>
+                    </div>
+                    <div class="card-gradient p-5 rounded-xl border theme-transition" style="border-color: var(--border-color); box-shadow: var(--shadow-sm);">
+                        <p class="text-xs font-semibold uppercase tracking-wider theme-transition" style="color: var(--text-muted);">Avg Time to Resolution</p>
+                        <h3 class="text-2xl font-bold mt-1" style="color: #22c55e;" id="perf-avg-resolve">-</h3>
+                    </div>
+                    <div class="card-gradient p-5 rounded-xl border theme-transition" style="border-color: var(--border-color); box-shadow: var(--shadow-sm);">
+                        <p class="text-xs font-semibold uppercase tracking-wider theme-transition" style="color: var(--text-muted);">Fastest Resolution</p>
+                        <h3 class="text-2xl font-bold mt-1 theme-transition" style="color: var(--text-primary);" id="perf-fastest">-</h3>
+                    </div>
+                    <div class="card-gradient p-5 rounded-xl border theme-transition" style="border-color: var(--border-color); box-shadow: var(--shadow-sm);">
+                        <p class="text-xs font-semibold uppercase tracking-wider theme-transition" style="color: var(--text-muted);">Slowest Resolution</p>
+                        <h3 class="text-2xl font-bold mt-1 theme-transition" style="color: var(--text-primary);" id="perf-slowest">-</h3>
+                    </div>
+                </div>
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <div class="relative flex-1">
+                        <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 theme-transition" style="color: var(--text-muted);"></i>
+                        <input type="text" id="perfSearchInput" onkeyup="renderPerformanceTable()" placeholder="Search by Ticket ID or Merchant..."
+                            class="w-full rounded-lg pl-10 pr-4 py-2.5 text-sm placeholder-slate-400 focus:outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/50 transition-all theme-transition"
+                            style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
+                    </div>
+                </div>
+                <div class="glass-panel rounded-xl overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b text-xs uppercase font-semibold tracking-wider theme-transition" style="border-color: var(--border-color); color: var(--text-muted);">
+                                    <th class="p-4 w-32">Ticket ID</th>
+                                    <th class="p-4 w-40">Merchant</th>
+                                    <th class="p-4 w-36">Opened</th>
+                                    <th class="p-4 w-36">In Progress At</th>
+                                    <th class="p-4 w-36">Resolved At</th>
+                                    <th class="p-4 w-32">Time to Progress</th>
+                                    <th class="p-4 w-32">Time to Resolve</th>
+                                </tr>
+                            </thead>
+                            <tbody id="performanceTableBody" class="text-sm divide-y theme-transition" style="color: var(--text-secondary); border-color: var(--border-color);">
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="perfEmptyState" class="hidden p-12 text-center">
+                        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 theme-transition" style="background: var(--border-color);">
+                            <i class="fa-solid fa-gauge-high text-2xl theme-transition" style="color: var(--text-muted);"></i>
+                        </div>
+                        <h3 class="text-lg font-medium theme-transition" style="color: var(--text-primary);">No performance data yet</h3>
+                        <p class="text-sm mt-1 theme-transition" style="color: var(--text-muted);">Data appears as issues move to In Progress / Resolved</p>
                     </div>
                 </div>
             </div>
@@ -1315,6 +1381,58 @@ async function loadKamRemarksFromTurso() {
     }
 }
 
+// ==================== STATUS TIMELINE (for Performance tab) ====================
+// Dedicated table in the same KAM Remarks Turso DB. Logs every status change;
+// the Performance tab uses the *first* time each ticket hit "In Progress" and
+// the *first* time it hit "Resolved" as the milestone timestamps.
+let statusTimelineTableReady = false;
+
+async function ensureStatusTimelineTable() {
+    if (statusTimelineTableReady) return;
+    await tursoQuery(`CREATE TABLE IF NOT EXISTS status_timeline (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticket_id TEXT NOT NULL,
+        status TEXT NOT NULL,
+        changed_by TEXT,
+        changed_at TEXT NOT NULL
+    )`);
+    statusTimelineTableReady = true;
+}
+
+async function logStatusTransition(ticketId, status, changedBy, changedAtISO) {
+    try {
+        await ensureStatusTimelineTable();
+        await tursoQuery(
+            'INSERT INTO status_timeline (ticket_id, status, changed_by, changed_at) VALUES (?, ?, ?, ?)',
+            [ticketId, status, changedBy, changedAtISO]
+        );
+    } catch (e) {
+        console.error('Log status transition error:', e);
+    }
+}
+
+// Loads the earliest "In Progress" and earliest "Resolved" timestamp per
+// ticket and merges them onto issuesData as progressAt / resolvedTimelineAt.
+async function loadStatusTimelineFromTurso() {
+    try {
+        await ensureStatusTimelineTable();
+        const { rows } = await tursoQuery('SELECT ticket_id, status, changed_at FROM status_timeline ORDER BY changed_at ASC');
+        const firstSeen = new Map();
+        rows.forEach(r => {
+            const key = r.ticket_id + '|' + r.status;
+            if (!firstSeen.has(key)) firstSeen.set(key, r.changed_at);
+        });
+        issuesData.forEach(issue => {
+            const p = firstSeen.get(issue.ticketId + '|In Progress');
+            const r = firstSeen.get(issue.ticketId + '|Resolved');
+            if (p) issue.progressAt = p;
+            if (r) issue.resolvedTimelineAt = r;
+        });
+    } catch (e) {
+        console.error('Load status timeline error:', e);
+    }
+}
+
 // ==================== HELPERS ====================
 function escapeHTML(s) {
     return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -1419,6 +1537,7 @@ async function fetchData(silent = false) {
     applySessionResponses();
     await enrichWithSheetData();
     await loadKamRemarksFromTurso();
+    await loadStatusTimelineFromTurso();
 
     document.getElementById('loading-state').classList.add('hidden');
     document.getElementById('view-tracker').classList.remove('hidden');
@@ -1887,11 +2006,15 @@ function updateStatus(newStatus) {
         sessionResponses.set(currentModalIssue.id, { respondedBy: responderName, respondedAt: currentModalIssue.respondedAt });
     }
     document.getElementById('modal-responder').innerText = responderName;
+    if (newStatus === 'In Progress' && !currentModalIssue.progressAt) currentModalIssue.progressAt = currentModalIssue.respondedAt;
+    if (newStatus === 'Resolved' && !currentModalIssue.resolvedTimelineAt) currentModalIssue.resolvedTimelineAt = currentModalIssue.respondedAt;
+    logStatusTransition(currentModalIssue.ticketId, newStatus, responderName, currentModalIssue.respondedAt);
     updateModalButtons(currentModalIssue);
     updateStats();
     updateResponseStats();
     renderTable();
     updateAnalytics();
+    if (!document.getElementById('view-performance').classList.contains('hidden')) renderPerformanceTable();
     updateStatusOnServer(currentModalIssue, newStatus, responderName);
 }
 
@@ -1973,6 +2096,94 @@ async function submitNewIssue() {
         console.error('Create issue error:', err);
         showToast('Failed to raise issue. Please try again.', 'error');
     }
+}
+
+// ==================== PERFORMANCE TAB ====================
+function formatDuration(ms) {
+    if (ms == null || isNaN(ms) || ms < 0) return '-';
+    const mins = Math.round(ms / 60000);
+    if (mins < 60) return `${mins}m`;
+    const hrs = Math.floor(mins / 60);
+    const remMins = mins % 60;
+    if (hrs < 24) return `${hrs}h ${remMins}m`;
+    const days = Math.floor(hrs / 24);
+    const remHrs = hrs % 24;
+    return `${days}d ${remHrs}h`;
+}
+
+// Combines your existing date + timestamp columns into one ISO instant.
+function getOpenedAtISO(issue) {
+    if (!issue.date) return null;
+    const t = issue.timestamp || '00:00:00';
+    const d = new Date(`${issue.date}T${t}`);
+    return isNaN(d.getTime()) ? null : d.toISOString();
+}
+
+function buildPerformanceRows() {
+    return issuesData.map(issue => {
+        const openedISO = getOpenedAtISO(issue);
+        const progressISO = issue.progressAt || null;
+        const resolvedISO = issue.resolvedTimelineAt || null;
+        const openedMs = openedISO ? new Date(openedISO).getTime() : null;
+        const progressMs = progressISO ? new Date(progressISO).getTime() : null;
+        const resolvedMs = resolvedISO ? new Date(resolvedISO).getTime() : null;
+        return {
+            issue, openedISO, progressISO, resolvedISO,
+            timeToProgress: (openedMs != null && progressMs != null) ? progressMs - openedMs : null,
+            timeToResolve: (openedMs != null && resolvedMs != null) ? resolvedMs - openedMs : null
+        };
+    });
+}
+
+function renderPerformanceTable() {
+    const tbody = document.getElementById('performanceTableBody');
+    if (!tbody) return;
+    const search = (document.getElementById('perfSearchInput').value || '').toLowerCase();
+    let rows = buildPerformanceRows().filter(r =>
+        (r.issue.ticketId && r.issue.ticketId.toLowerCase().includes(search)) ||
+        (r.issue.merchant && r.issue.merchant.toLowerCase().includes(search))
+    );
+    rows.sort((a, b) => new Date(b.openedISO || 0) - new Date(a.openedISO || 0));
+
+    document.getElementById('perfEmptyState').classList.toggle('hidden', rows.length !== 0);
+
+    tbody.innerHTML = rows.map(r => `
+        <tr class="hover-row transition-colors border-b last:border-0 theme-transition" style="border-color: var(--border-color);">
+            <td class="p-4 font-mono text-gold font-medium text-xs">${escapeHTML(r.issue.ticketId || '-')}</td>
+            <td class="p-4 font-medium text-sm theme-transition" style="color: var(--text-primary);">${escapeHTML(r.issue.merchant || '-')}</td>
+            <td class="p-4 text-xs theme-transition" style="color: var(--text-muted);">${r.openedISO ? formatTimestamp(r.openedISO) : '-'}</td>
+            <td class="p-4 text-xs theme-transition" style="color: var(--text-muted);">${r.progressISO ? formatTimestamp(r.progressISO) : '-'}</td>
+            <td class="p-4 text-xs theme-transition" style="color: var(--text-muted);">${r.resolvedISO ? formatTimestamp(r.resolvedISO) : '-'}</td>
+            <td class="p-4 text-xs font-semibold" style="color:#3b82f6;">${formatDuration(r.timeToProgress)}</td>
+            <td class="p-4 text-xs font-semibold" style="color:#22c55e;">${formatDuration(r.timeToResolve)}</td>
+        </tr>
+    `).join('');
+
+    const withProgress = rows.filter(r => r.timeToProgress != null).map(r => r.timeToProgress);
+    const withResolve = rows.filter(r => r.timeToResolve != null).map(r => r.timeToResolve);
+    const avg = arr => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
+
+    document.getElementById('perf-avg-progress').innerText = formatDuration(avg(withProgress));
+    document.getElementById('perf-avg-resolve').innerText = formatDuration(avg(withResolve));
+    document.getElementById('perf-fastest').innerText = withResolve.length ? formatDuration(Math.min(...withResolve)) : '-';
+    document.getElementById('perf-slowest').innerText = withResolve.length ? formatDuration(Math.max(...withResolve)) : '-';
+}
+
+function exportPerformanceCSV() {
+    let csvContent = "data:text/csv;charset=utf-8,";
+    csvContent += "Ticket ID,Merchant,Opened At,Moved to In Progress At,Resolved At,Time to In Progress,Time to Resolution\n";
+    buildPerformanceRows().forEach(r => {
+        const merchant = (r.issue.merchant || '').replace(/"/g, '""');
+        csvContent += `${r.issue.ticketId || ''},"${merchant}",${r.openedISO ? formatTimestamp(r.openedISO) : ''},${r.progressISO ? formatTimestamp(r.progressISO) : ''},${r.resolvedISO ? formatTimestamp(r.resolvedISO) : ''},${formatDuration(r.timeToProgress)},${formatDuration(r.timeToResolve)}\n`;
+    });
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "carrybee_performance.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast('Performance CSV exported successfully!', 'success');
 }
 
 // ==================== HUB MAP ====================
@@ -2425,18 +2636,23 @@ function switchView(view) {
     document.getElementById('view-tracker').classList.add('hidden');
     document.getElementById('view-analytics').classList.add('hidden');
     document.getElementById('view-activity').classList.add('hidden');
+    document.getElementById('view-performance').classList.add('hidden');
     document.getElementById('nav-tracker').classList.remove('active');
     document.getElementById('nav-analytics').classList.remove('active');
     document.getElementById('nav-activity').classList.remove('active');
+    document.getElementById('nav-performance').classList.remove('active');
     document.getElementById(`view-${view}`).classList.remove('hidden');
     document.getElementById(`nav-${view}`).classList.add('active');
-    const titles = { tracker: 'Issue Tracker', analytics: 'Analytics', activity: 'Activity' };
+    const titles = { tracker: 'Issue Tracker', analytics: 'Analytics', activity: 'Activity', performance: 'Performance' };
     document.getElementById('page-title').innerText = titles[view] || 'Issue Tracker';
     if (view === 'analytics') {
         setTimeout(() => { Object.values(charts).forEach(c => { if(c) c.resize(); }); }, 100);
     }
     if (view === 'activity') {
         updateResponseStats();
+    }
+    if (view === 'performance') {
+        renderPerformanceTable();
     }
 }
 
