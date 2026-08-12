@@ -1535,9 +1535,15 @@ async function fetchData(silent = false) {
     }
 
     applySessionResponses();
-    await enrichWithSheetData();
-    await loadKamRemarksFromTurso();
-    await loadStatusTimelineFromTurso();
+    // These three enrichment calls are independent of one another (each just
+    // merges different fields onto issuesData), so run them concurrently
+    // instead of one after another — this alone can cut load time roughly
+    // to the slowest single call instead of the sum of all three.
+    await Promise.all([
+        enrichWithSheetData(),
+        loadKamRemarksFromTurso(),
+        loadStatusTimelineFromTurso()
+    ]);
 
     document.getElementById('loading-state').classList.add('hidden');
     document.getElementById('view-tracker').classList.remove('hidden');
