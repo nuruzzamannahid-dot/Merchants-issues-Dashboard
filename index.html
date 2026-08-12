@@ -693,7 +693,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                         <div class="absolute top-0 right-0 w-24 h-24 rounded-full -mr-8 -mt-8 transition-transform group-hover:scale-110" style="background: rgba(255,204,0,0.1);"></div>
                         <p class="text-xs font-semibold uppercase tracking-wider theme-transition" style="color: var(--text-muted);">Open</p>
                         <h3 class="text-3xl font-bold text-gold mt-1" id="stat-open">0</h3>
-                        <p class="text-xs mt-1 theme-transition" style="color: var(--text-muted);">Awaiting action</p>
+                        <p class="text-xs mt-1 theme-transition" style="color: var(--text-muted);">Awaiting action · <span id="pct-open">0%</span></p>
                         <div class="absolute bottom-0 left-0 w-full h-1" style="background: var(--border-color);">
                             <div class="h-full bg-gold w-0 transition-all duration-1000" id="bar-open"></div>
                         </div>
@@ -702,7 +702,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                         <div class="absolute top-0 right-0 w-24 h-24 rounded-full -mr-8 -mt-8 transition-transform group-hover:scale-110" style="background: rgba(59,130,246,0.1);"></div>
                         <p class="text-xs font-semibold uppercase tracking-wider theme-transition" style="color: var(--text-muted);">In Progress</p>
                         <h3 class="text-3xl font-bold mt-1" style="color: #3b82f6;" id="stat-progress">0</h3>
-                        <p class="text-xs mt-1 theme-transition" style="color: var(--text-muted);">Being handled</p>
+                        <p class="text-xs mt-1 theme-transition" style="color: var(--text-muted);">Being handled · <span id="pct-progress">0%</span></p>
                         <div class="absolute bottom-0 left-0 w-full h-1" style="background: var(--border-color);">
                             <div class="h-full w-0 transition-all duration-1000" style="background: #3b82f6;" id="bar-progress"></div>
                         </div>
@@ -711,7 +711,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                         <div class="absolute top-0 right-0 w-24 h-24 rounded-full -mr-8 -mt-8 transition-transform group-hover:scale-110" style="background: rgba(34,197,94,0.1);"></div>
                         <p class="text-xs font-semibold uppercase tracking-wider theme-transition" style="color: var(--text-muted);">Resolved</p>
                         <h3 class="text-3xl font-bold mt-1" style="color: #22c55e;" id="stat-resolved">0</h3>
-                        <p class="text-xs mt-1 theme-transition" style="color: var(--text-muted);">Closed issues</p>
+                        <p class="text-xs mt-1 theme-transition" style="color: var(--text-muted);">Closed issues · <span id="pct-resolved">0%</span></p>
                         <div class="absolute bottom-0 left-0 w-full h-1" style="background: var(--border-color);">
                             <div class="h-full w-0 transition-all duration-1000" style="background: #22c55e;" id="bar-resolved"></div>
                         </div>
@@ -1673,6 +1673,9 @@ function updateStats() {
         document.getElementById('bar-open').style.width = total ? `${(open/total)*100}%` : '0%';
         document.getElementById('bar-progress').style.width = total ? `${(progress/total)*100}%` : '0%';
         document.getElementById('bar-resolved').style.width = total ? `${(resolved/total)*100}%` : '0%';
+        document.getElementById('pct-open').innerText = total ? `${Math.round((open/total)*100)}%` : '0%';
+        document.getElementById('pct-progress').innerText = total ? `${Math.round((progress/total)*100)}%` : '0%';
+        document.getElementById('pct-resolved').innerText = total ? `${Math.round((resolved/total)*100)}%` : '0%';
     }, 100);
 }
 
