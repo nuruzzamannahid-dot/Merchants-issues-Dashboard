@@ -1111,9 +1111,11 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                     <label for="new-details" class="block text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Issue Details</label>
                     <textarea id="new-details" rows="4" class="w-full rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-gold/50 resize-none theme-transition"
                         style="background-color: var(--bg-modal-content); color: var(--text-primary); border: 1px solid var(--border-input);" placeholder="Describe the issue in detail..." maxlength="2000"></textarea>
+                    <div id="new-details-counter" class="text-xs mt-1 transition-colors text-red-500" aria-live="polite">0 / 20 characters minimum</div>
                 </div>
-                <button onclick="submitNewIssue()" class="w-full py-2.5 rounded-lg bg-gold hover:opacity-90 text-sm font-bold transition-colors" style="color: var(--cb-black);">
-                    Submit Issue
+                <button id="btn-submit-new-issue" onclick="submitNewIssue()" class="w-full py-2.5 rounded-lg bg-gold hover:opacity-90 text-sm font-bold transition-colors flex items-center justify-center gap-2" style="color: var(--cb-black);">
+                    <i id="btn-submit-spinner" class="fa-solid fa-spinner fa-spin hidden"></i>
+                    <span id="btn-submit-text">Submit Issue</span>
                 </button>
             </div>
         </div>
@@ -2069,11 +2071,26 @@ function closeModal() {
     if (lastModalFocus && lastModalFocus.focus) { lastModalFocus.focus(); }
     lastModalFocus = null;
 }
+function updateNewDetailsCounter() {
+    const el = document.getElementById('new-details');
+    const counter = document.getElementById('new-details-counter');
+    if (!el || !counter) return;
+    const len = el.value.trim().length;
+    if (len < 20) {
+        counter.textContent = `${len} / 20 characters minimum`;
+        counter.className = "text-xs mt-1 transition-colors text-red-500";
+    } else {
+        counter.textContent = `${len} characters entered (Minimum met)`;
+        counter.className = "text-xs mt-1 transition-colors text-green-500";
+    }
+}
+
 function showRaiseIssue() {
     document.getElementById('raiseIssueModal').classList.remove('hidden');
     lastRaiseFocus = document.activeElement;
     const first = document.getElementById('new-merchant');
     if (first) first.focus();
+    updateNewDetailsCounter();
 }
 function closeRaiseIssue() {
     document.getElementById('raiseIssueModal').classList.add('hidden');
@@ -2088,6 +2105,18 @@ async function submitNewIssue() {
     const details = document.getElementById('new-details').value.trim();
     if (!merchant || !consignment || !tag) { showToast('Please fill all fields', 'error'); return; }
     if (details.length < 20) { showToast('Please provide at least 20 characters of details', 'error'); return; }
+
+    const btnSubmit = document.getElementById('btn-submit-new-issue');
+    const spinner = document.getElementById('btn-submit-spinner');
+    const btnText = document.getElementById('btn-submit-text');
+
+    if (btnSubmit) {
+        btnSubmit.disabled = true;
+        btnSubmit.style.pointerEvents = 'none';
+        btnSubmit.style.opacity = '0.6';
+    }
+    if (spinner) spinner.classList.remove('hidden');
+    if (btnText) btnText.textContent = 'Submitting...';
 
     try {
         const response = await fetch(`${API_BASE_URL}/api/issues`, {
@@ -2105,10 +2134,19 @@ async function submitNewIssue() {
         document.getElementById('new-consignment').value = '';
         document.getElementById('new-tag').value = '';
         document.getElementById('new-details').value = '';
+        updateNewDetailsCounter();
         fetchData();
     } catch (err) {
         console.error('Create issue error:', err);
         showToast('Failed to raise issue. Please try again.', 'error');
+    } finally {
+        if (btnSubmit) {
+            btnSubmit.disabled = false;
+            btnSubmit.style.pointerEvents = 'auto';
+            btnSubmit.style.opacity = '1';
+        }
+        if (spinner) spinner.classList.add('hidden');
+        if (btnText) btnText.textContent = 'Submit Issue';
     }
 }
 
@@ -2716,7 +2754,14 @@ function showToast(message, type) {
     setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateX(100%)'; setTimeout(() => toast.remove(), 300); }, 3000);
 }
 
-window.addEventListener('DOMContentLoaded', () => { checkAuth(); });
+window.addEventListener('DOMContentLoaded', () => {
+    checkAuth();
+
+    const newDetailsInput = document.getElementById('new-details');
+    if (newDetailsInput) {
+        newDetailsInput.addEventListener('input', updateNewDetailsCounter);
+    }
+});
 
 // Close modals with Escape and keep Tab inside whichever modal is open.
 document.addEventListener('keydown', (e) => {
