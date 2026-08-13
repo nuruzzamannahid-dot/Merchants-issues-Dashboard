@@ -1,0 +1,6 @@
+# Sentinel's Security Journal
+
+## 2026-08-03 - Hardcoded Telegram Bot API Token
+**Vulnerability:** A highly critical hardcoded Telegram Bot API token (redacted for security) was found in `carrybee_reminder_bot.py` and documented in the public `README.md`. Anyone with access to the source code could take full control of the bot, intercept traffic, or send unauthorized messages.
+**Learning:** The secret was hardcoded for convenience during early development. When implementing the dynamic environment variable load check in a module meant to be imported by unit tests (`test_reminder_bot.py`), placing the validation and exit routine in the main body would cause the test importing process to crash prematurely. Placing the validation and graceful exit checks strictly inside the `if __name__ == '__main__':` boundary resolves this, allowing the module to be imported cleanly in testing contexts without environment variables being configured.
+**Prevention:** Never commit API tokens, credentials, or keys directly to repository files. Always load sensitive values dynamically using environment variables (`os.environ`) and perform environment sanity checks at the entry point of execution (within `__main__` guards) to prevent disrupting testing frameworks.
