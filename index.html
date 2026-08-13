@@ -1539,6 +1539,7 @@ async function fetchData(silent = false) {
     document.getElementById('view-tracker').classList.remove('hidden');
     updateStats();
     updateResponseStats();
+    populateTagFilter();
     renderTable();
     updateAnalytics();
     document.getElementById('last-refreshed').innerText = `Last refreshed: ${new Date().toLocaleTimeString()}`;
@@ -1760,13 +1761,9 @@ function animateValue(id, start, end, duration) {
     }, stepTime);
 }
 
-function renderTable() {
-    const tbody = document.getElementById('issuesTableBody');
-    const search = document.getElementById('searchInput').value.toLowerCase();
-    const statusFilter = document.getElementById('statusFilter').value;
-    const tagFilter = document.getElementById('tagFilter').value;
-    tbody.innerHTML = '';
+function populateTagFilter() {
     const tagSelect = document.getElementById('tagFilter');
+    if (!tagSelect) return;
     const currentTag = tagSelect.value;
     // Build the tag filter from data, deduplicated case-insensitively so
     // "Delivery Delay" and "Delivery delay" appear once with a canonical label.
@@ -1778,10 +1775,21 @@ function renderTable() {
         if (!seen.has(k)) seen.set(k, (TAG_LOOKUP[k] && TAG_LOOKUP[k].label) || t);
     });
     const uniqueTags = [...seen.values()].sort((a, b) => a.localeCompare(b));
-    tagSelect.innerHTML = '<option value="All">All Issue Tags</option>';
+
+    // Performance Optimization: build option list in memory and do a single write
+    const optionsHtml = ['<option value="All">All Issue Tags</option>'];
     uniqueTags.forEach(tag => {
-        tagSelect.innerHTML += `<option value="${escapeHTML(tag)}" ${normalizeTag(tag) === normalizeTag(currentTag) ? 'selected' : ''}>${escapeHTML(tag)}</option>`;
+        optionsHtml.push(`<option value="${escapeHTML(tag)}" ${normalizeTag(tag) === normalizeTag(currentTag) ? 'selected' : ''}>${escapeHTML(tag)}</option>`);
     });
+    tagSelect.innerHTML = optionsHtml.join('');
+}
+
+function renderTable() {
+    const tbody = document.getElementById('issuesTableBody');
+    const search = document.getElementById('searchInput').value.toLowerCase();
+    const statusFilter = document.getElementById('statusFilter').value;
+    const tagFilter = document.getElementById('tagFilter').value;
+    tbody.innerHTML = '';
 
     let filtered = issuesData.filter(issue => {
         const status = getStatus(issue);
@@ -1799,6 +1807,7 @@ function renderTable() {
         document.getElementById('emptyState').classList.remove('hidden');
     } else {
         document.getElementById('emptyState').classList.add('hidden');
+        const rowsHtml = [];
         filtered.forEach(issue => {
             const status = getStatus(issue);
             let statusClass = '', statusDot = '';
@@ -1847,8 +1856,9 @@ function renderTable() {
                     </td>
                 </tr>
             `;
-            tbody.innerHTML += row;
+            rowsHtml.push(row);
         });
+        tbody.innerHTML = rowsHtml.join('');
     }
 }
 
@@ -2684,15 +2694,17 @@ function renderTopMerchants() {
     issuesData.forEach(i => { if (i.merchant) merchants[i.merchant] = (merchants[i.merchant] || 0) + 1; });
     const sorted = Object.entries(merchants).sort((a,b) => b[1] - a[1]).slice(0, 6);
     const container = document.getElementById('topMerchantsList');
-    container.innerHTML = '';
+    if (!container) return;
+    const merchantsHtml = [];
     sorted.forEach(([name, count]) => {
-        container.innerHTML += `
+        merchantsHtml.push(`
             <div class="flex items-center justify-between p-3 rounded-lg border theme-transition" style="background: var(--bg-modal-content); border-color: var(--border-color);">
                 <span class="text-sm font-medium theme-transition" style="color: var(--text-primary);">${escapeHTML(name)}</span>
                 <span class="text-xs font-bold text-gold bg-gold/10 px-2 py-1 rounded-full">${count} issue${count > 1 ? 's' : ''}</span>
             </div>
-        `;
+        `);
     });
+    container.innerHTML = merchantsHtml.join('');
 }
 
 function renderResolutionChart() {
