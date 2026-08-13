@@ -744,6 +744,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                                     <th class="p-4 w-32">Ticket ID</th>
                                     <th class="p-4 w-36">Submitted</th>
                                     <th class="p-4 w-40">Merchant</th>
+                                    <th class="p-4 w-40">Group</th>
                                     <th class="p-4 w-36">Consignment</th>
                                     <th class="p-4 w-36">Tag</th>
                                     <th class="p-4">Details</th>
@@ -1288,10 +1289,10 @@ const API_BASE_URL = 'https://merchant-issues-escalation-databash.onrender.com';
 // Apps Script Web App that looks up Hub / Ops Remarks / KAM Name by Consignment ID
 // across the AD Team sheet's ISD, OSD, and Central tabs.
 const SHEET_LOOKUP_URL = 'https://script.google.com/macros/s/AKfycbxluUMkxZ5HAdh3vtPf3yxZxXvvhbw1rG1wgmkYR8j3MY3NtNrDpsyNNH5OJeMumlhiEA/exec';
-// Apps Script Web App that returns each merchant's Assigned Group (e.g.
-// "CarryBee Issue Group || NN1") from the AD Merchant Grouping sheet, keyed
-// by Business Name.
-const ADM_GROUP_URL = 'https://script.google.com/macros/s/AKfycbz6KVGOnE62UkuXXWby4Ck9MXtJrRyKNuRnd7XGCAUAqZ81aCO5jln_mM_0NA_B1udy/exec';
+// Publicly published CSV of the AD Merchant Grouping sheet (Business ID,
+// Business Name, Merchant Criteria, Assigned Group). Published via
+// File > Share > Publish to web, so no Apps Script deployment/auth involved.
+const ADM_GROUP_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTuapDC5l3Klr5XdcIf8ptsTMAkAkM38Zc6PdqlQj1-AzSCYgkSHU_pTcD6z35kq9B5hfzx5dnjbYrD/pub?output=csv';
 
 // Dedicated Turso database for KAM Remarks (remark text + auto timestamp + auto
 // followup timestamp). Queried directly from the browser via Turso's HTTP API —
@@ -1597,16 +1598,51 @@ async function enrichWithSheetData() {
 
 let adGroupCache = null;
 
+// Minimal RFC4180-ish CSV parser: handles quoted fields, embedded commas,
+// and doubled "" escapes inside quotes (all present in this sheet's data,
+// e.g. business names containing commas or quote marks).
+function parseCSV(text) {
+    const rows = [];
+    let row = [];
+    let field = '';
+    let inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+        const c = text[i];
+        if (inQuotes) {
+            if (c === '"') {
+                if (text[i + 1] === '"') { field += '"'; i++; }
+                else { inQuotes = false; }
+            } else {
+                field += c;
+            }
+        } else if (c === '"') {
+            inQuotes = true;
+        } else if (c === ',') {
+            row.push(field); field = '';
+        } else if (c === '\n' || c === '\r') {
+            if (c === '\r' && text[i + 1] === '\n') i++;
+            row.push(field); field = '';
+            if (row.length > 1 || row[0] !== '') rows.push(row);
+            row = [];
+        } else {
+            field += c;
+        }
+    }
+    if (field !== '' || row.length) { row.push(field); rows.push(row); }
+    return rows;
+}
+
 async function enrichWithGroupData() {
     try {
         if (!adGroupCache) {
-            const response = await fetch(ADM_GROUP_URL);
-            if (!response.ok) throw new Error(`Group lookup responded ${response.status}`);
-            const data = await response.json();
+            const response = await fetch(ADM_GROUP_CSV_URL);
+            if (!response.ok) throw new Error(`Group CSV responded ${response.status}`);
+            const text = await response.text();
+            const rows = parseCSV(text).slice(1); // drop header row
             adGroupCache = new Map(
-                (data.merchants || [])
-                    .filter(m => m.businessName)
-                    .map(m => [String(m.businessName).trim().toLowerCase(), m.group])
+                rows
+                    .filter(r => r[1])
+                    .map(r => [String(r[1]).trim().toLowerCase(), r[3]])
             );
         }
 
@@ -1784,7 +1820,8 @@ function renderTable() {
                 <tr class="hover-row transition-colors border-b last:border-0 theme-transition" style="border-color: var(--border-color);">
                     <td class="p-4 font-mono text-gold font-medium text-xs">${escapeHTML(issue.ticketId || '-')}</td>
                     <td class="p-4 text-xs theme-transition" style="color: var(--text-muted);">${escapeHTML(openedDateLabel)}<br><span class="text-xs opacity-70">${escapeHTML(openedTimeLabel)}</span></td>
-                    <td class="p-4 font-medium text-sm theme-transition" style="color: var(--text-primary);">${escapeHTML(issue.merchant || '-')}${issue.assignedGroup ? `<br><span class="text-xs font-normal opacity-70">${escapeHTML(issue.assignedGroup)}</span>` : ''}</td>
+                    <td class="p-4 font-medium text-sm theme-transition" style="color: var(--text-primary);">${escapeHTML(issue.merchant || '-')}</td>
+                    <td class="p-4 text-xs theme-transition" style="color: var(--text-secondary);">${issue.assignedGroup ? escapeHTML(issue.assignedGroup) : '<span style="color: var(--text-muted);">-</span>'}</td>
                     <td class="p-4 font-mono text-xs theme-transition" style="color: var(--text-muted);">${escapeHTML(issue.consignmentId || '-')}</td>
                     <td class="p-4"><span class="tag-pill border ${getTagColor(issue.issueTag)}">${escapeHTML(issue.issueTag || 'General')}</span></td>
                     <td class="p-4 details-cell">
