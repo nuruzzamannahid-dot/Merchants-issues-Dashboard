@@ -960,6 +960,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                     <div>
                         <p class="text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Merchant</p>
                         <p class="text-sm font-medium theme-transition" style="color: var(--text-primary);" id="modal-merchant">-</p>
+                        <p class="text-xs mt-0.5 theme-transition" style="color: var(--text-muted);" id="modal-group"></p>
                     </div>
                     <div>
                         <p class="text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Consignment ID</p>
@@ -1287,6 +1288,10 @@ const API_BASE_URL = 'https://merchant-issues-escalation-databash.onrender.com';
 // Apps Script Web App that looks up Hub / Ops Remarks / KAM Name by Consignment ID
 // across the AD Team sheet's ISD, OSD, and Central tabs.
 const SHEET_LOOKUP_URL = 'https://script.google.com/macros/s/AKfycbxluUMkxZ5HAdh3vtPf3yxZxXvvhbw1rG1wgmkYR8j3MY3NtNrDpsyNNH5OJeMumlhiEA/exec';
+// Apps Script Web App that returns each merchant's Assigned Group (e.g.
+// "CarryBee Issue Group || NN1") from the AD Merchant Grouping sheet, keyed
+// by Business Name.
+const ADM_GROUP_URL = 'https://script.google.com/macros/s/AKfycbyRyz3qRHNXvy5JioyUHLVYGaXtle8z9vfyiG4M7aI2Jp1dr-bX3oiFk15pDmQctAM4/exec';
 
 // Dedicated Turso database for KAM Remarks (remark text + auto timestamp + auto
 // followup timestamp). Queried directly from the browser via Turso's HTTP API —
@@ -1518,12 +1523,13 @@ async function fetchData(silent = false) {
     }
 
     applySessionResponses();
-    // These three enrichment calls are independent of one another (each just
+    // These four enrichment calls are independent of one another (each just
     // merges different fields onto issuesData), so run them concurrently
     // instead of one after another — this alone can cut load time roughly
-    // to the slowest single call instead of the sum of all three.
+    // to the slowest single call instead of the sum of all four.
     await Promise.all([
         enrichWithSheetData(),
+        enrichWithGroupData(),
         loadKamRemarksFromTurso(),
         loadStatusTimelineFromTurso()
     ]);
@@ -1586,6 +1592,31 @@ async function enrichWithSheetData() {
         });
     } catch (e) {
         console.error('Sheet enrichment error:', e);
+    }
+}
+
+let adGroupCache = null;
+
+async function enrichWithGroupData() {
+    try {
+        if (!adGroupCache) {
+            const response = await fetch(ADM_GROUP_URL);
+            if (!response.ok) throw new Error(`Group lookup responded ${response.status}`);
+            const data = await response.json();
+            adGroupCache = new Map(
+                (data.merchants || [])
+                    .filter(m => m.businessName)
+                    .map(m => [String(m.businessName).trim().toLowerCase(), m.group])
+            );
+        }
+
+        issuesData.forEach(issue => {
+            const key = String(issue.merchant || '').trim().toLowerCase();
+            const group = adGroupCache.get(key);
+            if (group) issue.assignedGroup = group;
+        });
+    } catch (e) {
+        console.error('Group enrichment error:', e);
     }
 }
 
@@ -1753,7 +1784,7 @@ function renderTable() {
                 <tr class="hover-row transition-colors border-b last:border-0 theme-transition" style="border-color: var(--border-color);">
                     <td class="p-4 font-mono text-gold font-medium text-xs">${escapeHTML(issue.ticketId || '-')}</td>
                     <td class="p-4 text-xs theme-transition" style="color: var(--text-muted);">${escapeHTML(openedDateLabel)}<br><span class="text-xs opacity-70">${escapeHTML(openedTimeLabel)}</span></td>
-                    <td class="p-4 font-medium text-sm theme-transition" style="color: var(--text-primary);">${escapeHTML(issue.merchant || '-')}</td>
+                    <td class="p-4 font-medium text-sm theme-transition" style="color: var(--text-primary);">${escapeHTML(issue.merchant || '-')}${issue.assignedGroup ? `<br><span class="text-xs font-normal opacity-70">${escapeHTML(issue.assignedGroup)}</span>` : ''}</td>
                     <td class="p-4 font-mono text-xs theme-transition" style="color: var(--text-muted);">${escapeHTML(issue.consignmentId || '-')}</td>
                     <td class="p-4"><span class="tag-pill border ${getTagColor(issue.issueTag)}">${escapeHTML(issue.issueTag || 'General')}</span></td>
                     <td class="p-4 details-cell">
@@ -1954,6 +1985,7 @@ function openModal(ticketId) {
     currentModalIssue = issue;
     document.getElementById('modal-ticket-id').innerText = issue.ticketId;
     document.getElementById('modal-merchant').innerText = issue.merchant || '-';
+    document.getElementById('modal-group').innerText = issue.assignedGroup || '';
     document.getElementById('modal-consignment').innerText = issue.consignmentId || '-';
     document.getElementById('modal-tag').innerText = issue.issueTag || 'General';
     document.getElementById('modal-tag').className = `tag-pill border ${getTagColor(issue.issueTag)}`;
