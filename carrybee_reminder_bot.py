@@ -8,13 +8,15 @@ import requests
 import csv
 import json
 import time
+import os
+import sys
 from datetime import datetime, timedelta
 from collections import defaultdict
 
 # ==================== CONFIGURATION ====================
 
-# Your Telegram Bot Token
-BOT_TOKEN = "8851597317:AAGAjKaTjxp8oJga0reO64se9VhEBf2gYUc"
+# Your Telegram Bot Token (loaded from environment variable for security)
+BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 
 # Your Google Sheet CSV URL (same as dashboard)
 SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSybJkSsKQxyczJc4Llsa10ywnR7YL3JNWN3Yx7RCc3GGWBOt4O43sSOMy2cNgYVQRtoAakguvAqgsy/pub?output=csv"
@@ -386,7 +388,11 @@ def run_continuous_mode():
 # ==================== MAIN ====================
 
 if __name__ == "__main__":
-    import sys
+    # Validate that the Telegram Bot Token is configured
+    if not BOT_TOKEN:
+        print("[ERROR] TELEGRAM_BOT_TOKEN environment variable is not configured.", file=sys.stderr)
+        print("[ERROR] Please set the TELEGRAM_BOT_TOKEN environment variable and try again.", file=sys.stderr)
+        sys.exit(1)
 
     # Default: scheduled mode (recommended)
     mode = sys.argv[1] if len(sys.argv) > 1 else "scheduled"
