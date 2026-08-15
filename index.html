@@ -635,10 +635,10 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                 </div>
             </div>
             <div class="flex items-center gap-2 md:gap-3">
-                <button onclick="fetchData()" class="px-2.5 md:px-4 py-2 rounded-lg text-sm font-medium transition-colors border flex items-center gap-2 theme-transition" style="background-color: var(--bg-input); color: var(--text-secondary); border-color: var(--border-input);">
+                <button onclick="fetchData()" class="px-2.5 md:px-4 py-2 rounded-lg text-sm font-medium transition-colors border flex items-center gap-2 theme-transition" style="background-color: var(--bg-input); color: var(--text-secondary); border-color: var(--border-input);" aria-label="Refresh issues">
                     <i class="fa-solid fa-rotate-right" id="refresh-icon"></i> <span class="hidden sm:inline">Refresh</span>
                 </button>
-                <button onclick="exportCSV()" class="px-2.5 md:px-4 py-2 rounded-lg bg-gold hover:opacity-90 text-sm font-bold transition-colors flex items-center gap-2" style="color: var(--cb-black);">
+                <button onclick="exportCSV()" class="px-2.5 md:px-4 py-2 rounded-lg bg-gold hover:opacity-90 text-sm font-bold transition-colors flex items-center gap-2" style="color: var(--cb-black);" aria-label="Export CSV">
                     <i class="fa-solid fa-download"></i> <span class="hidden sm:inline">Export CSV</span>
                 </button>
                 <button onclick="toggleTheme()" class="theme-toggle" title="Toggle Dark Mode" aria-label="Toggle Dark Mode">
@@ -720,18 +720,18 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                 <div class="flex flex-col sm:flex-row gap-3">
                     <div class="relative flex-1">
                         <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 theme-transition" style="color: var(--text-muted);"></i>
-                        <input type="text" id="searchInput" onkeyup="renderTable()" placeholder="Search by Ticket ID, Merchant, Consignment, or Details..."
+                        <input type="text" id="searchInput" onkeyup="renderTable()" placeholder="Search by Ticket ID, Merchant, Consignment, or Details..." aria-label="Search issues"
                             class="w-full rounded-lg pl-10 pr-4 py-2.5 text-sm placeholder-slate-400 focus:outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/50 transition-all theme-transition"
                             style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
                     </div>
-                    <select id="statusFilter" onchange="renderTable()" class="rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
+                    <select id="statusFilter" onchange="renderTable()" aria-label="Filter by status" class="rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
                         style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
                         <option value="All">All Statuses</option>
                         <option value="Open">Open</option>
                         <option value="In Progress">In Progress</option>
                         <option value="Resolved">Resolved</option>
                     </select>
-                    <select id="tagFilter" onchange="renderTable()" class="rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
+                    <select id="tagFilter" onchange="renderTable()" aria-label="Filter by tag" class="rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
                         style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
                         <option value="All">All Issue Tags</option>
                     </select>
