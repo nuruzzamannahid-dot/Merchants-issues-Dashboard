@@ -22,5 +22,10 @@ class TestReminderBotCSVParser(unittest.TestCase):
         expected = ["Line 1\nLine 2", "field2"]
         self.assertEqual(parse_csv_line(line), expected)
 
+class TestBotConfig(unittest.TestCase):
+    def test_bot_token_env_variable(self):
+        import carrybee_reminder_bot
+        self.assertIsInstance(carrybee_reminder_bot.BOT_TOKEN, str)
+
 if __name__ == '__main__':
     unittest.main()
