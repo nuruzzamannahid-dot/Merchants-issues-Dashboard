@@ -1778,10 +1778,10 @@ function renderTable() {
         if (!seen.has(k)) seen.set(k, (TAG_LOOKUP[k] && TAG_LOOKUP[k].label) || t);
     });
     const uniqueTags = [...seen.values()].sort((a, b) => a.localeCompare(b));
-    tagSelect.innerHTML = '<option value="All">All Issue Tags</option>';
-    uniqueTags.forEach(tag => {
-        tagSelect.innerHTML += `<option value="${escapeHTML(tag)}" ${normalizeTag(tag) === normalizeTag(currentTag) ? 'selected' : ''}>${escapeHTML(tag)}</option>`;
-    });
+    // Bolt Optimization: Batch option string construction into a single innerHTML write
+    tagSelect.innerHTML = '<option value="All">All Issue Tags</option>' + uniqueTags.map(tag =>
+        `<option value="${escapeHTML(tag)}" ${normalizeTag(tag) === normalizeTag(currentTag) ? 'selected' : ''}>${escapeHTML(tag)}</option>`
+    ).join('');
 
     let filtered = issuesData.filter(issue => {
         const status = getStatus(issue);
@@ -1799,7 +1799,9 @@ function renderTable() {
         document.getElementById('emptyState').classList.remove('hidden');
     } else {
         document.getElementById('emptyState').classList.add('hidden');
-        filtered.forEach(issue => {
+        // Bolt Optimization: Batch table rows into an array and perform a single innerHTML assignment
+        // to avoid repeated DOM parsing and browser reflows (O(N) rendering).
+        const rowsHTML = filtered.map(issue => {
             const status = getStatus(issue);
             let statusClass = '', statusDot = '';
             if (status === 'Open') { statusClass = 'status-open'; statusDot = 'bg-yellow-500'; }
@@ -1816,7 +1818,7 @@ function renderTable() {
             const openedISO = getOpenedAtISO(issue);
             const openedDateLabel = openedISO ? new Date(openedISO).toLocaleDateString('en-US', { timeZone: 'Asia/Dhaka', year: 'numeric', month: 'short', day: 'numeric' }) : (issue.date || '-');
             const openedTimeLabel = openedISO ? new Date(openedISO).toLocaleTimeString('en-US', { timeZone: 'Asia/Dhaka', hour: 'numeric', minute: '2-digit', second: '2-digit' }) : (issue.timestamp || '');
-            const row = `
+            return `
                 <tr class="hover-row transition-colors border-b last:border-0 theme-transition" style="border-color: var(--border-color);">
                     <td class="p-4 font-mono text-gold font-medium text-xs">${escapeHTML(issue.ticketId || '-')}</td>
                     <td class="p-4 text-xs theme-transition" style="color: var(--text-muted);">${escapeHTML(openedDateLabel)}<br><span class="text-xs opacity-70">${escapeHTML(openedTimeLabel)}</span></td>
@@ -1847,8 +1849,8 @@ function renderTable() {
                     </td>
                 </tr>
             `;
-            tbody.innerHTML += row;
-        });
+        }).join('');
+        tbody.innerHTML = rowsHTML;
     }
 }
 
@@ -2684,15 +2686,13 @@ function renderTopMerchants() {
     issuesData.forEach(i => { if (i.merchant) merchants[i.merchant] = (merchants[i.merchant] || 0) + 1; });
     const sorted = Object.entries(merchants).sort((a,b) => b[1] - a[1]).slice(0, 6);
     const container = document.getElementById('topMerchantsList');
-    container.innerHTML = '';
-    sorted.forEach(([name, count]) => {
-        container.innerHTML += `
-            <div class="flex items-center justify-between p-3 rounded-lg border theme-transition" style="background: var(--bg-modal-content); border-color: var(--border-color);">
-                <span class="text-sm font-medium theme-transition" style="color: var(--text-primary);">${escapeHTML(name)}</span>
-                <span class="text-xs font-bold text-gold bg-gold/10 px-2 py-1 rounded-full">${count} issue${count > 1 ? 's' : ''}</span>
-            </div>
-        `;
-    });
+    // Bolt Optimization: Batch merchant list rendering into a single innerHTML write
+    container.innerHTML = sorted.map(([name, count]) => `
+        <div class="flex items-center justify-between p-3 rounded-lg border theme-transition" style="background: var(--bg-modal-content); border-color: var(--border-color);">
+            <span class="text-sm font-medium theme-transition" style="color: var(--text-primary);">${escapeHTML(name)}</span>
+            <span class="text-xs font-bold text-gold bg-gold/10 px-2 py-1 rounded-full">${count} issue${count > 1 ? 's' : ''}</span>
+        </div>
+    `).join('');
 }
 
 function renderResolutionChart() {
