@@ -876,7 +876,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <p class="text-xs theme-transition" style="color: var(--text-muted);">
                         <i class="fa-solid fa-circle-info mr-1"></i>
-                        Tracks how long each issue took to move Open &rarr; In Progress &rarr; Resolved. Only counts changes made since this tab was added.
+                        Tracks how long each issue took to move Open &rarr; In Progress &rarr; Resolved. Only counts changes made since this tab was added. Office hours are 10:00 AM&ndash;7:00 PM (Asia/Dhaka); averages below split the elapsed time into office-hours vs non-office-hours.
                     </p>
                     <button onclick="exportPerformanceCSV()" class="px-4 py-2 rounded-lg bg-gold hover:opacity-90 text-sm font-bold transition-colors flex items-center gap-2 self-start sm:self-auto" style="color: var(--cb-black);">
                         <i class="fa-solid fa-download"></i> Export Performance CSV
@@ -886,10 +886,18 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                     <div class="card-gradient p-5 rounded-xl border theme-transition" style="border-color: var(--border-color); box-shadow: var(--shadow-sm);">
                         <p class="text-xs font-semibold uppercase tracking-wider theme-transition" style="color: var(--text-muted);">Avg Time to In Progress</p>
                         <h3 class="text-2xl font-bold mt-1" style="color: #3b82f6;" id="perf-avg-progress">-</h3>
+                        <div class="flex items-center gap-3 mt-2 text-[11px] theme-transition" style="color: var(--text-muted);">
+                            <span><i class="fa-solid fa-briefcase mr-1"></i>Office: <span id="perf-avg-progress-office" style="color: var(--text-secondary);">-</span></span>
+                            <span><i class="fa-solid fa-moon mr-1"></i>Off-hours: <span id="perf-avg-progress-nonoffice" style="color: var(--text-secondary);">-</span></span>
+                        </div>
                     </div>
                     <div class="card-gradient p-5 rounded-xl border theme-transition" style="border-color: var(--border-color); box-shadow: var(--shadow-sm);">
                         <p class="text-xs font-semibold uppercase tracking-wider theme-transition" style="color: var(--text-muted);">Avg Time to Resolution</p>
                         <h3 class="text-2xl font-bold mt-1" style="color: #22c55e;" id="perf-avg-resolve">-</h3>
+                        <div class="flex items-center gap-3 mt-2 text-[11px] theme-transition" style="color: var(--text-muted);">
+                            <span><i class="fa-solid fa-briefcase mr-1"></i>Office: <span id="perf-avg-resolve-office" style="color: var(--text-secondary);">-</span></span>
+                            <span><i class="fa-solid fa-moon mr-1"></i>Off-hours: <span id="perf-avg-resolve-nonoffice" style="color: var(--text-secondary);">-</span></span>
+                        </div>
                     </div>
                     <div class="card-gradient p-5 rounded-xl border theme-transition" style="border-color: var(--border-color); box-shadow: var(--shadow-sm);">
                         <p class="text-xs font-semibold uppercase tracking-wider theme-transition" style="color: var(--text-muted);">Fastest Resolution</p>
@@ -2169,6 +2177,44 @@ function getOpenedAtISO(issue) {
     return isNaN(d.getTime()) ? null : d.toISOString();
 }
 
+// ---- Office-hours / non-office-hours split ----
+// Bangladesh has a single fixed UTC+6 offset (no DST), so instead of calling
+// the Intl API repeatedly (slow if done per-row), we just shift the epoch ms
+// by +6h and then read hours/days off that shifted value with the UTC getters
+// -- that gives us Dhaka wall-clock time cheaply and correctly.
+const DHAKA_OFFSET_MS = 6 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const OFFICE_START_HOUR = 10; // 10:00 AM
+const OFFICE_END_HOUR = 19;   // 7:00 PM
+
+// Returns milliseconds of [startMs, endMs) that fall inside the 10:00-19:00
+// Dhaka window, walking one calendar day at a time.
+function officeMsInRange(startMs, endMs) {
+    if (startMs == null || endMs == null || endMs <= startMs) return 0;
+    const shiftedStart = startMs + DHAKA_OFFSET_MS;
+    const shiftedEnd = endMs + DHAKA_OFFSET_MS;
+    let total = 0;
+    let dayStart = Math.floor(shiftedStart / DAY_MS) * DAY_MS;
+    while (dayStart < shiftedEnd) {
+        const officeStart = dayStart + OFFICE_START_HOUR * 3600000;
+        const officeEnd = dayStart + OFFICE_END_HOUR * 3600000;
+        const overlapStart = Math.max(shiftedStart, officeStart);
+        const overlapEnd = Math.min(shiftedEnd, officeEnd);
+        if (overlapEnd > overlapStart) total += (overlapEnd - overlapStart);
+        dayStart += DAY_MS;
+    }
+    return total;
+}
+
+// Splits a start/end pair into { officeMs, nonOfficeMs }. nonOfficeMs is
+// simply the remainder of the total elapsed time.
+function splitOfficeNonOffice(startMs, endMs) {
+    if (startMs == null || endMs == null || endMs < startMs) return { officeMs: null, nonOfficeMs: null };
+    const total = endMs - startMs;
+    const office = officeMsInRange(startMs, endMs);
+    return { officeMs: office, nonOfficeMs: total - office };
+}
+
 function buildPerformanceRows() {
     return issuesData.map(issue => {
         const openedISO = getOpenedAtISO(issue);
@@ -2177,10 +2223,16 @@ function buildPerformanceRows() {
         const openedMs = openedISO ? new Date(openedISO).getTime() : null;
         const progressMs = progressISO ? new Date(progressISO).getTime() : null;
         const resolvedMs = resolvedISO ? new Date(resolvedISO).getTime() : null;
+        const progressSplit = (openedMs != null && progressMs != null) ? splitOfficeNonOffice(openedMs, progressMs) : { officeMs: null, nonOfficeMs: null };
+        const resolveSplit = (openedMs != null && resolvedMs != null) ? splitOfficeNonOffice(openedMs, resolvedMs) : { officeMs: null, nonOfficeMs: null };
         return {
             issue, openedISO, progressISO, resolvedISO,
             timeToProgress: (openedMs != null && progressMs != null) ? progressMs - openedMs : null,
-            timeToResolve: (openedMs != null && resolvedMs != null) ? resolvedMs - openedMs : null
+            timeToResolve: (openedMs != null && resolvedMs != null) ? resolvedMs - openedMs : null,
+            progressOfficeMs: progressSplit.officeMs,
+            progressNonOfficeMs: progressSplit.nonOfficeMs,
+            resolveOfficeMs: resolveSplit.officeMs,
+            resolveNonOfficeMs: resolveSplit.nonOfficeMs
         };
     });
 }
@@ -2217,6 +2269,17 @@ function renderPerformanceTable() {
     document.getElementById('perf-avg-resolve').innerText = formatDuration(avg(withResolve));
     document.getElementById('perf-fastest').innerText = withResolve.length ? formatDuration(Math.min(...withResolve)) : '-';
     document.getElementById('perf-slowest').innerText = withResolve.length ? formatDuration(Math.max(...withResolve)) : '-';
+
+    // Office-hours vs non-office-hours split for both averages.
+    const progressOffice = rows.filter(r => r.progressOfficeMs != null).map(r => r.progressOfficeMs);
+    const progressNonOffice = rows.filter(r => r.progressNonOfficeMs != null).map(r => r.progressNonOfficeMs);
+    const resolveOffice = rows.filter(r => r.resolveOfficeMs != null).map(r => r.resolveOfficeMs);
+    const resolveNonOffice = rows.filter(r => r.resolveNonOfficeMs != null).map(r => r.resolveNonOfficeMs);
+
+    document.getElementById('perf-avg-progress-office').innerText = formatDuration(avg(progressOffice));
+    document.getElementById('perf-avg-progress-nonoffice').innerText = formatDuration(avg(progressNonOffice));
+    document.getElementById('perf-avg-resolve-office').innerText = formatDuration(avg(resolveOffice));
+    document.getElementById('perf-avg-resolve-nonoffice').innerText = formatDuration(avg(resolveNonOffice));
 }
 
 let perfSearchDebounceTimer = null;
@@ -2227,10 +2290,10 @@ document.getElementById('perfSearchInput').addEventListener('input', () => {
 
 function exportPerformanceCSV() {
     let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "Ticket ID,Merchant,Opened At,Moved to In Progress At,Resolved At,Time to In Progress,Time to Resolution\n";
+    csvContent += "Ticket ID,Merchant,Opened At,Moved to In Progress At,Resolved At,Time to In Progress,Progress (Office),Progress (Off-hours),Time to Resolution,Resolution (Office),Resolution (Off-hours)\n";
     buildPerformanceRows().forEach(r => {
         const merchant = (r.issue.merchant || '').replace(/"/g, '""');
-        csvContent += `${r.issue.ticketId || ''},"${merchant}",${r.openedISO ? formatTimestamp(r.openedISO) : ''},${r.progressISO ? formatTimestamp(r.progressISO) : ''},${r.resolvedISO ? formatTimestamp(r.resolvedISO) : ''},${formatDuration(r.timeToProgress)},${formatDuration(r.timeToResolve)}\n`;
+        csvContent += `${r.issue.ticketId || ''},"${merchant}",${r.openedISO ? formatTimestamp(r.openedISO) : ''},${r.progressISO ? formatTimestamp(r.progressISO) : ''},${r.resolvedISO ? formatTimestamp(r.resolvedISO) : ''},${formatDuration(r.timeToProgress)},${formatDuration(r.progressOfficeMs)},${formatDuration(r.progressNonOfficeMs)},${formatDuration(r.timeToResolve)},${formatDuration(r.resolveOfficeMs)},${formatDuration(r.resolveNonOfficeMs)}\n`;
     });
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
