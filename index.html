@@ -662,7 +662,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                 </div>
             </div>
         </header>
-        <div id="topTabs" class="flex items-center gap-4 overflow-x-auto px-4 md:px-8 theme-transition" style="background-color: var(--bg-header); border-bottom: 1px solid var(--border-color);">
+        <div id="topTabs" class="flex items-center justify-center gap-4 overflow-x-auto px-4 md:px-8 theme-transition" style="background-color: var(--bg-header); border-bottom: 1px solid var(--border-color);">
             <button onclick="switchView('tracker')" id="tab-tracker" class="mobile-tab-item active shrink-0 py-2.5 text-sm font-medium">Issue Tracker</button>
             <button onclick="switchView('analytics')" id="tab-analytics" class="mobile-tab-item shrink-0 py-2.5 text-sm font-medium">Analytics</button>
             <button onclick="switchView('activity')" id="tab-activity" class="mobile-tab-item shrink-0 py-2.5 text-sm font-medium">Activity</button>
@@ -717,45 +717,49 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                         </div>
                     </div>
                 </div>
-                <div class="flex flex-col sm:flex-row gap-3">
+                <div class="flex gap-3">
                     <div class="relative flex-1">
                         <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 theme-transition" style="color: var(--text-muted);"></i>
                         <input type="text" id="searchInput" placeholder="Search by Ticket ID, Merchant, Consignment, or Details..."
                             class="w-full rounded-lg pl-10 pr-4 py-2.5 text-sm placeholder-slate-400 focus:outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/50 transition-all theme-transition"
                             style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
                     </div>
-                    <select id="statusFilter" onchange="renderTable()" class="rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
-                        style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
+                    <button onclick="toggleFilterPanel()" id="filterToggleBtn" type="button"
+                        class="px-4 py-2.5 rounded-lg text-sm font-medium border flex items-center gap-2 cursor-pointer transition-colors theme-transition shrink-0"
+                        style="background-color: var(--bg-input); color: var(--text-secondary); border-color: var(--border-input);">
+                        <i class="fa-solid fa-sliders"></i> <span class="hidden sm:inline">Filters</span>
+                        <span id="filterActiveBadge" class="hidden items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold" style="background: var(--cb-yellow); color: var(--cb-black);">0</span>
+                    </button>
+                </div>
+                <!-- Collapsed by default to keep the tracker view minimal; expand for status/tag/date/KAM-remark filters. -->
+                <div id="filterPanel" class="hidden grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 p-3 rounded-lg theme-transition" style="background-color: var(--bg-input); border: 1px solid var(--border-input);">
+                    <select id="statusFilter" onchange="renderTable()" class="rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
+                        style="background-color: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-input);">
                         <option value="All">All Statuses</option>
                         <option value="Open">Open</option>
                         <option value="In Progress">In Progress</option>
                         <option value="Resolved">Resolved</option>
                     </select>
-                    <select id="tagFilter" onchange="renderTable()" class="rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
-                        style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
+                    <select id="tagFilter" onchange="renderTable()" class="rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
+                        style="background-color: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-input);">
                         <option value="All">All Issue Tags</option>
                     </select>
-                </div>
-                <div class="flex flex-col sm:flex-row gap-3">
-                    <div class="flex items-center gap-2 flex-1">
-                        <label for="dateFromFilter" class="text-xs whitespace-nowrap theme-transition" style="color: var(--text-muted);">From</label>
-                        <input type="date" id="dateFromFilter" onchange="renderTable()" class="w-full rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
-                            style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
-                    </div>
-                    <div class="flex items-center gap-2 flex-1">
-                        <label for="dateToFilter" class="text-xs whitespace-nowrap theme-transition" style="color: var(--text-muted);">To</label>
-                        <input type="date" id="dateToFilter" onchange="renderTable()" class="w-full rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
-                            style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
-                    </div>
-                    <select id="kamRemarkFilter" onchange="renderTable()" class="rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
-                        style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
+                    <input type="date" id="dateFromFilter" onchange="renderTable()" title="From date" aria-label="From date"
+                        class="rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
+                        style="background-color: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-input);">
+                    <input type="date" id="dateToFilter" onchange="renderTable()" title="To date" aria-label="To date"
+                        class="rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
+                        style="background-color: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-input);">
+                    <select id="kamRemarkFilter" onchange="renderTable()" class="rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
+                        style="background-color: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-input);">
                         <option value="All">All KAM Remarks</option>
                         <option value="Has">Has KAM Remark</option>
                         <option value="None">No KAM Remark</option>
                         <option value="Overdue">Follow-up Overdue</option>
                     </select>
-                    <button onclick="clearTrackerFilters()" type="button" class="px-4 py-2.5 rounded-lg text-sm font-medium border transition-colors theme-transition whitespace-nowrap"
-                        style="background-color: var(--bg-input); color: var(--text-secondary); border-color: var(--border-input);">
+                    <button onclick="clearTrackerFilters()" type="button"
+                        class="col-span-2 sm:col-span-3 lg:col-span-5 px-3 py-2 rounded-lg text-xs font-medium border transition-colors theme-transition"
+                        style="background-color: var(--bg-card); color: var(--text-secondary); border-color: var(--border-input);">
                         <i class="fa-solid fa-filter-circle-xmark mr-1"></i> Clear Filters
                     </button>
                 </div>
@@ -1826,6 +1830,41 @@ function clearTrackerFilters() {
     renderTable();
 }
 
+// Shows/hides the advanced filter row (status/tag/date/KAM remark). Kept
+// collapsed by default so the tracker view stays minimal — search is almost
+// always enough, and the rest is one click away.
+function toggleFilterPanel() {
+    const panel = document.getElementById('filterPanel');
+    const isHidden = panel.classList.contains('hidden');
+    panel.classList.toggle('hidden');
+    document.getElementById('filterToggleBtn').style.borderColor = isHidden ? 'var(--cb-yellow)' : 'var(--border-input)';
+}
+
+// Small numbered badge on the Filters button so it's obvious at a glance
+// that a filter is narrowing the table, even while the panel is collapsed.
+function updateFilterBadge() {
+    const statusFilter = document.getElementById('statusFilter').value;
+    const tagFilter = document.getElementById('tagFilter').value;
+    const dateFrom = document.getElementById('dateFromFilter').value;
+    const dateTo = document.getElementById('dateToFilter').value;
+    const kamRemarkFilterValue = document.getElementById('kamRemarkFilter').value;
+    let count = 0;
+    if (statusFilter !== 'All') count++;
+    if (tagFilter !== 'All') count++;
+    if (dateFrom) count++;
+    if (dateTo) count++;
+    if (kamRemarkFilterValue !== 'All') count++;
+    const badge = document.getElementById('filterActiveBadge');
+    if (count > 0) {
+        badge.textContent = count;
+        badge.classList.remove('hidden');
+        badge.classList.add('inline-flex');
+    } else {
+        badge.classList.add('hidden');
+        badge.classList.remove('inline-flex');
+    }
+}
+
 // Applies the search box + all four dropdown/date filters currently set in
 // the Issue Tracker UI to issuesData. Shared by renderTable() (what's shown
 // on screen) and exportCSV() (what gets downloaded), so the two never
@@ -1868,6 +1907,7 @@ function getFilteredIssues() {
 
 function renderTable() {
     const tbody = document.getElementById('issuesTableBody');
+    updateFilterBadge();
     let filtered = getFilteredIssues();
 
     if (filtered.length === 0) {
@@ -2771,10 +2811,14 @@ function csvField(value) {
 }
 
 function exportCSV() {
-    // Respect the currently active filters, so "Export CSV" matches what's
-    // on screen rather than always dumping every issue regardless of search/
-    // status/tag/date/KAM-remark filters.
-    const rowsToExport = (typeof getFilteredIssues === 'function') ? getFilteredIssues() : issuesData;
+    // Always export the full dataset, regardless of whatever search/status/
+    // tag/date/KAM-remark filters happen to be active on screen. Exporting
+    // only the filtered view was confusing in practice — it's easy to leave
+    // an old filter on without noticing, and the export then silently comes
+    // out smaller than expected with no clear indication why. Exporting
+    // everything means the CSV always matches the stat cards at the top
+    // (Total / Open / In Progress / Resolved) 1:1.
+    const rowsToExport = issuesData;
 
     const header = ['Ticket ID', 'Date', 'Time', 'Merchant', 'Consignment', 'Tag', 'Status',
         'Responded By', 'Hub', 'KAM Remark', 'KAM Remark By', 'KAM Remark At', 'Follow-up At',
