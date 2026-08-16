@@ -1889,7 +1889,9 @@ function getFilteredIssues() {
 
     return issuesData.filter(issue => {
         const status = getStatus(issue);
-        const matchesSearch =
+        // Bolt Optimization: Short-circuit search check when query is empty.
+        // Prevents redundant toLowerCase() string allocations across all issues when search is empty.
+        const matchesSearch = !search ||
             (issue.ticketId && issue.ticketId.toLowerCase().includes(search)) ||
             (issue.merchant && issue.merchant.toLowerCase().includes(search)) ||
             (issue.consignmentId && issue.consignmentId.toLowerCase().includes(search)) ||
@@ -2377,7 +2379,9 @@ function renderPerformanceTable() {
     const tbody = document.getElementById('performanceTableBody');
     if (!tbody) return;
     const search = (document.getElementById('perfSearchInput').value || '').toLowerCase();
+    // Bolt Optimization: Short-circuit search filter when search input is empty.
     let rows = buildPerformanceRows().filter(r =>
+        !search ||
         (r.issue.ticketId && r.issue.ticketId.toLowerCase().includes(search)) ||
         (r.issue.merchant && r.issue.merchant.toLowerCase().includes(search))
     );
@@ -2525,9 +2529,14 @@ function jitterOffset(key, radius) {
     return [Math.cos(angle) * r, Math.sin(angle) * r];
 }
 
+// Bolt Optimization: Cache geocoding results to avoid linear keyword scans across ~120 entries for repeating hub names.
+const geocodeCache = new Map();
+
 function geocodeHub(hubName) {
     const raw = String(hubName || '').trim();
     if (!raw || raw === 'Unassigned') return null;
+    if (geocodeCache.has(raw)) return geocodeCache.get(raw);
+
     const n = raw.toLowerCase();
     let bestDistrict = null, bestLen = 0;
     for (const kw of HUB_KEYWORDS) {
@@ -2536,11 +2545,19 @@ function geocodeHub(hubName) {
             bestLen = kw.keyword.length;
         }
     }
-    if (!bestDistrict) return null;
+    if (!bestDistrict) {
+        geocodeCache.set(raw, null);
+        return null;
+    }
     const base = DISTRICT_COORDS[bestDistrict];
-    if (!base) return null;
+    if (!base) {
+        geocodeCache.set(raw, null);
+        return null;
+    }
     const [ox, oy] = jitterOffset(raw, 15);
-    return { x: base[0] + ox, y: base[1] + oy, district: bestDistrict };
+    const result = { x: base[0] + ox, y: base[1] + oy, district: bestDistrict };
+    geocodeCache.set(raw, result);
+    return result;
 }
 
 let hubStats = {};
