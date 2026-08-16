@@ -1747,11 +1747,12 @@ function updateResponseStats() {
     }).join('');
 }
 
-function updateStats() {
-    const total = issuesData.length;
-    const open = issuesData.filter(i => getStatus(i) === 'Open').length;
-    const progress = issuesData.filter(i => getStatus(i) === 'In Progress').length;
-    const resolved = issuesData.filter(i => getStatus(i) === 'Resolved').length;
+function updateStats(sourceData) {
+    const data = sourceData || issuesData;
+    const total = data.length;
+    const open = data.filter(i => getStatus(i) === 'Open').length;
+    const progress = data.filter(i => getStatus(i) === 'In Progress').length;
+    const resolved = data.filter(i => getStatus(i) === 'Resolved').length;
     animateValue('stat-total', parseInt(document.getElementById('stat-total').innerText) || 0, total, 800);
     animateValue('stat-open', parseInt(document.getElementById('stat-open').innerText) || 0, open, 800);
     animateValue('stat-progress', parseInt(document.getElementById('stat-progress').innerText) || 0, progress, 800);
@@ -1918,6 +1919,7 @@ function renderTable() {
     const tbody = document.getElementById('issuesTableBody');
     updateFilterBadge();
     let filtered = getFilteredIssues();
+    updateStats(filtered);
 
     if (filtered.length === 0) {
         document.getElementById('emptyState').classList.remove('hidden');
