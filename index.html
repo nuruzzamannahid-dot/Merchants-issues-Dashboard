@@ -736,6 +736,29 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                         <option value="All">All Issue Tags</option>
                     </select>
                 </div>
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <div class="flex items-center gap-2 flex-1">
+                        <label for="dateFromFilter" class="text-xs whitespace-nowrap theme-transition" style="color: var(--text-muted);">From</label>
+                        <input type="date" id="dateFromFilter" onchange="renderTable()" class="w-full rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
+                            style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
+                    </div>
+                    <div class="flex items-center gap-2 flex-1">
+                        <label for="dateToFilter" class="text-xs whitespace-nowrap theme-transition" style="color: var(--text-muted);">To</label>
+                        <input type="date" id="dateToFilter" onchange="renderTable()" class="w-full rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
+                            style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
+                    </div>
+                    <select id="kamRemarkFilter" onchange="renderTable()" class="rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
+                        style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
+                        <option value="All">All KAM Remarks</option>
+                        <option value="Has">Has KAM Remark</option>
+                        <option value="None">No KAM Remark</option>
+                        <option value="Overdue">Follow-up Overdue</option>
+                    </select>
+                    <button onclick="clearTrackerFilters()" type="button" class="px-4 py-2.5 rounded-lg text-sm font-medium border transition-colors theme-transition whitespace-nowrap"
+                        style="background-color: var(--bg-input); color: var(--text-secondary); border-color: var(--border-input);">
+                        <i class="fa-solid fa-filter-circle-xmark mr-1"></i> Clear Filters
+                    </button>
+                </div>
                 <div class="glass-panel rounded-xl overflow-hidden">
                     <div class="overflow-x-auto">
                         <table class="w-full text-left border-collapse">
@@ -1768,13 +1791,54 @@ function rebuildTagFilterOptions() {
 // instead of the old `tbody.innerHTML += row` pattern that re-parses the
 // whole table on every single row. This is what made typing in search /
 // clicking filters feel laggy once the table had more than ~50 rows.
-function renderTable() {
-    const tbody = document.getElementById('issuesTableBody');
+// Returns the issue's opened date as a YYYY-MM-DD string in Asia/Dhaka time,
+// so the date filter lines up with what's shown in the "Submitted" column.
+function getOpenedDhakaDateStr(issue) {
+    const iso = getOpenedAtISO(issue);
+    if (!iso) return null;
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return null;
+    // en-CA gives YYYY-MM-DD directly
+    return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Dhaka' });
+}
+
+function matchesKamRemarkFilter(issue, filterValue) {
+    if (filterValue === 'All') return true;
+    const hasRemark = !!(issue.kamRemark && issue.kamRemark.trim());
+    if (filterValue === 'Has') return hasRemark;
+    if (filterValue === 'None') return !hasRemark;
+    if (filterValue === 'Overdue') {
+        if (!issue.kamFollowupAt || getStatus(issue) === 'Resolved') return false;
+        const d = new Date(issue.kamFollowupAt);
+        if (isNaN(d.getTime())) return false;
+        return d.getTime() < Date.now();
+    }
+    return true;
+}
+
+function clearTrackerFilters() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('statusFilter').value = 'All';
+    document.getElementById('tagFilter').value = 'All';
+    document.getElementById('dateFromFilter').value = '';
+    document.getElementById('dateToFilter').value = '';
+    document.getElementById('kamRemarkFilter').value = 'All';
+    renderTable();
+}
+
+// Applies the search box + all four dropdown/date filters currently set in
+// the Issue Tracker UI to issuesData. Shared by renderTable() (what's shown
+// on screen) and exportCSV() (what gets downloaded), so the two never
+// disagree about which rows are "currently filtered".
+function getFilteredIssues() {
     const search = document.getElementById('searchInput').value.toLowerCase();
     const statusFilter = document.getElementById('statusFilter').value;
     const tagFilter = document.getElementById('tagFilter').value;
+    const dateFrom = document.getElementById('dateFromFilter').value; // 'YYYY-MM-DD' or ''
+    const dateTo = document.getElementById('dateToFilter').value;
+    const kamRemarkFilterValue = document.getElementById('kamRemarkFilter').value;
 
-    let filtered = issuesData.filter(issue => {
+    return issuesData.filter(issue => {
         const status = getStatus(issue);
         const matchesSearch =
             (issue.ticketId && issue.ticketId.toLowerCase().includes(search)) ||
@@ -1783,8 +1847,28 @@ function renderTable() {
             (issue.details && issue.details.toLowerCase().includes(search));
         const matchesStatus = statusFilter === 'All' || status === statusFilter;
         const matchesTag = tagFilter === 'All' || normalizeTag(issue.issueTag) === normalizeTag(tagFilter);
-        return matchesSearch && matchesStatus && matchesTag;
+
+        let matchesDate = true;
+        if (dateFrom || dateTo) {
+            const openedDate = getOpenedDhakaDateStr(issue);
+            // If an issue has no parseable date, exclude it whenever a date filter is active
+            if (!openedDate) {
+                matchesDate = false;
+            } else {
+                if (dateFrom && openedDate < dateFrom) matchesDate = false;
+                if (dateTo && openedDate > dateTo) matchesDate = false;
+            }
+        }
+
+        const matchesKamRemark = matchesKamRemarkFilter(issue, kamRemarkFilterValue);
+
+        return matchesSearch && matchesStatus && matchesTag && matchesDate && matchesKamRemark;
     });
+}
+
+function renderTable() {
+    const tbody = document.getElementById('issuesTableBody');
+    let filtered = getFilteredIssues();
 
     if (filtered.length === 0) {
         document.getElementById('emptyState').classList.remove('hidden');
@@ -2675,30 +2759,58 @@ function switchView(view) {
     }
 }
 
+// Properly quotes/escapes a single CSV field: wraps every field in double
+// quotes and doubles any embedded quotes, per RFC 4180. This is what was
+// missing before — several columns (Ticket ID, Date, Merchant, Consignment,
+// Tag, Status, Hub) were being written unquoted, so any comma, quote, or
+// line break inside a merchant name / details / remark shifted every column
+// after it. Also strips characters that break Excel/Sheets CSV parsing.
+function csvField(value) {
+    const str = (value === null || value === undefined) ? '' : String(value);
+    return `"${str.replace(/"/g, '""')}"`;
+}
+
 function exportCSV() {
-    let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "Ticket ID,Date,Time,Merchant,Consignment,Tag,Status,Responded By,Hub,KAM Remark,KAM Remark By,KAM Remark At,Follow-up At,Details,Ops Remarks\n";
-    issuesData.forEach(row => {
-        const details = (row.details || '').replace(/"/g, '""');
-        const remarks = (row.remarks || '').replace(/"/g, '""');
-        const respondedBy = (row.respondedBy || '').replace(/"/g, '""');
-        const kamRemark = (row.kamRemark || '').replace(/"/g, '""');
-        const kamRemarkBy = (row.kamRemarkBy || '').replace(/"/g, '""');
+    // Respect the currently active filters, so "Export CSV" matches what's
+    // on screen rather than always dumping every issue regardless of search/
+    // status/tag/date/KAM-remark filters.
+    const rowsToExport = (typeof getFilteredIssues === 'function') ? getFilteredIssues() : issuesData;
+
+    const header = ['Ticket ID', 'Date', 'Time', 'Merchant', 'Consignment', 'Tag', 'Status',
+        'Responded By', 'Hub', 'KAM Remark', 'KAM Remark By', 'KAM Remark At', 'Follow-up At',
+        'Details', 'Ops Remarks'];
+
+    const lines = [header.map(csvField).join(',')];
+
+    rowsToExport.forEach(row => {
         const kamRemarkAt = row.kamRemarkAt ? formatTimestamp(row.kamRemarkAt) : '';
         const followupAt = row.kamFollowupAt ? formatTimestamp(row.kamFollowupAt) : '';
         const rowOpenedISO = getOpenedAtISO(row);
-        const bdDate = rowOpenedISO ? new Date(rowOpenedISO).toLocaleDateString('en-CA', { timeZone: 'Asia/Dhaka' }) : row.date;
-        const bdTime = rowOpenedISO ? new Date(rowOpenedISO).toLocaleTimeString('en-GB', { timeZone: 'Asia/Dhaka', hour12: false }) : row.timestamp;
-        csvContent += `${row.ticketId},${bdDate},${bdTime},${row.merchant},${row.consignmentId},${row.issueTag},${getStatus(row)},"${respondedBy}",${row.hub || ''},"${kamRemark}","${kamRemarkBy}","${kamRemarkAt}","${followupAt}","${details}","${remarks}"\n`;
+        const bdDate = rowOpenedISO ? new Date(rowOpenedISO).toLocaleDateString('en-CA', { timeZone: 'Asia/Dhaka' }) : (row.date || '');
+        const bdTime = rowOpenedISO ? new Date(rowOpenedISO).toLocaleTimeString('en-GB', { timeZone: 'Asia/Dhaka', hour12: false }) : (row.timestamp || '');
+        const opsRemarksText = row.remarks || row.opsRemarks || row.ops_remarks || '';
+
+        const fields = [
+            row.ticketId, bdDate, bdTime, row.merchant, row.consignmentId, row.issueTag,
+            getStatus(row), row.respondedBy, row.hub, row.kamRemark, row.kamRemarkBy,
+            kamRemarkAt, followupAt, row.details, opsRemarksText
+        ];
+        lines.push(fields.map(csvField).join(','));
     });
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "carrybee_issues.csv");
+
+    // Prefix with a UTF-8 BOM so Excel correctly detects encoding for Bangla
+    // merchant names / details instead of showing garbled characters.
+    const csvContent = '\uFEFF' + lines.join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `carrybee_issues_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    showToast('CSV exported successfully!', 'success');
+    URL.revokeObjectURL(url);
+    showToast(`CSV exported successfully! (${rowsToExport.length} issue${rowsToExport.length === 1 ? '' : 's'})`, 'success');
 }
 
 function showToast(message, type) {
