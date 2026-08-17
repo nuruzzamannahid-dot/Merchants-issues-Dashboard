@@ -998,7 +998,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                 <div class="flex gap-3">
                     <div class="relative flex-1">
                         <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 theme-transition" style="color: var(--text-muted);"></i>
-                        <input type="text" id="searchInput" placeholder="Search by Ticket ID, Merchant, Consignment, or Details..."
+                        <input type="text" id="searchInput" aria-label="Search issues by ticket ID, merchant, consignment, or details" placeholder="Search by Ticket ID, Merchant, Consignment, or Details..."
                             class="w-full rounded-lg pl-10 pr-4 py-2.5 text-sm placeholder-slate-400 focus:outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/50 transition-all theme-transition"
                             style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
                     </div>
@@ -1011,14 +1011,14 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                 </div>
                 <!-- Collapsed by default to keep the tracker view minimal; expand for status/tag/date/KAM-remark filters. -->
                 <div id="filterPanel" class="hidden grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 p-3 rounded-lg theme-transition" style="background-color: var(--bg-input); border: 1px solid var(--border-input);">
-                    <select id="statusFilter" onchange="renderTable()" class="rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
+                    <select id="statusFilter" aria-label="Filter by issue status" onchange="renderTable()" class="rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
                         style="background-color: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-input);">
                         <option value="All">All Statuses</option>
                         <option value="Open">Open</option>
                         <option value="In Progress">In Progress</option>
                         <option value="Resolved">Resolved</option>
                     </select>
-                    <select id="tagFilter" onchange="renderTable()" class="rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
+                    <select id="tagFilter" aria-label="Filter by issue tag" onchange="renderTable()" class="rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
                         style="background-color: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-input);">
                         <option value="All">All Issue Tags</option>
                     </select>
@@ -1028,7 +1028,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                     <input type="date" id="dateToFilter" onchange="renderTable()" title="To date" aria-label="To date"
                         class="rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
                         style="background-color: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-input);">
-                    <select id="kamRemarkFilter" onchange="renderTable()" class="rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
+                    <select id="kamRemarkFilter" aria-label="Filter by KAM remark status" onchange="renderTable()" class="rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
                         style="background-color: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-input);">
                         <option value="All">All KAM Remarks</option>
                         <option value="Has">Has KAM Remark</option>
@@ -1217,7 +1217,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                 <div class="flex flex-col sm:flex-row gap-3">
                     <div class="relative flex-1">
                         <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 theme-transition" style="color: var(--text-muted);"></i>
-                        <input type="text" id="perfSearchInput" placeholder="Search by Ticket ID or Merchant..."
+                        <input type="text" id="perfSearchInput" aria-label="Search performance metrics by ticket ID or merchant" placeholder="Search by Ticket ID or Merchant..."
                             class="w-full rounded-lg pl-10 pr-4 py-2.5 text-sm placeholder-slate-400 focus:outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/50 transition-all theme-transition"
                             style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
                     </div>
