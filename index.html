@@ -53,6 +53,10 @@
     --scroll-thumb: #d1d5db;
     --hub-map-fill: #bbf7d0;
     --hub-map-stroke: #16a34a;
+    --tab-bevel-dark: rgba(0,0,0,0.16);
+    --tab-bevel-light: rgba(255,255,255,0.85);
+    --tab-bevel-active-dark: rgba(153,116,0,0.4);
+    --tab-bevel-active-light: rgba(255,246,211,0.9);
 }
 [data-theme="dark"] {
     --bg-body: #333132;
@@ -83,6 +87,10 @@
     --scroll-thumb: #555354;
     --hub-map-fill: #14532d;
     --hub-map-stroke: #4ade80;
+    --tab-bevel-dark: rgba(0,0,0,0.45);
+    --tab-bevel-light: rgba(255,255,255,0.07);
+    --tab-bevel-active-dark: rgba(153,102,0,0.4);
+    --tab-bevel-active-light: rgba(255,246,211,0.35);
 }
 body {
     font-family: 'Gilroy', 'Inter', sans-serif;
@@ -603,8 +611,45 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
         scroll-behavior: auto !important;
     }
 }
-.mobile-tab-item { color: var(--text-muted); transition: all 0.2s; border-bottom: 2px solid transparent; white-space: nowrap; }
-.mobile-tab-item.active { color: var(--cb-yellow); border-bottom-color: var(--cb-yellow); }
+.mobile-tab-item {
+    position: relative;
+    color: var(--text-muted);
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 6px 12px;
+    margin: 8px 0;
+    white-space: nowrap;
+    box-shadow:
+        inset 2px -2px 4px var(--tab-bevel-dark),
+        inset -1px 1px 2px var(--tab-bevel-light);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+.mobile-tab-item:hover {
+    color: var(--text-secondary);
+    transform: translateY(-1px) scale(1.03);
+    box-shadow:
+        inset 2px -2px 4px var(--tab-bevel-dark),
+        inset -1px 1px 3px var(--tab-bevel-light),
+        0 3px 6px rgba(0,0,0,0.08);
+}
+.mobile-tab-item:active {
+    transform: scale(0.94);
+    box-shadow:
+        inset 2px 2px 5px var(--tab-bevel-dark),
+        inset -1px -1px 2px var(--tab-bevel-light);
+}
+.mobile-tab-item.active {
+    color: var(--cb-black);
+    background: var(--cb-yellow);
+    border-color: var(--cb-yellow);
+    box-shadow:
+        inset 2px -2px 4px var(--tab-bevel-active-dark),
+        inset -1px 1px 3px var(--tab-bevel-active-light),
+        0 2px 6px rgba(255,204,0,0.35);
+}
+[data-theme="dark"] .mobile-tab-item.active { color: var(--cb-black); }
+.mobile-tab-item.active:hover { color: var(--cb-black); transform: translateY(-1px) scale(1.03); }
 @media (max-width: 760px) {
     .lamp { left: 50%; }
     .light-cone { left: 50%; }
