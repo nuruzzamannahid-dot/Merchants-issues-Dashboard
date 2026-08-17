@@ -1763,6 +1763,13 @@ let issuesData = [];
 let currentModalIssue = null;
 let charts = {};
 
+// Performance Optimization: Cache built performance rows to avoid repeated O(N * days) office-hours date calculations on search inputs / re-renders
+let performanceRowsCache = null;
+
+function invalidatePerformanceCache() {
+    performanceRowsCache = null;
+}
+
 const sessionResponses = new Map();
 
 function getStatus(issue) {
@@ -1821,6 +1828,7 @@ async function fetchData(silent = false) {
         loadStatusTimelineFromTurso()
     ]);
 
+    invalidatePerformanceCache();
     document.getElementById('loading-state').classList.add('hidden');
     document.getElementById('view-tracker').classList.remove('hidden');
     updateStats();
@@ -2620,8 +2628,15 @@ function splitOfficeNonOffice(startMs, endMs) {
     return { officeMs: office, nonOfficeMs: total - office };
 }
 
+// Performance Optimization: Memoize buildPerformanceRows().
+// Calculating office-hours versus non-office-hours spans (splitOfficeNonOffice -> officeMsInRange)
+// involves day-by-day looping over timestamp ranges for each issue. Memoizing this result avoids
+// re-running O(N * days) date-math loops on every keystroke in the performance search filter.
 function buildPerformanceRows() {
-    return issuesData.map(issue => {
+    if (performanceRowsCache) {
+        return performanceRowsCache;
+    }
+    performanceRowsCache = issuesData.map(issue => {
         const openedISO = getOpenedAtISO(issue);
         const progressISO = issue.progressAt || null;
         const resolvedISO = issue.resolvedTimelineAt || null;
@@ -2640,6 +2655,7 @@ function buildPerformanceRows() {
             resolveNonOfficeMs: resolveSplit.nonOfficeMs
         };
     });
+    return performanceRowsCache;
 }
 
 function renderPerformanceTable() {
