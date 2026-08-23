@@ -2001,7 +2001,18 @@ function updateResponseStats() {
         const key = d.toISOString().slice(0, 10);
         byDay[key] = (byDay[key] || 0) + 1;
     });
-    const days = Object.keys(byDay).sort((a, b) => b.localeCompare(a));
+
+    // In Progress moves per day — sourced from issue.progressAt, which is
+    // loaded from the persistent status_timeline table (loadStatusTimelineFromTurso),
+    // so unlike "responded" this survives reloads and isn't limited to this session.
+    const byDayProgress = {};
+    issuesData.forEach(issue => {
+        if (!issue.progressAt) return;
+        const key = new Date(issue.progressAt).toISOString().slice(0, 10);
+        byDayProgress[key] = (byDayProgress[key] || 0) + 1;
+    });
+
+    const days = [...new Set([...Object.keys(byDay), ...Object.keys(byDayProgress)])].sort((a, b) => b.localeCompare(a));
     const container = document.getElementById('responded-daily-breakdown');
     const personContainer = document.getElementById('responded-by-person');
     if (days.length === 0) {
@@ -2011,14 +2022,18 @@ function updateResponseStats() {
     }
     container.innerHTML = days.map(day => {
         const label = new Date(day + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-        const count = byDay[day];
+        const count = byDay[day] || 0;
+        const progressCount = byDayProgress[day] || 0;
         const isToday = day === new Date().toISOString().slice(0, 10);
         return `
             <div class="flex items-center justify-between px-3 py-2 rounded-lg theme-transition" style="background-color: var(--bg-input);">
                 <span class="text-xs font-medium theme-transition" style="color: var(--text-primary);">
                     ${escapeHTML(label)}${isToday ? ' <span class="text-gold">(Today)</span>' : ''}
                 </span>
-                <span class="text-xs font-bold px-2 py-0.5 rounded-full" style="background: rgba(255,204,0,0.15); color: var(--gold, #ffcc00);">${count} responded</span>
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-bold px-2 py-0.5 rounded-full" style="background: rgba(59,130,246,0.15); color: #3b82f6;">${progressCount} in progress</span>
+                    <span class="text-xs font-bold px-2 py-0.5 rounded-full" style="background: rgba(255,204,0,0.15); color: var(--gold, #ffcc00);">${count} responded</span>
+                </div>
             </div>`;
     }).join('');
 
