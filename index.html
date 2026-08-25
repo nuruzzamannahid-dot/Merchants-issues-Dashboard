@@ -1611,6 +1611,9 @@ const ADM_GROUP_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTuap
 const KAM_TURSO_URL = 'https://dashboard-kam-remarks-nuruzzamannahid-dot.aws-ap-south-1.turso.io/v2/pipeline';
 const KAM_TURSO_TOKEN = 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3ODYzNjc4OTQsImlkIjoiMDE5ZmViMDUtMDAwMS03Y2E4LWE2Y2UtOTE4MWE3NTk0ZjAzIiwia2lkIjoianJpQ3JvbGdhcHJHMDlHOXFsOWtNZDFlX2hiN1ZnUV9vYzJGNXlPdGVYWSIsInJpZCI6ImM4MzBhOTMxLWVlZjYtNGRjZC04NzNlLThlYjljNTE4ZGJiZSJ9.AXUJyPONrTtdnkmxATVcCfeakwxrIiUhI-fTe9Hh8-d4QGwz3b1aT0S9-tQVnqSwFPKovHRxm7V3Dr_5vG22BA';
 
+const WHATSAPP_BRIDGE_URL = 'https://whatsapp-agent-5pao.onrender.com';
+const WHATSAPP_BRIDGE_API_KEY = 'changeme'; // same key you used on the bridge's /admin page
+
 let kamTableReady = false;
 
 async function tursoQuery(sql, args = []) {
@@ -2431,6 +2434,7 @@ async function submitKamRemark() {
     closeKamRemarkModal();
     renderTable();
     await saveKamRemarkToTurso(issue.ticketId, text, kamName, nowISO, followupISO);
+    sendRemarkToWhatsApp(issue, text, kamName);
 }
 
 async function clearKamRemark() {
@@ -2469,6 +2473,49 @@ async function saveKamRemarkToTurso(ticketId, remark, kamBy, createdAtISO, follo
         showToast('Failed to save remark to the database. It may not persist after refresh.', 'error');
     }
 }
+
+// ==================== WHATSAPP BRIDGE ====================
+function formatWhatsAppUpdate(issue, kamRemark) {
+    const lines = [];
+    lines.push(`📦 Consignment: ${issue.consignmentId || '-'}`);
+    lines.push(`🏪 Merchant: ${issue.merchant || '-'}`);
+    if (issue.merchantPhoneDisplay) lines.push(`📱 Number: ${issue.merchantPhoneDisplay}`);
+    if (issue.assignedGroup) lines.push(`👥 Group: ${issue.assignedGroup}`);
+    lines.push(`🏷️ Category: ${issue.issueTag || 'General'}`);
+    lines.push(`📝 Details: ${issue.details || '-'}`);
+    lines.push('');
+    lines.push(`Update: ${kamRemark}`);
+    return lines.join('\n');
+}
+
+async function sendRemarkToWhatsApp(issue, kamRemark, kamName) {
+    if (!issue.assignedGroup) {
+        console.warn('No assignedGroup for', issue.ticketId, '— skipping WhatsApp send');
+        return;
+    }
+    try {
+        const message = formatWhatsAppUpdate(issue, kamRemark);
+        const res = await fetch(`${WHATSAPP_BRIDGE_URL}/api/send-remark`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': WHATSAPP_BRIDGE_API_KEY
+            },
+            body: JSON.stringify({
+                group_name: issue.assignedGroup,
+                message: message,
+                ticket_id: issue.ticketId,
+                kam_name: kamName
+            })
+        });
+        if (!res.ok) throw new Error(`Bridge responded ${res.status}`);
+        showToast('Update sent to WhatsApp group', 'success');
+    } catch (err) {
+        console.error('WhatsApp send error:', err);
+        showToast('Saved remark, but failed to send to WhatsApp group.', 'error');
+    }
+}
+
 
 function openModal(ticketId) {
     const issue = issuesData.find(i => i.ticketId === ticketId);
