@@ -923,6 +923,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
             <button onclick="switchView('analytics')" id="tab-analytics" class="mobile-tab-item shrink-0 py-2.5 text-sm font-medium">Analytics</button>
             <button onclick="switchView('activity')" id="tab-activity" class="mobile-tab-item shrink-0 py-2.5 text-sm font-medium">Activity</button>
             <button onclick="switchView('performance')" id="tab-performance" class="mobile-tab-item shrink-0 py-2.5 text-sm font-medium">Performance</button>
+            <button onclick="switchView('pending')" id="tab-pending" class="mobile-tab-item shrink-0 py-2.5 text-sm font-medium">Pending</button>
             <button onclick="showRaiseIssue()" class="mobile-tab-item shrink-0 py-2.5 text-sm font-medium">Raise Issue</button>
             <span class="shrink-0 w-px h-4" style="background: var(--border-color);"></span>
             <a href="https://merchant-issues-form.onrender.com/" target="_blank" rel="noopener noreferrer"
@@ -1247,6 +1248,84 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                         </div>
                         <h3 class="text-lg font-medium theme-transition" style="color: var(--text-primary);">No performance data yet</h3>
                         <p class="text-sm mt-1 theme-transition" style="color: var(--text-muted);">Data appears as issues move to In Progress / Resolved</p>
+                    </div>
+                </div>
+            </div>
+            <div id="view-pending" class="hidden fade-in space-y-6">
+                <p class="text-xs theme-transition" style="color: var(--text-muted);">
+                    <i class="fa-solid fa-circle-info mr-1"></i>
+                    Two things that need attention: issues whose KAM follow-up time has already passed, and issues stuck &ldquo;In Progress&rdquo; for 48 hours or more without being resolved.
+                </p>
+
+                <!-- Overdue Issues -->
+                <div class="glass-panel rounded-xl overflow-hidden">
+                    <div class="flex items-center justify-between gap-3 p-4 border-b theme-transition" style="border-color: var(--border-color);">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-triangle-exclamation" style="color: #ef4444;"></i>
+                            <h3 class="text-sm font-bold theme-transition" style="color: var(--text-primary);">Overdue Issues</h3>
+                            <span class="text-xs font-bold px-2 py-0.5 rounded-full" style="background: rgba(239,68,68,0.1); color: #ef4444;" id="pending-overdue-count">0</span>
+                        </div>
+                        <p class="text-xs theme-transition" style="color: var(--text-muted);">Follow-up time has passed &middot; not yet resolved</p>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b text-xs uppercase font-semibold tracking-wider theme-transition" style="border-color: var(--border-color); color: var(--text-muted);">
+                                    <th class="p-4 w-32">Ticket ID</th>
+                                    <th class="p-4 w-40">Merchant</th>
+                                    <th class="p-4 w-28">Status</th>
+                                    <th class="p-4 w-36">Follow-up Was Due</th>
+                                    <th class="p-4 w-28">Overdue By</th>
+                                    <th class="p-4 w-32">Hub</th>
+                                    <th class="p-4">Details</th>
+                                    <th class="p-4 w-16 text-right">-</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pendingOverdueTableBody" class="text-sm divide-y theme-transition" style="color: var(--text-secondary); border-color: var(--border-color);"></tbody>
+                        </table>
+                    </div>
+                    <div id="pendingOverdueEmptyState" class="hidden p-10 text-center">
+                        <div class="inline-flex items-center justify-center w-14 h-14 rounded-full mb-3 theme-transition" style="background: var(--border-color);">
+                            <i class="fa-solid fa-circle-check text-xl theme-transition" style="color: var(--text-muted);"></i>
+                        </div>
+                        <h3 class="text-base font-medium theme-transition" style="color: var(--text-primary);">No overdue issues</h3>
+                        <p class="text-xs mt-1 theme-transition" style="color: var(--text-muted);">Every follow-up is on schedule.</p>
+                    </div>
+                </div>
+
+                <!-- 48h+ In Progress -->
+                <div class="glass-panel rounded-xl overflow-hidden">
+                    <div class="flex items-center justify-between gap-3 p-4 border-b theme-transition" style="border-color: var(--border-color);">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-hourglass-half" style="color: #f59e0b;"></i>
+                            <h3 class="text-sm font-bold theme-transition" style="color: var(--text-primary);">In Progress 48h+</h3>
+                            <span class="text-xs font-bold px-2 py-0.5 rounded-full" style="background: rgba(245,158,11,0.12); color: #f59e0b;" id="pending-inprogress48-count">0</span>
+                        </div>
+                        <p class="text-xs theme-transition" style="color: var(--text-muted);">In Progress for 48 hours or more, still unresolved</p>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b text-xs uppercase font-semibold tracking-wider theme-transition" style="border-color: var(--border-color); color: var(--text-muted);">
+                                    <th class="p-4 w-32">Ticket ID</th>
+                                    <th class="p-4 w-40">Merchant</th>
+                                    <th class="p-4 w-36">Moved to In Progress</th>
+                                    <th class="p-4 w-28">Time In Progress</th>
+                                    <th class="p-4 w-36">Responded By</th>
+                                    <th class="p-4 w-32">Hub</th>
+                                    <th class="p-4">Details</th>
+                                    <th class="p-4 w-16 text-right">-</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pendingInProgress48TableBody" class="text-sm divide-y theme-transition" style="color: var(--text-secondary); border-color: var(--border-color);"></tbody>
+                        </table>
+                    </div>
+                    <div id="pendingInProgress48EmptyState" class="hidden p-10 text-center">
+                        <div class="inline-flex items-center justify-center w-14 h-14 rounded-full mb-3 theme-transition" style="background: var(--border-color);">
+                            <i class="fa-solid fa-circle-check text-xl theme-transition" style="color: var(--text-muted);"></i>
+                        </div>
+                        <h3 class="text-base font-medium theme-transition" style="color: var(--text-primary);">Nothing stuck right now</h3>
+                        <p class="text-xs mt-1 theme-transition" style="color: var(--text-muted);">No issue has been In Progress for 48 hours or more.</p>
                     </div>
                 </div>
             </div>
@@ -1840,6 +1919,8 @@ async function fetchData(silent = false) {
     rebuildTagFilterOptions(); // FIX #2: tag dropdown only rebuilt when data actually changes
     renderTable();
     updateAnalytics();
+    if (!document.getElementById('view-performance').classList.contains('hidden')) renderPerformanceTable();
+    if (!document.getElementById('view-pending').classList.contains('hidden')) renderPendingTab();
     document.getElementById('last-refreshed').innerText = `Last refreshed: ${new Date().toLocaleTimeString()}`;
     refreshIcon.classList.remove('fa-spin');
 }
@@ -2610,6 +2691,7 @@ function updateStatus(newStatus) {
         analyticsDirty = false;
     }
     if (!document.getElementById('view-performance').classList.contains('hidden')) renderPerformanceTable();
+    if (!document.getElementById('view-pending').classList.contains('hidden')) renderPendingTab();
     updateStatusOnServer(currentModalIssue, newStatus, responderName);
 }
 
@@ -2836,6 +2918,105 @@ function exportPerformanceCSV() {
     link.click();
     document.body.removeChild(link);
     showToast('Performance CSV exported successfully!', 'success');
+}
+
+// ==================== PENDING TAB ====================
+// Two lists that need attention but don't fit the main tracker's status
+// filter: (1) issues whose KAM follow-up time has already passed and which
+// are still not Resolved, and (2) issues sitting in "In Progress" for 48h+
+// without being resolved. Both reuse getStatus()/getOpenedAtISO() so they
+// never disagree with the rest of the dashboard about an issue's status.
+const IN_PROGRESS_STALE_MS = 48 * 60 * 60 * 1000; // 48 hours
+
+function getOverdueIssues() {
+    const now = Date.now();
+    return issuesData.filter(issue => {
+        if (getStatus(issue) === 'Resolved') return false;
+        if (!issue.kamFollowupAt) return false;
+        const d = new Date(issue.kamFollowupAt);
+        return !isNaN(d.getTime()) && d.getTime() < now;
+    }).sort((a, b) => new Date(a.kamFollowupAt) - new Date(b.kamFollowupAt));
+}
+
+// "Moved to In Progress" time: prefer the logged progressAt timestamp,
+// falling back to when the issue was opened if it went straight to
+// In Progress without a logged transition (e.g. historical/demo data).
+function getInProgressSinceMs(issue) {
+    const progressISO = issue.progressAt || getOpenedAtISO(issue);
+    if (!progressISO) return null;
+    const ms = new Date(progressISO).getTime();
+    return isNaN(ms) ? null : ms;
+}
+
+function getStale48hIssues() {
+    const now = Date.now();
+    return issuesData.filter(issue => {
+        if (getStatus(issue) !== 'In Progress') return false;
+        const sinceMs = getInProgressSinceMs(issue);
+        return sinceMs != null && (now - sinceMs) >= IN_PROGRESS_STALE_MS;
+    }).sort((a, b) => getInProgressSinceMs(a) - getInProgressSinceMs(b));
+}
+
+function pendingDetailsCell(issue) {
+    const detailsText = issue.details || '-';
+    return `<div class="details-preview text-xs theme-transition" style="color: var(--text-muted);" title="${escapeHTML(detailsText)}">${escapeHTML(detailsText)}</div>`;
+}
+
+function pendingViewButton(issue) {
+    return `<button onclick="openModal('${escapeHTML(issue.ticketId)}')" class="text-gold hover:opacity-80 text-xs font-bold uppercase tracking-wider transition-colors">View</button>`;
+}
+
+function renderPendingOverdue() {
+    const tbody = document.getElementById('pendingOverdueTableBody');
+    const rows = getOverdueIssues();
+    document.getElementById('pending-overdue-count').innerText = rows.length;
+    document.getElementById('pendingOverdueEmptyState').classList.toggle('hidden', rows.length !== 0);
+    tbody.innerHTML = rows.map(issue => {
+        const status = getStatus(issue);
+        const overdueByMs = Date.now() - new Date(issue.kamFollowupAt).getTime();
+        return `
+            <tr class="hover-row transition-colors border-b last:border-0 theme-transition" style="border-color: var(--border-color);">
+                <td class="p-4 font-mono text-gold font-medium text-xs">${escapeHTML(issue.ticketId || '-')}</td>
+                <td class="p-4 font-medium text-sm theme-transition" style="color: var(--text-primary);">${escapeHTML(issue.merchant || '-')}</td>
+                <td class="p-4"><span class="text-xs font-medium theme-transition" style="color: var(--text-secondary);">${status}</span></td>
+                <td class="p-4 text-xs theme-transition" style="color: var(--text-muted);">${formatTimestamp(issue.kamFollowupAt)}</td>
+                <td class="p-4 text-xs font-semibold" style="color:#ef4444;">${formatDuration(overdueByMs)}</td>
+                <td class="p-4 text-xs theme-transition" style="color: var(--text-muted);">${escapeHTML(issue.hub || '-')}</td>
+                <td class="p-4 details-cell">${pendingDetailsCell(issue)}</td>
+                <td class="p-4 text-right">${pendingViewButton(issue)}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function renderPendingInProgress48() {
+    const tbody = document.getElementById('pendingInProgress48TableBody');
+    const rows = getStale48hIssues();
+    document.getElementById('pending-inprogress48-count').innerText = rows.length;
+    document.getElementById('pendingInProgress48EmptyState').classList.toggle('hidden', rows.length !== 0);
+    tbody.innerHTML = rows.map(issue => {
+        const sinceMs = getInProgressSinceMs(issue);
+        const respondedBy = issue.respondedBy
+            ? `<span class="inline-flex items-center gap-1.5"><i class="fa-solid fa-user-check text-gold"></i> ${escapeHTML(issue.respondedBy)}</span>`
+            : '<span style="color: var(--text-muted);">-</span>';
+        return `
+            <tr class="hover-row transition-colors border-b last:border-0 theme-transition" style="border-color: var(--border-color);">
+                <td class="p-4 font-mono text-gold font-medium text-xs">${escapeHTML(issue.ticketId || '-')}</td>
+                <td class="p-4 font-medium text-sm theme-transition" style="color: var(--text-primary);">${escapeHTML(issue.merchant || '-')}</td>
+                <td class="p-4 text-xs theme-transition" style="color: var(--text-muted);">${sinceMs != null ? formatTimestamp(new Date(sinceMs).toISOString()) : '-'}</td>
+                <td class="p-4 text-xs font-semibold" style="color:#f59e0b;">${sinceMs != null ? formatDuration(Date.now() - sinceMs) : '-'}</td>
+                <td class="p-4 text-xs theme-transition" style="color: var(--text-secondary);">${respondedBy}</td>
+                <td class="p-4 text-xs theme-transition" style="color: var(--text-muted);">${escapeHTML(issue.hub || '-')}</td>
+                <td class="p-4 details-cell">${pendingDetailsCell(issue)}</td>
+                <td class="p-4 text-right">${pendingViewButton(issue)}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function renderPendingTab() {
+    renderPendingOverdue();
+    renderPendingInProgress48();
 }
 
 // ==================== HUB MAP ====================
@@ -3181,13 +3362,15 @@ function switchView(view) {
     document.getElementById('view-analytics').classList.add('hidden');
     document.getElementById('view-activity').classList.add('hidden');
     document.getElementById('view-performance').classList.add('hidden');
+    document.getElementById('view-pending').classList.add('hidden');
     document.getElementById('tab-tracker').classList.remove('active');
     document.getElementById('tab-analytics').classList.remove('active');
     document.getElementById('tab-activity').classList.remove('active');
     document.getElementById('tab-performance').classList.remove('active');
+    document.getElementById('tab-pending').classList.remove('active');
     document.getElementById(`view-${view}`).classList.remove('hidden');
     document.getElementById(`tab-${view}`).classList.add('active');
-    const titles = { tracker: 'Issue Tracker', analytics: 'Analytics', activity: 'Activity', performance: 'Performance' };
+    const titles = { tracker: 'Issue Tracker', analytics: 'Analytics', activity: 'Activity', performance: 'Performance', pending: 'Pending' };
     document.getElementById('page-title').innerText = titles[view] || 'Issue Tracker';
     if (view === 'analytics') {
         // FIX #4 (continued): only redraw charts if something changed since
@@ -3204,6 +3387,9 @@ function switchView(view) {
     }
     if (view === 'performance') {
         renderPerformanceTable();
+    }
+    if (view === 'pending') {
+        renderPendingTab();
     }
 }
 
