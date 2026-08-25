@@ -2508,7 +2508,10 @@ async function sendRemarkToWhatsApp(issue, kamRemark, kamName) {
                 kam_name: kamName
             })
         });
-        if (!res.ok) throw new Error(`Bridge responded ${res.status}`);
+        if (!res.ok) {
+            const errBody = await res.json().catch(() => ({}));
+            throw new Error(errBody.error || `Bridge responded ${res.status}`);
+        }
         showToast('Update sent to WhatsApp group', 'success');
     } catch (err) {
         console.error('WhatsApp send error:', err);
