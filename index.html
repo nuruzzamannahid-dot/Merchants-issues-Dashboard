@@ -920,6 +920,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
         </header>
         <div id="topTabs" class="flex items-center justify-center gap-4 overflow-x-auto px-4 md:px-8 theme-transition" style="background-color: var(--bg-header); border-bottom: 1px solid var(--border-color);">
             <button onclick="switchView('tracker')" id="tab-tracker" class="mobile-tab-item active shrink-0 py-2.5 text-sm font-medium">Issue Tracker</button>
+            <button onclick="switchView('pending')" id="tab-pending" class="mobile-tab-item shrink-0 py-2.5 text-sm font-medium">Pending</button>
             <button onclick="switchView('analytics')" id="tab-analytics" class="mobile-tab-item shrink-0 py-2.5 text-sm font-medium">Analytics</button>
             <button onclick="switchView('activity')" id="tab-activity" class="mobile-tab-item shrink-0 py-2.5 text-sm font-medium">Activity</button>
             <button onclick="switchView('performance')" id="tab-performance" class="mobile-tab-item shrink-0 py-2.5 text-sm font-medium">Performance</button>
@@ -1072,6 +1073,56 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                         </div>
                         <h3 class="text-lg font-medium theme-transition" style="color: var(--text-primary);">No issues found</h3>
                         <p class="text-sm mt-1 theme-transition" style="color: var(--text-muted);">Try adjusting your search or filters</p>
+                    </div>
+                </div>
+            </div>
+            <div id="view-pending" class="hidden fade-in space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="card-gradient p-5 rounded-xl border relative overflow-hidden group theme-transition" style="border-color: var(--border-color); box-shadow: var(--shadow-sm);">
+                        <div class="absolute top-0 right-0 w-24 h-24 rounded-full -mr-8 -mt-8 transition-transform group-hover:scale-110" style="background: rgba(239,68,68,0.1);"></div>
+                        <p class="text-xs font-semibold uppercase tracking-wider theme-transition" style="color: var(--text-muted);">Overdue Follow-ups</p>
+                        <h3 class="text-3xl font-bold mt-1" style="color: #ef4444;" id="stat-pending-overdue">0</h3>
+                        <p class="text-xs mt-1 theme-transition" style="color: var(--text-muted);">Past their follow-up time</p>
+                    </div>
+                    <div class="card-gradient p-5 rounded-xl border relative overflow-hidden group theme-transition" style="border-color: var(--border-color); box-shadow: var(--shadow-sm);">
+                        <div class="absolute top-0 right-0 w-24 h-24 rounded-full -mr-8 -mt-8 transition-transform group-hover:scale-110" style="background: rgba(59,130,246,0.1);"></div>
+                        <p class="text-xs font-semibold uppercase tracking-wider theme-transition" style="color: var(--text-muted);">In Progress 48h+</p>
+                        <h3 class="text-3xl font-bold mt-1" style="color: #3b82f6;" id="stat-pending-stale">0</h3>
+                        <p class="text-xs mt-1 theme-transition" style="color: var(--text-muted);">Stuck in progress</p>
+                    </div>
+                </div>
+                <div class="glass-panel rounded-xl overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b text-xs uppercase font-semibold tracking-wider theme-transition" style="border-color: var(--border-color); color: var(--text-muted);">
+                                    <th class="p-4 w-40">Alert</th>
+                                    <th class="p-4 w-32">Ticket ID</th>
+                                    <th class="p-4 w-36">Submitted</th>
+                                    <th class="p-4 w-40">Merchant</th>
+                                    <th class="p-4 w-40">Group</th>
+                                    <th class="p-4 w-36">Phone</th>
+                                    <th class="p-4 w-36">Consignment</th>
+                                    <th class="p-4 w-36">Tag</th>
+                                    <th class="p-4">Details</th>
+                                    <th class="p-4 w-28">Status</th>
+                                    <th class="p-4 w-36">Responded By</th>
+                                    <th class="p-4 w-28">Hub</th>
+                                    <th class="p-4 w-56">KAM Remarks</th>
+                                    <th class="p-4 w-56">Ops Remarks</th>
+                                    <th class="p-4 w-20 text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pendingTableBody" class="text-sm divide-y theme-transition" style="color: var(--text-secondary); border-color: var(--border-color);">
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="pendingEmptyState" class="hidden p-12 text-center">
+                        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 theme-transition" style="background: var(--border-color);">
+                            <i class="fa-solid fa-circle-check text-2xl theme-transition" style="color: var(--text-muted);"></i>
+                        </div>
+                        <h3 class="text-lg font-medium theme-transition" style="color: var(--text-primary);">Nothing pending</h3>
+                        <p class="text-sm mt-1 theme-transition" style="color: var(--text-muted);">No overdue follow-ups or long-running in-progress issues right now</p>
                     </div>
                 </div>
             </div>
@@ -1840,6 +1891,7 @@ async function fetchData(silent = false) {
     rebuildTagFilterOptions(); // FIX #2: tag dropdown only rebuilt when data actually changes
     renderTable();
     updateAnalytics();
+    if (!document.getElementById('view-pending').classList.contains('hidden')) renderPendingTable();
     document.getElementById('last-refreshed').innerText = `Last refreshed: ${new Date().toLocaleTimeString()}`;
     refreshIcon.classList.remove('fa-spin');
 }
@@ -2251,36 +2303,28 @@ function renderPhoneCell(issue) {
         </div>`;
 }
 
-function renderTable() {
-    const tbody = document.getElementById('issuesTableBody');
-    updateFilterBadge();
-    let filtered = getFilteredIssues();
-    updateStats(filtered);
-
-    if (filtered.length === 0) {
-        document.getElementById('emptyState').classList.remove('hidden');
-        tbody.innerHTML = '';
-        return;
-    }
-
-    document.getElementById('emptyState').classList.add('hidden');
-    const rowsHtml = filtered.map(issue => {
-        const status = getStatus(issue);
-        let statusClass = '', statusDot = '';
-        if (status === 'Open') { statusClass = 'status-open'; statusDot = 'bg-yellow-500'; }
-        else if (status === 'In Progress') { statusClass = 'status-progress'; statusDot = 'bg-blue-500'; }
-        else if (status === 'Resolved') { statusClass = 'status-resolved'; statusDot = 'bg-green-500'; }
-        const detailsText = issue.details || '-';
-        const respondedBy = issue.respondedBy
-            ? `<span class="inline-flex items-center gap-1.5"><i class="fa-solid fa-user-check text-gold"></i> ${escapeHTML(issue.respondedBy)}</span>`
-            : '<span style="color: var(--text-muted);">-</span>';
-        const opsRemarksText = (issue.remarks || issue.opsRemarks || issue.ops_remarks || '').trim();
-        const hasOpsRemarks = opsRemarksText.length > 0;
-        const openedISO = getOpenedAtISO(issue);
-        const openedDateLabel = openedISO ? new Date(openedISO).toLocaleDateString('en-US', { timeZone: 'Asia/Dhaka', year: 'numeric', month: 'short', day: 'numeric' }) : (issue.date || '-');
-        const openedTimeLabel = openedISO ? new Date(openedISO).toLocaleTimeString('en-US', { timeZone: 'Asia/Dhaka', hour: 'numeric', minute: '2-digit', second: '2-digit' }) : (issue.timestamp || '');
-        return `
+// Builds the shared <tr> markup for one issue. Used by both the Issue
+// Tracker table and the Pending table so the two views always stay in sync.
+// extraLeadingCellHtml, if given, is inserted as an extra <td> at the front
+// of the row (used by the Pending table for its "Alert" column).
+function buildIssueRowHTML(issue, extraLeadingCellHtml) {
+    const status = getStatus(issue);
+    let statusClass = '', statusDot = '';
+    if (status === 'Open') { statusClass = 'status-open'; statusDot = 'bg-yellow-500'; }
+    else if (status === 'In Progress') { statusClass = 'status-progress'; statusDot = 'bg-blue-500'; }
+    else if (status === 'Resolved') { statusClass = 'status-resolved'; statusDot = 'bg-green-500'; }
+    const detailsText = issue.details || '-';
+    const respondedBy = issue.respondedBy
+        ? `<span class="inline-flex items-center gap-1.5"><i class="fa-solid fa-user-check text-gold"></i> ${escapeHTML(issue.respondedBy)}</span>`
+        : '<span style="color: var(--text-muted);">-</span>';
+    const opsRemarksText = (issue.remarks || issue.opsRemarks || issue.ops_remarks || '').trim();
+    const hasOpsRemarks = opsRemarksText.length > 0;
+    const openedISO = getOpenedAtISO(issue);
+    const openedDateLabel = openedISO ? new Date(openedISO).toLocaleDateString('en-US', { timeZone: 'Asia/Dhaka', year: 'numeric', month: 'short', day: 'numeric' }) : (issue.date || '-');
+    const openedTimeLabel = openedISO ? new Date(openedISO).toLocaleTimeString('en-US', { timeZone: 'Asia/Dhaka', hour: 'numeric', minute: '2-digit', second: '2-digit' }) : (issue.timestamp || '');
+    return `
                 <tr class="hover-row transition-colors border-b last:border-0 theme-transition" style="border-color: var(--border-color);">
+                    ${extraLeadingCellHtml || ''}
                     <td class="p-4 font-mono text-gold font-medium text-xs">${escapeHTML(issue.ticketId || '-')}</td>
                     <td class="p-4 text-xs theme-transition" style="color: var(--text-muted);">${escapeHTML(openedDateLabel)}<br><span class="text-xs opacity-70">${escapeHTML(openedTimeLabel)}</span></td>
                     <td class="p-4 font-medium text-sm theme-transition" style="color: var(--text-primary);">${escapeHTML(issue.merchant || '-')}</td>
@@ -2311,8 +2355,94 @@ function renderTable() {
                     </td>
                 </tr>
             `;
-    });
-    tbody.innerHTML = rowsHtml.join('');
+}
+
+function renderTable() {
+    const tbody = document.getElementById('issuesTableBody');
+    updateFilterBadge();
+    let filtered = getFilteredIssues();
+    updateStats(filtered);
+
+    if (filtered.length === 0) {
+        document.getElementById('emptyState').classList.remove('hidden');
+        tbody.innerHTML = '';
+        return;
+    }
+
+    document.getElementById('emptyState').classList.add('hidden');
+    tbody.innerHTML = filtered.map(issue => buildIssueRowHTML(issue)).join('');
+}
+
+// ==================== PENDING TAB ====================
+// An issue lands here for either (or both) of two reasons:
+//   1. Its KAM follow-up time has passed and it isn't Resolved yet
+//      (same "overdue" definition already used by the KAM Remark filter).
+//   2. It's In Progress and has been for 48+ hours straight.
+// For #2 we prefer the logged status-timeline timestamp (issue.progressAt);
+// if that isn't available (e.g. an older ticket from before timeline
+// logging started), we fall back to when the issue was opened, so genuinely
+// stale tickets still surface instead of silently being skipped.
+const STALE_IN_PROGRESS_MS = 48 * 60 * 60 * 1000;
+
+function getPendingAlerts(issue) {
+    const alerts = [];
+    const status = getStatus(issue);
+
+    if (status !== 'Resolved' && issue.kamFollowupAt) {
+        const d = new Date(issue.kamFollowupAt);
+        if (!isNaN(d.getTime()) && d.getTime() < Date.now()) {
+            alerts.push({ type: 'overdue', sinceMs: Date.now() - d.getTime() });
+        }
+    }
+
+    if (status === 'In Progress') {
+        const sinceISO = issue.progressAt || getOpenedAtISO(issue);
+        if (sinceISO) {
+            const d = new Date(sinceISO);
+            if (!isNaN(d.getTime())) {
+                const elapsed = Date.now() - d.getTime();
+                if (elapsed >= STALE_IN_PROGRESS_MS) alerts.push({ type: 'stale', sinceMs: elapsed });
+            }
+        }
+    }
+
+    return alerts;
+}
+
+function getPendingIssues() {
+    return issuesData
+        .map(issue => ({ issue, alerts: getPendingAlerts(issue) }))
+        .filter(entry => entry.alerts.length > 0)
+        // Most urgent (longest overdue / longest stuck) first.
+        .sort((a, b) => Math.max(...b.alerts.map(al => al.sinceMs)) - Math.max(...a.alerts.map(al => al.sinceMs)));
+}
+
+function renderPendingAlertCell(alerts) {
+    return alerts.map(a => {
+        if (a.type === 'overdue') {
+            return `<span class="followup-badge followup-overdue"><i class="fa-solid fa-triangle-exclamation"></i> Follow-up overdue ${formatDuration(a.sinceMs)}</span>`;
+        }
+        return `<span class="followup-badge followup-overdue"><i class="fa-solid fa-clock"></i> In Progress ${formatDuration(a.sinceMs)}</span>`;
+    }).join('<br>');
+}
+
+function renderPendingTable() {
+    const tbody = document.getElementById('pendingTableBody');
+    const pending = getPendingIssues();
+
+    document.getElementById('stat-pending-overdue').innerText = pending.filter(e => e.alerts.some(a => a.type === 'overdue')).length;
+    document.getElementById('stat-pending-stale').innerText = pending.filter(e => e.alerts.some(a => a.type === 'stale')).length;
+
+    if (pending.length === 0) {
+        document.getElementById('pendingEmptyState').classList.remove('hidden');
+        tbody.innerHTML = '';
+        return;
+    }
+
+    document.getElementById('pendingEmptyState').classList.add('hidden');
+    tbody.innerHTML = pending.map(({ issue, alerts }) =>
+        buildIssueRowHTML(issue, `<td class="p-4 text-xs">${renderPendingAlertCell(alerts)}</td>`)
+    ).join('');
 }
 
 // ---- FIX #1 (debounce): search box no longer re-filters on every single
@@ -2433,6 +2563,7 @@ async function submitKamRemark() {
 
     closeKamRemarkModal();
     renderTable();
+    if (!document.getElementById('view-pending').classList.contains('hidden')) renderPendingTable();
     await saveKamRemarkToTurso(issue.ticketId, text, kamName, nowISO, followupISO);
     sendRemarkToWhatsApp(issue, text, kamName);
 }
@@ -2450,6 +2581,7 @@ async function clearKamRemark() {
     issue.kamFollowupAt = null;
     closeKamRemarkModal();
     renderTable();
+    if (!document.getElementById('view-pending').classList.contains('hidden')) renderPendingTable();
     try {
         await ensureKamRemarksTable();
         await tursoQuery('DELETE FROM kam_remarks WHERE ticket_id = ?', [issue.ticketId]);
@@ -2611,6 +2743,7 @@ function updateStatus(newStatus) {
         analyticsDirty = false;
     }
     if (!document.getElementById('view-performance').classList.contains('hidden')) renderPerformanceTable();
+    if (!document.getElementById('view-pending').classList.contains('hidden')) renderPendingTable();
     updateStatusOnServer(currentModalIssue, newStatus, responderName);
 }
 
@@ -3179,17 +3312,22 @@ function renderResolutionChart() {
 
 function switchView(view) {
     document.getElementById('view-tracker').classList.add('hidden');
+    document.getElementById('view-pending').classList.add('hidden');
     document.getElementById('view-analytics').classList.add('hidden');
     document.getElementById('view-activity').classList.add('hidden');
     document.getElementById('view-performance').classList.add('hidden');
     document.getElementById('tab-tracker').classList.remove('active');
+    document.getElementById('tab-pending').classList.remove('active');
     document.getElementById('tab-analytics').classList.remove('active');
     document.getElementById('tab-activity').classList.remove('active');
     document.getElementById('tab-performance').classList.remove('active');
     document.getElementById(`view-${view}`).classList.remove('hidden');
     document.getElementById(`tab-${view}`).classList.add('active');
-    const titles = { tracker: 'Issue Tracker', analytics: 'Analytics', activity: 'Activity', performance: 'Performance' };
+    const titles = { tracker: 'Issue Tracker', pending: 'Pending', analytics: 'Analytics', activity: 'Activity', performance: 'Performance' };
     document.getElementById('page-title').innerText = titles[view] || 'Issue Tracker';
+    if (view === 'pending') {
+        renderPendingTable();
+    }
     if (view === 'analytics') {
         // FIX #4 (continued): only redraw charts if something changed since
         // the last time this tab was rendered  otherwise just resize the
