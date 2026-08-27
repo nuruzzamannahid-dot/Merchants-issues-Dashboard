@@ -818,6 +818,10 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 }
 [data-theme="dark"] .mobile-tab-item.active { color: var(--cb-black); }
 .mobile-tab-item.active:hover { color: var(--cb-black); transform: translateY(-1px) scale(1.03); }
+.perf-trend-tab { color: var(--text-muted); }
+.perf-trend-tab.active { background: var(--cb-yellow); color: var(--cb-black); }
+.perf-change-up { color: #ef4444; }
+.perf-change-down { color: #22c55e; }
 @media (max-width: 760px) {
     .lamp { left: 50%; }
     .light-cone { left: 50%; }
@@ -1315,6 +1319,41 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                     <div class="card-gradient p-5 rounded-xl border theme-transition" style="border-color: var(--border-color); box-shadow: var(--shadow-sm);">
                         <p class="text-xs font-semibold uppercase tracking-wider theme-transition" style="color: var(--text-muted);">Slowest Resolution</p>
                         <h3 class="text-2xl font-bold mt-1 theme-transition" style="color: var(--text-primary);" id="perf-slowest">-</h3>
+                    </div>
+                </div>
+                <div class="glass-panel rounded-xl p-5 space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div>
+                            <h3 class="text-base font-bold theme-transition" style="color: var(--text-primary);">Trend Reports</h3>
+                            <p class="text-xs mt-0.5 theme-transition" style="color: var(--text-muted);">Grouped by resolution date (Asia/Dhaka). Each row covers only issues resolved in that period.</p>
+                        </div>
+                        <div class="inline-flex rounded-lg p-1 self-start sm:self-auto theme-transition" style="background: var(--bg-input); border: 1px solid var(--border-color);">
+                            <button onclick="switchPerfTrendGranularity('day')" id="perf-trend-tab-day" class="perf-trend-tab active px-3 py-1.5 rounded-md text-xs font-semibold transition-colors">Daily (DOD)</button>
+                            <button onclick="switchPerfTrendGranularity('week')" id="perf-trend-tab-week" class="perf-trend-tab px-3 py-1.5 rounded-md text-xs font-semibold transition-colors">Weekly (WOW)</button>
+                            <button onclick="switchPerfTrendGranularity('month')" id="perf-trend-tab-month" class="perf-trend-tab px-3 py-1.5 rounded-md text-xs font-semibold transition-colors">Monthly (MOM)</button>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b text-xs uppercase font-semibold tracking-wider theme-transition" style="border-color: var(--border-color); color: var(--text-muted);">
+                                    <th class="p-3 whitespace-nowrap">Period</th>
+                                    <th class="p-3 whitespace-nowrap">Resolved</th>
+                                    <th class="p-3 whitespace-nowrap">Avg&rarr;Progress (Office)</th>
+                                    <th class="p-3 whitespace-nowrap">Avg&rarr;Progress (Off-hours)</th>
+                                    <th class="p-3 whitespace-nowrap">Avg&rarr;Resolve (Office)</th>
+                                    <th class="p-3 whitespace-nowrap">Avg&rarr;Resolve (Off-hours)</th>
+                                    <th class="p-3 whitespace-nowrap">Fastest</th>
+                                    <th class="p-3 whitespace-nowrap">Slowest</th>
+                                    <th class="p-3 whitespace-nowrap">vs Previous</th>
+                                </tr>
+                            </thead>
+                            <tbody id="perfTrendTableBody" class="text-sm divide-y theme-transition" style="color: var(--text-secondary); border-color: var(--border-color);">
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="perfTrendEmptyState" class="hidden p-8 text-center">
+                        <p class="text-sm theme-transition" style="color: var(--text-muted);">No resolved issues yet to build a trend report.</p>
                     </div>
                 </div>
                 <div class="flex flex-col sm:flex-row gap-3">
@@ -3137,6 +3176,8 @@ function renderPerformanceTable() {
     document.getElementById('perf-avg-progress-nonoffice').innerText = formatDuration(avg(progressNonOffice));
     document.getElementById('perf-avg-resolve-office').innerText = formatDuration(avg(resolveOffice));
     document.getElementById('perf-avg-resolve-nonoffice').innerText = formatDuration(avg(resolveNonOffice));
+
+    renderPerfTrendReport();
 }
 
 let perfSearchDebounceTimer = null;
@@ -3160,6 +3201,121 @@ function exportPerformanceCSV() {
     link.click();
     document.body.removeChild(link);
     showToast('Performance CSV exported successfully!', 'success');
+}
+
+// ---- Trend reports: Day-over-day (DOD) / Week-over-week (WOW) / Month-over-month (MOM) ----
+// Buckets are keyed off each issue's Resolved-At date/week/month in Asia/Dhaka time,
+// so every report row only covers issues that were actually resolved in that period.
+let perfTrendGranularity = 'day';
+const PERF_TREND_LIMITS = { day: 21, week: 16, month: 12 };
+
+function dhakaDateParts(ms) {
+    const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Dhaka', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date(ms));
+    const get = t => parseInt(parts.find(p => p.type === t).value, 10);
+    return { y: get('year'), mo: get('month'), da: get('day') };
+}
+
+// Represents the Dhaka calendar date as a UTC timestamp purely for bucketing/sorting/labeling
+// (never treated as a real instant), which sidesteps per-row Intl formatting overhead.
+function dhakaFakeUTC(ms) {
+    const { y, mo, da } = dhakaDateParts(ms);
+    return Date.UTC(y, mo - 1, da);
+}
+
+function fmtFakeUTCLabel(fakeUTCms, opts) {
+    return new Date(fakeUTCms).toLocaleDateString('en-US', Object.assign({ timeZone: 'UTC' }, opts));
+}
+
+function perfBucketInfo(resolvedMs, granularity) {
+    const fakeUTC = dhakaFakeUTC(resolvedMs);
+    if (granularity === 'day') {
+        return { sortMs: fakeUTC, label: fmtFakeUTCLabel(fakeUTC, { month: 'short', day: 'numeric', year: 'numeric' }) };
+    }
+    if (granularity === 'week') {
+        const dow = new Date(fakeUTC).getUTCDay(); // 0 = Sunday
+        const weekStart = fakeUTC - dow * DAY_MS;
+        const weekEnd = weekStart + 6 * DAY_MS;
+        const label = `${fmtFakeUTCLabel(weekStart, { month: 'short', day: 'numeric' })} \u2013 ${fmtFakeUTCLabel(weekEnd, { month: 'short', day: 'numeric', year: 'numeric' })}`;
+        return { sortMs: weekStart, label };
+    }
+    // month
+    const { y, mo } = dhakaDateParts(resolvedMs);
+    const monthStart = Date.UTC(y, mo - 1, 1);
+    return { sortMs: monthStart, label: fmtFakeUTCLabel(monthStart, { month: 'long', year: 'numeric' }) };
+}
+
+function buildPerfTrendReport(granularity) {
+    const rows = buildPerformanceRows().filter(r => r.resolvedISO && r.timeToResolve != null);
+    const buckets = new Map();
+    rows.forEach(r => {
+        const resolvedMs = new Date(r.resolvedISO).getTime();
+        const { sortMs, label } = perfBucketInfo(resolvedMs, granularity);
+        if (!buckets.has(sortMs)) buckets.set(sortMs, { sortMs, label, rows: [] });
+        buckets.get(sortMs).rows.push(r);
+    });
+    const ordered = Array.from(buckets.values()).sort((a, b) => b.sortMs - a.sortMs).slice(0, PERF_TREND_LIMITS[granularity]);
+    const avg = arr => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
+
+    return ordered.map((bucket, i) => {
+        const resolveTimes = bucket.rows.map(r => r.timeToResolve);
+        const progressRows = bucket.rows.filter(r => r.timeToProgress != null);
+        const avgResolve = avg(resolveTimes);
+        const prevAvgResolve = ordered[i + 1] ? avg(ordered[i + 1].rows.map(r => r.timeToResolve)) : null;
+        let changePct = null;
+        if (avgResolve != null && prevAvgResolve != null && prevAvgResolve > 0) {
+            changePct = ((avgResolve - prevAvgResolve) / prevAvgResolve) * 100;
+        }
+        return {
+            label: bucket.label,
+            count: bucket.rows.length,
+            avgProgressOffice: avg(progressRows.filter(r => r.progressOfficeMs != null).map(r => r.progressOfficeMs)),
+            avgProgressNonOffice: avg(progressRows.filter(r => r.progressNonOfficeMs != null).map(r => r.progressNonOfficeMs)),
+            avgResolveOffice: avg(bucket.rows.filter(r => r.resolveOfficeMs != null).map(r => r.resolveOfficeMs)),
+            avgResolveNonOffice: avg(bucket.rows.filter(r => r.resolveNonOfficeMs != null).map(r => r.resolveNonOfficeMs)),
+            fastest: resolveTimes.length ? Math.min(...resolveTimes) : null,
+            slowest: resolveTimes.length ? Math.max(...resolveTimes) : null,
+            changePct
+        };
+    });
+}
+
+function formatPerfChange(changePct) {
+    if (changePct == null || isNaN(changePct)) return '<span style="color: var(--text-muted);">&mdash;</span>';
+    const rounded = Math.round(Math.abs(changePct));
+    if (rounded === 0) return '<span style="color: var(--text-muted);">No change</span>';
+    // Slower resolution (higher avg time) is worse -> red/up-arrow; faster is better -> green/down-arrow.
+    const worse = changePct > 0;
+    const cls = worse ? 'perf-change-up' : 'perf-change-down';
+    const icon = worse ? 'fa-arrow-up' : 'fa-arrow-down';
+    return `<span class="${cls}"><i class="fa-solid ${icon} mr-1"></i>${rounded}%</span>`;
+}
+
+function switchPerfTrendGranularity(granularity) {
+    perfTrendGranularity = granularity;
+    ['day', 'week', 'month'].forEach(g => {
+        document.getElementById(`perf-trend-tab-${g}`).classList.toggle('active', g === granularity);
+    });
+    renderPerfTrendReport();
+}
+
+function renderPerfTrendReport() {
+    const tbody = document.getElementById('perfTrendTableBody');
+    if (!tbody) return;
+    const report = buildPerfTrendReport(perfTrendGranularity);
+    document.getElementById('perfTrendEmptyState').classList.toggle('hidden', report.length !== 0);
+    tbody.innerHTML = report.map(row => `
+        <tr class="hover-row transition-colors border-b last:border-0 theme-transition" style="border-color: var(--border-color);">
+            <td class="p-3 text-xs font-medium whitespace-nowrap theme-transition" style="color: var(--text-primary);">${escapeHTML(row.label)}</td>
+            <td class="p-3 text-xs font-semibold whitespace-nowrap" style="color: var(--cb-yellow);">${row.count}</td>
+            <td class="p-3 text-xs whitespace-nowrap theme-transition" style="color: var(--text-secondary);">${formatDuration(row.avgProgressOffice)}</td>
+            <td class="p-3 text-xs whitespace-nowrap theme-transition" style="color: var(--text-secondary);">${formatDuration(row.avgProgressNonOffice)}</td>
+            <td class="p-3 text-xs whitespace-nowrap theme-transition" style="color: var(--text-secondary);">${formatDuration(row.avgResolveOffice)}</td>
+            <td class="p-3 text-xs whitespace-nowrap theme-transition" style="color: var(--text-secondary);">${formatDuration(row.avgResolveNonOffice)}</td>
+            <td class="p-3 text-xs font-semibold whitespace-nowrap" style="color:#3b82f6;">${formatDuration(row.fastest)}</td>
+            <td class="p-3 text-xs font-semibold whitespace-nowrap" style="color:#f97316;">${formatDuration(row.slowest)}</td>
+            <td class="p-3 text-xs font-semibold whitespace-nowrap">${formatPerfChange(row.changePct)}</td>
+        </tr>
+    `).join('');
 }
 
 // ==================== HUB MAP ====================
