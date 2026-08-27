@@ -1394,6 +1394,95 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                         </div>
                     </div>
                 </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="card-gradient p-5 rounded-xl border theme-transition" style="border-color: var(--border-color); box-shadow: var(--shadow-sm);">
+                        <p class="text-xs font-semibold uppercase tracking-wider theme-transition" style="color: var(--text-muted);">Total Average &mdash; Time to Remark</p>
+                        <h3 class="text-2xl font-bold mt-1" style="color: #3b82f6;" id="hub-avg-remark">-</h3>
+                    </div>
+                    <div class="card-gradient p-5 rounded-xl border theme-transition" style="border-color: var(--border-color); box-shadow: var(--shadow-sm);">
+                        <p class="text-xs font-semibold uppercase tracking-wider theme-transition" style="color: var(--text-muted);">Remarks Given Rate</p>
+                        <h3 class="text-2xl font-bold mt-1" style="color: #22c55e;" id="hub-remark-rate">-</h3>
+                    </div>
+                    <div class="card-gradient p-5 rounded-xl border theme-transition" style="border-color: var(--border-color); box-shadow: var(--shadow-sm);">
+                        <p class="text-xs font-semibold uppercase tracking-wider theme-transition" style="color: var(--text-muted);">Fastest Reply</p>
+                        <h3 class="text-2xl font-bold mt-1 theme-transition" style="color: var(--text-primary);" id="hub-fastest-remark">-</h3>
+                    </div>
+                    <div class="card-gradient p-5 rounded-xl border theme-transition" style="border-color: var(--border-color); box-shadow: var(--shadow-sm);">
+                        <p class="text-xs font-semibold uppercase tracking-wider theme-transition" style="color: var(--text-muted);">Late Replies (&gt;SLA)</p>
+                        <h3 class="text-2xl font-bold mt-1" style="color: #ef4444;" id="hub-late-count">-</h3>
+                    </div>
+                </div>
+
+                <div class="glass-panel rounded-xl p-5 space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div>
+                            <h3 class="text-base font-bold theme-transition" style="color: var(--text-primary);">Hub Remarks Leaderboard</h3>
+                            <p class="text-xs mt-0.5 theme-transition" style="color: var(--text-muted);">Ranked best (fastest, most remarks given) to last, based on how quickly each hub sends remarks once an issue moves to In Progress. Reply SLA: <span id="hubSlaLabel"></span>. Click a hub name (in the list above) to see its Issue IDs.</p>
+                        </div>
+                        <button onclick="exportHubPerformanceCSV()" class="px-4 py-2 rounded-lg bg-gold hover:opacity-90 text-sm font-bold transition-colors flex items-center gap-2 self-start sm:self-auto" style="color: var(--cb-black);">
+                            <i class="fa-solid fa-download"></i> Export Hub Performance CSV
+                        </button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b text-xs uppercase font-semibold tracking-wider theme-transition" style="border-color: var(--border-color); color: var(--text-muted);">
+                                    <th class="p-3 whitespace-nowrap">Rank</th>
+                                    <th class="p-3 whitespace-nowrap">Hub</th>
+                                    <th class="p-3 whitespace-nowrap">Total Issues</th>
+                                    <th class="p-3 whitespace-nowrap">Remarks Given</th>
+                                    <th class="p-3 whitespace-nowrap">Avg Time to Remark</th>
+                                    <th class="p-3 whitespace-nowrap">Late (&gt;SLA)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="hubLeaderboardBody" class="text-sm divide-y theme-transition" style="color: var(--text-secondary); border-color: var(--border-color);">
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="hubLeaderboardEmpty" class="hidden p-8 text-center">
+                        <p class="text-sm theme-transition" style="color: var(--text-muted);">No hub remark data yet.</p>
+                    </div>
+                </div>
+
+                <div class="glass-panel rounded-xl p-5 space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div>
+                            <h3 class="text-base font-bold theme-transition" style="color: var(--text-primary);">Hub Remarks Trend Reports</h3>
+                            <p class="text-xs mt-0.5 theme-transition" style="color: var(--text-muted);">Grouped by the date the hub sent its remark (Asia/Dhaka). Filter to one hub or see all combined.</p>
+                        </div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <select id="hubTrendFilter" onchange="onHubTrendFilterChange()" class="rounded-lg px-3 py-2 text-xs theme-transition" style="background: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
+                                <option value="all">All Hubs</option>
+                            </select>
+                            <div class="inline-flex rounded-lg p-1 self-start sm:self-auto theme-transition" style="background: var(--bg-input); border: 1px solid var(--border-color);">
+                                <button onclick="switchHubTrendGranularity('day')" id="hub-trend-tab-day" class="perf-trend-tab active px-3 py-1.5 rounded-md text-xs font-semibold transition-colors">Daily (DOD)</button>
+                                <button onclick="switchHubTrendGranularity('week')" id="hub-trend-tab-week" class="perf-trend-tab px-3 py-1.5 rounded-md text-xs font-semibold transition-colors">Weekly (WOW)</button>
+                                <button onclick="switchHubTrendGranularity('month')" id="hub-trend-tab-month" class="perf-trend-tab px-3 py-1.5 rounded-md text-xs font-semibold transition-colors">Monthly (MOM)</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b text-xs uppercase font-semibold tracking-wider theme-transition" style="border-color: var(--border-color); color: var(--text-muted);">
+                                    <th class="p-3 whitespace-nowrap">Period</th>
+                                    <th class="p-3 whitespace-nowrap">Remarks Given</th>
+                                    <th class="p-3 whitespace-nowrap">Avg Time to Remark</th>
+                                    <th class="p-3 whitespace-nowrap">Fastest</th>
+                                    <th class="p-3 whitespace-nowrap">Slowest</th>
+                                    <th class="p-3 whitespace-nowrap">Late (&gt;SLA)</th>
+                                    <th class="p-3 whitespace-nowrap">vs Previous</th>
+                                </tr>
+                            </thead>
+                            <tbody id="hubTrendTableBody" class="text-sm divide-y theme-transition" style="color: var(--text-secondary); border-color: var(--border-color);">
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="hubTrendEmptyState" class="hidden p-8 text-center">
+                        <p class="text-sm theme-transition" style="color: var(--text-muted);">No hub remarks yet to build a trend report.</p>
+                    </div>
+                </div>
             </div>
 
         </div>
@@ -1464,6 +1553,26 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                         Status is saved to the CarryBee database.
                     </p>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hub Issues Modal -->
+<div id="hubIssuesModal" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="hubIssuesModalTitle">
+    <div class="modal-overlay absolute inset-0" onclick="closeHubIssuesModal()"></div>
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg px-4">
+        <div class="rounded-2xl shadow-2xl overflow-hidden max-h-[85vh] overflow-y-auto theme-transition" style="background-color: var(--bg-modal); border: 1px solid var(--border-color);">
+            <div class="p-6 border-b flex justify-between items-start sticky top-0 z-10 theme-transition" style="background-color: var(--bg-modal); border-color: var(--border-color);">
+                <div>
+                    <p class="text-gold text-xs font-mono mb-1" id="hubIssuesModalHub">Hub</p>
+                    <h3 class="text-xl font-bold theme-transition" style="color: var(--text-primary);" id="hubIssuesModalTitle">Issues under this hub</h3>
+                </div>
+                <button onclick="closeHubIssuesModal()" class="theme-transition" style="color: var(--text-muted);" aria-label="Close modal">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-2" id="hubIssuesModalBody">
             </div>
         </div>
     </div>
@@ -1873,6 +1982,70 @@ async function loadStatusTimelineFromTurso() {
     }
 }
 
+// ==================== HUB REMARKS TIMELINE (for HUB Performance tab) ====================
+// The hub/OPS remark text comes from the Google Sheet lookup (enrichWithSheetData)
+// and only ever gives us the text itself, never when the hub actually wrote it.
+// So the first time we see non-empty remark text for a ticket, we stamp "now" and
+// save it to this Turso table (shared across every teammate/device, unlike the old
+// localStorage-only approach) — that stamped time is treated as when the hub gave
+// its remark, and is what "late reply" / DOD-WOW-MOM hub performance is built from.
+let hubRemarksTableReady = false;
+let hubRemarksTimelineMap = new Map(); // ticketId -> { hub, remark, firstSeenAt }
+
+async function ensureHubRemarksTable() {
+    if (hubRemarksTableReady) return;
+    await tursoQuery(`CREATE TABLE IF NOT EXISTS hub_remarks_timeline (
+        ticket_id TEXT PRIMARY KEY,
+        hub TEXT,
+        remark TEXT,
+        first_seen_at TEXT NOT NULL
+    )`);
+    hubRemarksTableReady = true;
+}
+
+async function loadHubRemarksTimelineFromTurso() {
+    try {
+        await ensureHubRemarksTable();
+        const { rows } = await tursoQuery('SELECT ticket_id, hub, remark, first_seen_at FROM hub_remarks_timeline');
+        hubRemarksTimelineMap = new Map(rows.map(r => [r.ticket_id, { hub: r.hub, remark: r.remark, firstSeenAt: r.first_seen_at }]));
+    } catch (e) {
+        console.error('Load hub remarks timeline error:', e);
+    }
+}
+
+// Called every refresh, after sheet enrichment: any ticket that now shows hub
+// remark text but isn't recorded yet gets stamped "now" and written to Turso.
+async function syncHubRemarksTimeline() {
+    const toInsert = issuesData.filter(issue => {
+        const text = (issue.remarks || '').trim();
+        return text && issue.ticketId && !hubRemarksTimelineMap.has(issue.ticketId);
+    });
+    if (!toInsert.length) return;
+    await ensureHubRemarksTable();
+    const now = new Date().toISOString();
+    for (const issue of toInsert) {
+        const text = (issue.remarks || '').trim();
+        try {
+            await tursoQuery(
+                'INSERT OR IGNORE INTO hub_remarks_timeline (ticket_id, hub, remark, first_seen_at) VALUES (?, ?, ?, ?)',
+                [issue.ticketId, issue.hub || '', text, now]
+            );
+            hubRemarksTimelineMap.set(issue.ticketId, { hub: issue.hub || '', remark: text, firstSeenAt: now });
+        } catch (e) {
+            console.error('Hub remark timeline insert error:', e);
+        }
+    }
+}
+
+// Copies the synced/loaded Turso timestamps onto issuesData so the rest of the
+// app (getHubRemarksMeta, hub stats, trend reports) can read issue.hubRemarkAt.
+function applyHubRemarksTimeline() {
+    issuesData.forEach(issue => {
+        const rec = issue.ticketId && hubRemarksTimelineMap.get(issue.ticketId);
+        if (rec) issue.hubRemarkAt = rec.firstSeenAt;
+    });
+}
+
 // ==================== HELPERS ====================
 function escapeHTML(s) {
     return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -1976,8 +2149,13 @@ async function fetchData(silent = false) {
         enrichWithSheetData(),
         enrichWithGroupData(),
         loadKamRemarksFromTurso(),
-        loadStatusTimelineFromTurso()
+        loadStatusTimelineFromTurso(),
+        loadHubRemarksTimelineFromTurso()
     ]);
+    // Needs enrichWithSheetData (issue.remarks/hub) + loadHubRemarksTimelineFromTurso
+    // (existing map) to both be in, so it runs after the Promise.all above.
+    await syncHubRemarksTimeline();
+    applyHubRemarksTimeline();
 
     document.getElementById('loading-state').classList.add('hidden');
     document.getElementById('view-tracker').classList.remove('hidden');
@@ -1987,6 +2165,8 @@ async function fetchData(silent = false) {
     renderTable();
     updateAnalytics();
     if (!document.getElementById('view-pending').classList.contains('hidden')) renderPendingTable();
+    if (!document.getElementById('view-hub-performance').classList.contains('hidden')) renderHubMap();
+    if (!document.getElementById('view-performance').classList.contains('hidden')) renderPerformanceTable();
     document.getElementById('last-refreshed').innerText = `Last refreshed: ${new Date().toLocaleTimeString()}`;
     refreshIcon.classList.remove('fa-spin');
 }
@@ -2702,8 +2882,12 @@ function getHubRemarksMeta(issue) {
     const text = (issue.remarks || issue.opsRemarks || issue.ops_remarks || '').trim();
     const hasRemarks = text.length > 0;
     const ticketId = issue.ticketId || issue.consignmentId;
-    let at = null;
-    if (hasRemarks && ticketId) {
+    // issue.hubRemarkAt is the shared, Turso-backed "first seen" timestamp
+    // (applyHubRemarksTimeline), synced for every teammate/device. Only fall
+    // back to the old per-browser localStorage stamp if Turso wasn't reachable
+    // (e.g. demo/offline mode), so nothing breaks on a bad connection.
+    let at = issue.hubRemarkAt || null;
+    if (hasRemarks && ticketId && !at) {
         const storeKey = `carrybee-hub-remark-at:${ticketId}`;
         try {
             at = localStorage.getItem(storeKey);
@@ -2978,6 +3162,7 @@ function updateStatus(newStatus) {
     }
     if (!document.getElementById('view-performance').classList.contains('hidden')) renderPerformanceTable();
     if (!document.getElementById('view-pending').classList.contains('hidden')) renderPendingTable();
+    if (!document.getElementById('view-hub-performance').classList.contains('hidden')) renderHubMap();
     updateStatusOnServer(currentModalIssue, newStatus, responderName);
 }
 
@@ -3087,6 +3272,10 @@ const DHAKA_OFFSET_MS = 6 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const OFFICE_START_HOUR = 10; // 10:00 AM
 const OFFICE_END_HOUR = 19;   // 7:00 PM
+
+// A hub's remark is considered "late" if it takes longer than this to arrive
+// after an issue moves to In Progress. Adjust here if the team's SLA changes.
+const HUB_REMARK_SLA_MS = 3 * 60 * 60 * 1000; // 3 hours
 
 // Returns milliseconds of [startMs, endMs) that fall inside the 10:00-19:00
 // Dhaka window, walking one calendar day at a time.
@@ -3433,12 +3622,35 @@ function computeHubStats() {
     issuesData.forEach(issue => {
         const rawHub = (issue.hub || '').toString().trim();
         const hubName = (rawHub && rawHub !== '-') ? rawHub : 'Unassigned';
-        if (!stats[hubName]) stats[hubName] = { open: 0, inProgress: 0, resolved: 0, total: 0 };
+        if (!stats[hubName]) stats[hubName] = {
+            open: 0, inProgress: 0, resolved: 0, total: 0,
+            tickets: [], remarksGiven: 0, remarkDurations: [], lateCount: 0
+        };
+        const s = stats[hubName];
         const status = getStatus(issue);
-        if (status === 'Open') stats[hubName].open += 1;
-        else if (status === 'In Progress') stats[hubName].inProgress += 1;
-        else if (status === 'Resolved') stats[hubName].resolved += 1;
-        stats[hubName].total += 1;
+        if (status === 'Open') s.open += 1;
+        else if (status === 'In Progress') s.inProgress += 1;
+        else if (status === 'Resolved') s.resolved += 1;
+        s.total += 1;
+
+        // Per-issue detail so the "click a hub -> see its Issue IDs" modal and
+        // the remarks/quick-respond metrics below can both read from one pass.
+        const { hasRemarks, at: remarkAt } = getHubRemarksMeta(issue);
+        s.tickets.push({
+            ticketId: issue.ticketId, merchant: issue.merchant, status,
+            hasRemarks, remarkAt
+        });
+        if (hasRemarks) {
+            s.remarksGiven += 1;
+            const progressISO = issue.progressAt || null;
+            if (progressISO && remarkAt) {
+                const dur = new Date(remarkAt).getTime() - new Date(progressISO).getTime();
+                if (dur >= 0) {
+                    s.remarkDurations.push(dur);
+                    if (dur > HUB_REMARK_SLA_MS) s.lateCount += 1;
+                }
+            }
+        }
     });
     hubStats = stats;
     const statusEl = document.getElementById('hubMapStatus');
@@ -3514,6 +3726,10 @@ function renderHubMap() {
     layer.appendChild(frag);
 
     renderHubList();
+    renderHubLeaderboard();
+    populateHubTrendFilter();
+    renderHubTotalAverages();
+    renderHubTrendReport();
 }
 
 function renderHubList() {
@@ -3529,16 +3745,23 @@ function renderHubList() {
     container.innerHTML = entries.map(([name, s]) => {
         const pos = geocodeHub(name);
         const division = pos ? (DISTRICT_DIVISION[pos.district] || '') : 'Unmapped';
+        const avgRemarkMs = s.remarkDurations.length ? s.remarkDurations.reduce((a, b) => a + b, 0) / s.remarkDurations.length : null;
+        const remarkRate = s.total ? Math.round((s.remarksGiven / s.total) * 100) : 0;
         return `
             <div class="hub-row${activeHub === name ? ' hub-row-active' : ''} p-3 rounded-lg border theme-transition" style="background: var(--bg-modal-content); border-color: var(--border-color);" data-hub="${escapeHTML(name)}">
                 <div class="flex items-center justify-between gap-2">
-                    <span class="text-sm font-medium theme-transition truncate" style="color: var(--text-primary);" title="${escapeHTML(name)}">${escapeHTML(name)}</span>
+                    <button type="button" class="hub-name-btn text-sm font-medium theme-transition truncate text-left hover:underline" style="color: var(--text-primary); background: none; border: none; padding: 0; cursor: pointer;" data-hub="${escapeHTML(name)}" title="View Issue IDs for ${escapeHTML(name)}">${escapeHTML(name)}</button>
                     <span class="text-[10px] uppercase tracking-wider theme-transition flex-shrink-0" style="color: var(--text-muted);">${escapeHTML(division)}</span>
                 </div>
                 <div class="flex items-center gap-3 mt-1.5 text-xs">
                     <span style="color:#3b82f6;">● ${s.inProgress} in progress</span>
                     <span style="color:#22c55e;">● ${s.resolved} resolved</span>
                     <span class="ml-auto font-semibold theme-transition" style="color: var(--text-primary);">${s.total} total</span>
+                </div>
+                <div class="flex items-center gap-3 mt-1.5 text-[11px] flex-wrap theme-transition" style="color: var(--text-muted);">
+                    <span title="Issues where the hub has sent remarks"><i class="fa-solid fa-comment-dots mr-1"></i>Remarks: ${s.remarksGiven}/${s.total} (${remarkRate}%)</span>
+                    <span title="Average time from In Progress to hub remark"><i class="fa-solid fa-stopwatch mr-1"></i>Avg reply: ${avgRemarkMs != null ? formatDuration(avgRemarkMs) : '-'}</span>
+                    ${s.lateCount > 0 ? `<span style="color:#ef4444;" title="Replies slower than the SLA"><i class="fa-solid fa-triangle-exclamation mr-1"></i>${s.lateCount} late</span>` : ''}
                 </div>
             </div>
         `;
@@ -3552,6 +3775,206 @@ function renderHubList() {
             if (pin) pin.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
         });
     });
+    container.querySelectorAll('.hub-name-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openHubIssuesModal(btn.dataset.hub);
+        });
+    });
+}
+
+// ==================== HUB ISSUES MODAL (per-hub Issue IDs) ====================
+function openHubIssuesModal(hubName) {
+    const s = hubStats[hubName];
+    if (!s) return;
+    document.getElementById('hubIssuesModalHub').innerText = hubName;
+    document.getElementById('hubIssuesModalTitle').innerText = `${s.total} issue${s.total === 1 ? '' : 's'} under this hub`;
+    const body = document.getElementById('hubIssuesModalBody');
+    const statusRank = { 'In Progress': 0, 'Open': 1, 'Resolved': 2 };
+    const sorted = [...s.tickets].sort((a, b) => (statusRank[a.status] ?? 3) - (statusRank[b.status] ?? 3));
+    const statusColor = st => st === 'Open' ? '#f59e0b' : st === 'In Progress' ? '#3b82f6' : st === 'Resolved' ? '#22c55e' : '#94a3b8';
+    body.innerHTML = sorted.map(t => `
+        <button type="button" onclick="closeHubIssuesModal(); openModal('${escapeHTML(t.ticketId)}');" class="w-full flex items-center justify-between gap-2 p-3 rounded-lg border text-left transition-colors hover-row theme-transition" style="border-color: var(--border-color); background: none;">
+            <span class="flex flex-col min-w-0">
+                <span class="font-mono text-xs font-bold text-gold">${escapeHTML(t.ticketId || '-')}</span>
+                <span class="text-xs truncate theme-transition" style="color: var(--text-muted);">${escapeHTML(t.merchant || '-')}</span>
+            </span>
+            <span class="flex flex-col items-end gap-1 flex-shrink-0">
+                <span class="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full" style="background:${statusColor(t.status)}22; color:${statusColor(t.status)};">${escapeHTML(t.status)}</span>
+                ${t.hasRemarks ? '<span class="text-[10px]" style="color: var(--text-muted);"><i class="fa-solid fa-check mr-1" style="color:#22c55e;"></i>Remarks in</span>' : '<span class="text-[10px]" style="color: var(--text-muted);">No remarks yet</span>'}
+            </span>
+        </button>
+    `).join('') || `<p class="text-sm theme-transition" style="color: var(--text-muted);">No issues found for this hub.</p>`;
+    document.getElementById('hubIssuesModal').classList.remove('hidden');
+}
+
+function closeHubIssuesModal() {
+    document.getElementById('hubIssuesModal').classList.add('hidden');
+}
+
+// ==================== HUB LEADERBOARD (top-to-last quick-respond ranking) ====================
+function buildHubLeaderboard() {
+    return Object.entries(hubStats).map(([name, s]) => {
+        const avgRemarkMs = s.remarkDurations.length ? s.remarkDurations.reduce((a, b) => a + b, 0) / s.remarkDurations.length : null;
+        const remarkRate = s.total ? (s.remarksGiven / s.total) * 100 : 0;
+        return { name, total: s.total, remarksGiven: s.remarksGiven, remarkRate, avgRemarkMs, lateCount: s.lateCount };
+    }).sort((a, b) => {
+        // Ranked by average reply speed (faster = better); hubs with no timed
+        // replies yet have nothing to rank on, so they sink to the bottom.
+        if (a.avgRemarkMs == null && b.avgRemarkMs == null) return b.total - a.total;
+        if (a.avgRemarkMs == null) return 1;
+        if (b.avgRemarkMs == null) return -1;
+        return a.avgRemarkMs - b.avgRemarkMs;
+    });
+}
+
+function renderHubLeaderboard() {
+    const tbody = document.getElementById('hubLeaderboardBody');
+    if (!tbody) return;
+    const slaLabel = document.getElementById('hubSlaLabel');
+    if (slaLabel) slaLabel.innerText = formatDuration(HUB_REMARK_SLA_MS);
+    const rows = buildHubLeaderboard();
+    document.getElementById('hubLeaderboardEmpty').classList.toggle('hidden', rows.length !== 0);
+    tbody.innerHTML = rows.map((r, i) => `
+        <tr class="hover-row transition-colors border-b last:border-0 theme-transition" style="border-color: var(--border-color);">
+            <td class="p-3 text-xs font-bold theme-transition" style="color: var(--text-primary);">#${i + 1}</td>
+            <td class="p-3 text-sm font-medium theme-transition" style="color: var(--text-primary);">${escapeHTML(r.name)}</td>
+            <td class="p-3 text-xs theme-transition" style="color: var(--text-secondary);">${r.total}</td>
+            <td class="p-3 text-xs theme-transition" style="color: var(--text-secondary);">${r.remarksGiven}/${r.total} (${Math.round(r.remarkRate)}%)</td>
+            <td class="p-3 text-xs font-semibold" style="color:#3b82f6;">${r.avgRemarkMs != null ? formatDuration(r.avgRemarkMs) : '-'}</td>
+            <td class="p-3 text-xs font-semibold" style="color:${r.lateCount > 0 ? '#ef4444' : 'var(--text-muted)'};">${r.lateCount}</td>
+        </tr>
+    `).join('');
+}
+
+// ==================== HUB REMARKS TREND REPORTS (DOD / WOW / MOM + total average) ====================
+let hubTrendGranularity = 'day';
+let hubTrendFilter = 'all';
+const HUB_TREND_LIMITS = { day: 21, week: 16, month: 12 };
+
+// One row per issue: how long (if at all) this hub took to reply after In
+// Progress. Reuses getHubRemarksMeta so it stays consistent with the map/list/modal.
+function buildHubRemarkRows(hubFilter) {
+    return issuesData.map(issue => {
+        const rawHub = (issue.hub || '').toString().trim();
+        const hubName = (rawHub && rawHub !== '-') ? rawHub : 'Unassigned';
+        return { issue, hubName };
+    }).filter(r => !hubFilter || hubFilter === 'all' || r.hubName === hubFilter)
+      .map(r => {
+        const { hasRemarks, at: remarkAt } = getHubRemarksMeta(r.issue);
+        const progressISO = r.issue.progressAt || null;
+        const progressMs = progressISO ? new Date(progressISO).getTime() : null;
+        const remarkMs = remarkAt ? new Date(remarkAt).getTime() : null;
+        const timeToRemark = (progressMs != null && remarkMs != null && remarkMs >= progressMs) ? remarkMs - progressMs : null;
+        return { issue: r.issue, hub: r.hubName, hasRemarks, remarkAt, timeToRemark };
+    });
+}
+
+function populateHubTrendFilter() {
+    const select = document.getElementById('hubTrendFilter');
+    if (!select) return;
+    const prevValue = select.value || 'all';
+    const hubNames = Object.keys(hubStats).sort((a, b) => a.localeCompare(b));
+    select.innerHTML = '<option value="all">All Hubs</option>' +
+        hubNames.map(name => `<option value="${escapeHTML(name)}">${escapeHTML(name)}</option>`).join('');
+    if (hubNames.includes(prevValue) || prevValue === 'all') select.value = prevValue;
+    else hubTrendFilter = 'all';
+}
+
+function onHubTrendFilterChange() {
+    const select = document.getElementById('hubTrendFilter');
+    hubTrendFilter = select ? select.value : 'all';
+    renderHubTotalAverages();
+    renderHubTrendReport();
+}
+
+function switchHubTrendGranularity(granularity) {
+    hubTrendGranularity = granularity;
+    ['day', 'week', 'month'].forEach(g => {
+        document.getElementById(`hub-trend-tab-${g}`).classList.toggle('active', g === granularity);
+    });
+    renderHubTrendReport();
+}
+
+function buildHubTrendReport(granularity, hubFilter) {
+    const rows = buildHubRemarkRows(hubFilter).filter(r => r.remarkAt && r.timeToRemark != null);
+    const buckets = new Map();
+    rows.forEach(r => {
+        const remarkMs = new Date(r.remarkAt).getTime();
+        const { sortMs, label } = perfBucketInfo(remarkMs, granularity);
+        if (!buckets.has(sortMs)) buckets.set(sortMs, { sortMs, label, rows: [] });
+        buckets.get(sortMs).rows.push(r);
+    });
+    const ordered = Array.from(buckets.values()).sort((a, b) => b.sortMs - a.sortMs).slice(0, HUB_TREND_LIMITS[granularity]);
+    const avg = arr => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
+    return ordered.map((bucket, i) => {
+        const times = bucket.rows.map(r => r.timeToRemark);
+        const avgMs = avg(times);
+        const lateCount = bucket.rows.filter(r => r.timeToRemark > HUB_REMARK_SLA_MS).length;
+        const prev = ordered[i + 1];
+        let changePct = null;
+        if (prev) {
+            const prevAvg = avg(prev.rows.map(r => r.timeToRemark));
+            if (prevAvg != null && avgMs != null && prevAvg > 0) changePct = ((avgMs - prevAvg) / prevAvg) * 100;
+        }
+        return {
+            label: bucket.label, count: bucket.rows.length, avgMs,
+            fastest: times.length ? Math.min(...times) : null,
+            slowest: times.length ? Math.max(...times) : null,
+            lateCount, changePct
+        };
+    });
+}
+
+function renderHubTrendReport() {
+    const tbody = document.getElementById('hubTrendTableBody');
+    if (!tbody) return;
+    const report = buildHubTrendReport(hubTrendGranularity, hubTrendFilter);
+    document.getElementById('hubTrendEmptyState').classList.toggle('hidden', report.length !== 0);
+    tbody.innerHTML = report.map(row => `
+        <tr class="hover-row transition-colors border-b last:border-0 theme-transition" style="border-color: var(--border-color);">
+            <td class="p-3 text-xs font-medium whitespace-nowrap theme-transition" style="color: var(--text-primary);">${escapeHTML(row.label)}</td>
+            <td class="p-3 text-xs font-semibold whitespace-nowrap" style="color: var(--cb-yellow);">${row.count}</td>
+            <td class="p-3 text-xs whitespace-nowrap theme-transition" style="color: var(--text-secondary);">${formatDuration(row.avgMs)}</td>
+            <td class="p-3 text-xs font-semibold whitespace-nowrap" style="color:#3b82f6;">${formatDuration(row.fastest)}</td>
+            <td class="p-3 text-xs font-semibold whitespace-nowrap" style="color:#f97316;">${formatDuration(row.slowest)}</td>
+            <td class="p-3 text-xs font-semibold whitespace-nowrap" style="color:${row.lateCount > 0 ? '#ef4444' : 'var(--text-muted)'};">${row.lateCount}</td>
+            <td class="p-3 text-xs font-semibold whitespace-nowrap">${formatPerfChange(row.changePct)}</td>
+        </tr>
+    `).join('');
+}
+
+function renderHubTotalAverages() {
+    const rows = buildHubRemarkRows(hubTrendFilter);
+    const timed = rows.filter(r => r.timeToRemark != null).map(r => r.timeToRemark);
+    const avg = arr => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
+    const total = rows.length;
+    const given = rows.filter(r => r.hasRemarks).length;
+    const lateCount = rows.filter(r => r.timeToRemark != null && r.timeToRemark > HUB_REMARK_SLA_MS).length;
+
+    document.getElementById('hub-avg-remark').innerText = formatDuration(avg(timed));
+    document.getElementById('hub-remark-rate').innerText = total ? `${Math.round((given / total) * 100)}%` : '-';
+    document.getElementById('hub-fastest-remark').innerText = timed.length ? formatDuration(Math.min(...timed)) : '-';
+    document.getElementById('hub-late-count').innerText = String(lateCount);
+}
+
+function exportHubPerformanceCSV() {
+    let csvContent = "data:text/csv;charset=utf-8,";
+    csvContent += "Hub,Ticket ID,Merchant,Status,Moved to In Progress At,Hub Remark At,Time to Remark,Late (>SLA)\n";
+    buildHubRemarkRows('all').forEach(r => {
+        const merchant = (r.issue.merchant || '').replace(/"/g, '""');
+        const hub = (r.hub || '').replace(/"/g, '""');
+        const late = (r.timeToRemark != null && r.timeToRemark > HUB_REMARK_SLA_MS) ? 'Yes' : '';
+        csvContent += `"${hub}",${r.issue.ticketId || ''},"${merchant}",${getStatus(r.issue)},${r.issue.progressAt ? formatTimestamp(r.issue.progressAt) : ''},${r.remarkAt ? formatTimestamp(r.remarkAt) : ''},${formatDuration(r.timeToRemark)},${late}\n`;
+    });
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "carrybee_hub_performance.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast('Hub performance CSV exported successfully!', 'success');
 }
 
 function updateAnalytics() { renderTagChart(); renderStatusChart(); renderTimeChart(); renderTopMerchants(); renderResolutionChart(); renderHubMap(); analyticsDirty = false; }
