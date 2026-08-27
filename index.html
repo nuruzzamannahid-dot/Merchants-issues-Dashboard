@@ -1063,7 +1063,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                                     <th class="p-4 w-36">Responded By</th>
                                     <th class="p-4 w-28">Hub</th>
                                     <th class="p-4 w-56">KAM Remarks</th>
-                                    <th class="p-4 w-56">Ops Remarks</th>
+                                    <th class="p-4 w-56">Hub Remarks</th>
                                     <th class="p-4 w-20 text-right">Action</th>
                                 </tr>
                             </thead>
@@ -1113,7 +1113,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                                     <th class="p-4 w-36">Responded By</th>
                                     <th class="p-4 w-28">Hub</th>
                                     <th class="p-4 w-56">KAM Remarks</th>
-                                    <th class="p-4 w-56">Ops Remarks</th>
+                                    <th class="p-4 w-56">Hub Remarks</th>
                                     <th class="p-4 w-20 text-right">Action</th>
                                 </tr>
                             </thead>
@@ -2321,8 +2321,6 @@ function buildIssueRowHTML(issue, extraLeadingCellHtml) {
     const respondedBy = issue.respondedBy
         ? `<span class="inline-flex items-center gap-1.5"><i class="fa-solid fa-user-check text-gold"></i> ${escapeHTML(issue.respondedBy)}</span>`
         : '<span style="color: var(--text-muted);">-</span>';
-    const opsRemarksText = (issue.remarks || issue.opsRemarks || issue.ops_remarks || '').trim();
-    const hasOpsRemarks = opsRemarksText.length > 0;
     const openedISO = getOpenedAtISO(issue);
     const openedDateLabel = openedISO ? new Date(openedISO).toLocaleDateString('en-US', { timeZone: 'Asia/Dhaka', year: 'numeric', month: 'short', day: 'numeric' }) : (issue.date || '-');
     const openedTimeLabel = openedISO ? new Date(openedISO).toLocaleTimeString('en-US', { timeZone: 'Asia/Dhaka', hour: 'numeric', minute: '2-digit', second: '2-digit' }) : (issue.timestamp || '');
@@ -2348,12 +2346,7 @@ function buildIssueRowHTML(issue, extraLeadingCellHtml) {
                     <td class="p-4 text-xs theme-transition" style="color: var(--text-secondary);">${respondedBy}</td>
                     <td class="p-4 text-xs theme-transition" style="color: var(--text-muted);">${escapeHTML(issue.hub || '-')}</td>
                     <td class="p-4 text-xs">${renderKamRemarkCell(issue)}</td>
-                    <td class="p-4 text-xs">
-                        <label class="inline-flex items-center gap-2 cursor-default" title="${hasOpsRemarks ? 'Ops remarks added' : 'No remarks yet'}">
-                            <input type="checkbox" class="remarks-checkbox" ${hasOpsRemarks ? 'checked' : ''} disabled>
-                            <span class="theme-transition" style="color: var(--text-muted);">${escapeHTML(opsRemarksText || 'No remarks yet')}</span>
-                        </label>
-                    </td>
+                    <td class="p-4 text-xs">${renderHubRemarksCell(issue, status)}</td>
                     <td class="p-4 text-right">
                         <button onclick="openModal('${escapeHTML(issue.ticketId)}')" class="text-gold hover:opacity-80 text-xs font-bold uppercase tracking-wider transition-colors">View</button>
                     </td>
@@ -2507,6 +2500,53 @@ function renderKamRemarkCell(issue) {
             ${badge}
         </div>
     `;
+}
+
+// ==================== HUB (OPS) REMARKS ====================
+// The hub/ops remark text comes from the Google Sheet lookup (enrichWithSheetData)
+// and only ever gives us the text itself, never when it was added. So the first
+// time we see non-empty remark text for a ticket, we stamp "now" and remember it
+// in localStorage keyed by ticket ID — that stamped time is treated as when the
+// hub gave the remark.
+function getHubRemarksMeta(issue) {
+    const text = (issue.remarks || issue.opsRemarks || issue.ops_remarks || '').trim();
+    const hasRemarks = text.length > 0;
+    const ticketId = issue.ticketId || issue.consignmentId;
+    let at = null;
+    if (hasRemarks && ticketId) {
+        const storeKey = `carrybee-hub-remark-at:${ticketId}`;
+        try {
+            at = localStorage.getItem(storeKey);
+            if (!at) {
+                at = new Date().toISOString();
+                localStorage.setItem(storeKey, at);
+            }
+        } catch (e) {
+            at = at || new Date().toISOString();
+        }
+    }
+    return { text, hasRemarks, at };
+}
+
+// Checkbox only shows once an issue has been pushed to "In Progress" (or beyond).
+// While it's still freshly "Open" there's nothing for the hub to have remarked
+// on yet, so we hide the checkbox entirely instead of showing an empty/unchecked
+// one. Once In Progress, the box is unchecked until hub remark text shows up,
+// then it auto-checks and shows the timestamp it first appeared.
+function renderHubRemarksCell(issue, status) {
+    if (status === 'Open') {
+        return `<span class="theme-transition" style="color: var(--text-muted);">Awaiting In Progress</span>`;
+    }
+    const { text, hasRemarks, at } = getHubRemarksMeta(issue);
+    const ts = at ? formatTimestamp(at) : '';
+    return `
+        <label class="inline-flex items-start gap-2 cursor-default" title="${hasRemarks ? 'Hub remarks added' : 'Waiting for hub remarks'}">
+            <input type="checkbox" class="remarks-checkbox mt-0.5" ${hasRemarks ? 'checked' : ''} disabled>
+            <span class="flex flex-col">
+                <span class="theme-transition" style="color: var(--text-muted);">${escapeHTML(text || 'No remarks yet')}</span>
+                ${ts ? `<span class="text-[10px] theme-transition" style="color: var(--text-muted);"><i class="fa-solid fa-clock mr-1"></i>${escapeHTML(ts)}</span>` : ''}
+            </span>
+        </label>`;
 }
 
 function openKamRemarkModal(ticketId) {
@@ -3373,7 +3413,7 @@ function exportCSV() {
 
     const header = ['Ticket ID', 'Date', 'Time', 'Merchant', 'Merchant Phone', 'Consignment', 'Tag', 'Status',
         'Responded By', 'Hub', 'KAM Remark', 'KAM Remark By', 'KAM Remark At', 'Follow-up At',
-        'Details', 'Ops Remarks'];
+        'Details', 'Hub Remarks', 'Hub Remarks At'];
 
     const lines = [header.map(csvField).join(',')];
 
@@ -3383,12 +3423,13 @@ function exportCSV() {
         const rowOpenedISO = getOpenedAtISO(row);
         const bdDate = rowOpenedISO ? new Date(rowOpenedISO).toLocaleDateString('en-CA', { timeZone: 'Asia/Dhaka' }) : (row.date || '');
         const bdTime = rowOpenedISO ? new Date(rowOpenedISO).toLocaleTimeString('en-GB', { timeZone: 'Asia/Dhaka', hour12: false }) : (row.timestamp || '');
-        const opsRemarksText = row.remarks || row.opsRemarks || row.ops_remarks || '';
+        const hubRemarksMeta = getHubRemarksMeta(row);
+        const hubRemarksAt = hubRemarksMeta.at ? formatTimestamp(hubRemarksMeta.at) : '';
 
         const fields = [
             row.ticketId, bdDate, bdTime, row.merchant, row.merchantPhoneDisplay || '', row.consignmentId, row.issueTag,
             getStatus(row), row.respondedBy, row.hub, row.kamRemark, row.kamRemarkBy,
-            kamRemarkAt, followupAt, row.details, opsRemarksText
+            kamRemarkAt, followupAt, row.details, hubRemarksMeta.text, hubRemarksAt
         ];
         lines.push(fields.map(csvField).join(','));
     });
