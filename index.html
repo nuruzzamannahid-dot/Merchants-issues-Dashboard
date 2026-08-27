@@ -1095,6 +1095,53 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                         <p class="text-xs mt-1 theme-transition" style="color: var(--text-muted);">Stuck in progress</p>
                     </div>
                 </div>
+                <div class="flex gap-3">
+                    <div class="relative flex-1">
+                        <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 theme-transition" style="color: var(--text-muted);"></i>
+                        <input type="text" id="pendingSearchInput" placeholder="Search by Ticket ID, Merchant, Consignment, or Details..."
+                            class="w-full rounded-lg pl-10 pr-4 py-2.5 text-sm placeholder-slate-400 focus:outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/50 transition-all theme-transition"
+                            style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
+                    </div>
+                    <button onclick="togglePendingFilterPanel()" id="pendingFilterToggleBtn" type="button"
+                        class="px-4 py-2.5 rounded-lg text-sm font-medium border flex items-center gap-2 cursor-pointer transition-colors theme-transition shrink-0"
+                        style="background-color: var(--bg-input); color: var(--text-secondary); border-color: var(--border-input);">
+                        <i class="fa-solid fa-sliders"></i> <span class="hidden sm:inline">Filters</span>
+                        <span id="pendingFilterActiveBadge" class="hidden items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold" style="background: var(--cb-yellow); color: var(--cb-black);">0</span>
+                    </button>
+                </div>
+                <!-- Same status/tag/date/KAM-remark filters as the Issue Tracker tab, kept on
+                     their own IDs so filtering Pending never touches the Tracker's filters. -->
+                <div id="pendingFilterPanel" class="hidden grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 p-3 rounded-lg theme-transition" style="background-color: var(--bg-input); border: 1px solid var(--border-input);">
+                    <select id="pendingStatusFilter" onchange="renderPendingTable()" class="rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
+                        style="background-color: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-input);">
+                        <option value="All">All Statuses</option>
+                        <option value="Open">Open</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Resolved">Resolved</option>
+                    </select>
+                    <select id="pendingTagFilter" onchange="renderPendingTable()" class="rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
+                        style="background-color: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-input);">
+                        <option value="All">All Issue Tags</option>
+                    </select>
+                    <input type="date" id="pendingDateFromFilter" onchange="renderPendingTable()" title="From date" aria-label="From date"
+                        class="rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
+                        style="background-color: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-input);">
+                    <input type="date" id="pendingDateToFilter" onchange="renderPendingTable()" title="To date" aria-label="To date"
+                        class="rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
+                        style="background-color: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-input);">
+                    <select id="pendingKamRemarkFilter" onchange="renderPendingTable()" class="rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
+                        style="background-color: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-input);">
+                        <option value="All">All KAM Remarks</option>
+                        <option value="Has">Has KAM Remark</option>
+                        <option value="None">No KAM Remark</option>
+                        <option value="Overdue">Follow-up Overdue</option>
+                    </select>
+                    <button onclick="clearPendingFilters()" type="button"
+                        class="col-span-2 sm:col-span-3 lg:col-span-5 px-3 py-2 rounded-lg text-xs font-medium border transition-colors theme-transition"
+                        style="background-color: var(--bg-card); color: var(--text-secondary); border-color: var(--border-input);">
+                        <i class="fa-solid fa-filter-circle-xmark mr-1"></i> Clear Filters
+                    </button>
+                </div>
                 <div class="glass-panel rounded-xl overflow-hidden">
                     <div class="overflow-x-auto">
                         <table class="w-full text-left border-collapse">
@@ -2163,8 +2210,6 @@ function animateValue(id, start, end, duration) {
 // ---- FIX #2: tag <select> options are only rebuilt when data changes
 // (from fetchData), not on every keystroke inside renderTable().
 function rebuildTagFilterOptions() {
-    const tagSelect = document.getElementById('tagFilter');
-    const currentTag = tagSelect.value;
     const seen = new Map();
     issuesData.forEach(i => {
         const t = (i.issueTag || '').trim();
@@ -2173,11 +2218,19 @@ function rebuildTagFilterOptions() {
         if (!seen.has(k)) seen.set(k, (TAG_LOOKUP[k] && TAG_LOOKUP[k].label) || t);
     });
     const uniqueTags = [...seen.values()].sort((a, b) => a.localeCompare(b));
-    const options = ['<option value="All">All Issue Tags</option>'];
-    uniqueTags.forEach(tag => {
-        options.push(`<option value="${escapeHTML(tag)}" ${normalizeTag(tag) === normalizeTag(currentTag) ? 'selected' : ''}>${escapeHTML(tag)}</option>`);
+
+    // Shared by the Tracker tab's tagFilter and the Pending tab's
+    // pendingTagFilter — both draw their options from the same tag list.
+    ['tagFilter', 'pendingTagFilter'].forEach(id => {
+        const tagSelect = document.getElementById(id);
+        if (!tagSelect) return;
+        const currentTag = tagSelect.value;
+        const options = ['<option value="All">All Issue Tags</option>'];
+        uniqueTags.forEach(tag => {
+            options.push(`<option value="${escapeHTML(tag)}" ${normalizeTag(tag) === normalizeTag(currentTag) ? 'selected' : ''}>${escapeHTML(tag)}</option>`);
+        });
+        tagSelect.innerHTML = options.join('');
     });
-    tagSelect.innerHTML = options.join('');
 }
 
 // ---- FIX #1: build all row HTML in an array and set innerHTML ONCE,
@@ -2217,6 +2270,49 @@ function clearTrackerFilters() {
     document.getElementById('dateToFilter').value = '';
     document.getElementById('kamRemarkFilter').value = 'All';
     renderTable();
+}
+
+// ---- Pending tab's own copy of the filter helpers above, scoped to its
+// own IDs so filtering Pending never touches (or is touched by) the
+// Tracker tab's filters.
+function clearPendingFilters() {
+    document.getElementById('pendingSearchInput').value = '';
+    document.getElementById('pendingStatusFilter').value = 'All';
+    document.getElementById('pendingTagFilter').value = 'All';
+    document.getElementById('pendingDateFromFilter').value = '';
+    document.getElementById('pendingDateToFilter').value = '';
+    document.getElementById('pendingKamRemarkFilter').value = 'All';
+    renderPendingTable();
+}
+
+function togglePendingFilterPanel() {
+    const panel = document.getElementById('pendingFilterPanel');
+    const isHidden = panel.classList.contains('hidden');
+    panel.classList.toggle('hidden');
+    document.getElementById('pendingFilterToggleBtn').style.borderColor = isHidden ? 'var(--cb-yellow)' : 'var(--border-input)';
+}
+
+function updatePendingFilterBadge() {
+    const statusFilter = document.getElementById('pendingStatusFilter').value;
+    const tagFilter = document.getElementById('pendingTagFilter').value;
+    const dateFrom = document.getElementById('pendingDateFromFilter').value;
+    const dateTo = document.getElementById('pendingDateToFilter').value;
+    const kamRemarkFilterValue = document.getElementById('pendingKamRemarkFilter').value;
+    let count = 0;
+    if (statusFilter !== 'All') count++;
+    if (tagFilter !== 'All') count++;
+    if (dateFrom) count++;
+    if (dateTo) count++;
+    if (kamRemarkFilterValue !== 'All') count++;
+    const badge = document.getElementById('pendingFilterActiveBadge');
+    if (count > 0) {
+        badge.textContent = count;
+        badge.classList.remove('hidden');
+        badge.classList.add('inline-flex');
+    } else {
+        badge.classList.add('hidden');
+        badge.classList.remove('inline-flex');
+    }
 }
 
 // Shows/hides the advanced filter row (status/tag/date/KAM remark). Kept
@@ -2423,10 +2519,54 @@ function renderPendingAlertCell(alerts) {
     }).join('<br>');
 }
 
+// Applies the Pending tab's own search box + status/tag/date/KAM-remark
+// filters (pendingSearchInput / pendingStatusFilter / etc.) on top of the
+// base overdue-or-stale list from getPendingIssues(). Mirrors
+// getFilteredIssues() above, but scoped to the Pending tab's controls.
+function getFilteredPendingEntries() {
+    const search = document.getElementById('pendingSearchInput').value.toLowerCase();
+    const statusFilter = document.getElementById('pendingStatusFilter').value;
+    const tagFilter = document.getElementById('pendingTagFilter').value;
+    const dateFrom = document.getElementById('pendingDateFromFilter').value;
+    const dateTo = document.getElementById('pendingDateToFilter').value;
+    const kamRemarkFilterValue = document.getElementById('pendingKamRemarkFilter').value;
+
+    return getPendingIssues().filter(({ issue }) => {
+        const status = getStatus(issue);
+        const matchesSearch =
+            (issue.ticketId && issue.ticketId.toLowerCase().includes(search)) ||
+            (issue.merchant && issue.merchant.toLowerCase().includes(search)) ||
+            (issue.merchantPhoneDigits && issue.merchantPhoneDigits.includes(search.replace(/[^\d]/g, ''))) ||
+            (issue.consignmentId && issue.consignmentId.toLowerCase().includes(search)) ||
+            (issue.details && issue.details.toLowerCase().includes(search));
+        const matchesStatus = statusFilter === 'All' || status === statusFilter;
+        const matchesTag = tagFilter === 'All' || normalizeTag(issue.issueTag) === normalizeTag(tagFilter);
+
+        let matchesDate = true;
+        if (dateFrom || dateTo) {
+            const openedDate = getOpenedDhakaDateStr(issue);
+            if (!openedDate) {
+                matchesDate = false;
+            } else {
+                if (dateFrom && openedDate < dateFrom) matchesDate = false;
+                if (dateTo && openedDate > dateTo) matchesDate = false;
+            }
+        }
+
+        const matchesKamRemark = matchesKamRemarkFilter(issue, kamRemarkFilterValue);
+
+        return matchesSearch && matchesStatus && matchesTag && matchesDate && matchesKamRemark;
+    });
+}
+
 function renderPendingTable() {
     const tbody = document.getElementById('pendingTableBody');
-    const pending = getPendingIssues();
+    updatePendingFilterBadge();
+    const pending = getFilteredPendingEntries();
 
+    // Summary cards reflect the currently-filtered list (same behavior as
+    // the Tracker tab's stat cards), so narrowing with a filter updates
+    // these counts too.
     document.getElementById('stat-pending-overdue').innerText = pending.filter(e => e.alerts.some(a => a.type === 'overdue')).length;
     document.getElementById('stat-pending-stale').innerText = pending.filter(e => e.alerts.some(a => a.type === 'stale')).length;
 
@@ -2448,6 +2588,12 @@ let searchDebounceTimer = null;
 document.getElementById('searchInput').addEventListener('input', () => {
     clearTimeout(searchDebounceTimer);
     searchDebounceTimer = setTimeout(renderTable, 200);
+});
+
+let pendingSearchDebounceTimer = null;
+document.getElementById('pendingSearchInput').addEventListener('input', () => {
+    clearTimeout(pendingSearchDebounceTimer);
+    pendingSearchDebounceTimer = setTimeout(renderPendingTable, 200);
 });
 
 // ==================== KAM REMARKS ====================
