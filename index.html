@@ -1381,7 +1381,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                                 </svg>
                                 <div id="hubTooltip" class="hidden absolute z-10 pointer-events-none rounded-lg px-3 py-2 text-xs shadow-lg" style="background: var(--bg-modal-content); border: 1px solid var(--border-color); min-width: 160px;"></div>
                             </div>
-                            <p class="text-[11px] mt-2 theme-transition" style="color: var(--text-muted);">Pin position is based on the hub's district/area name; hubs sharing a district are spread out slightly so they don't overlap. Map is simplified, not to scale. Pins turn red when a hub has more in-progress issues than resolved ones.</p>
+                            <p class="text-[11px] mt-2 theme-transition" style="color: var(--text-muted);">Pin position is based on the hub's district/area name; hubs sharing a district are spread out slightly so they don't overlap. Map is simplified, not to scale. Pin color reflects each hub's quick-respond rank: <span style="color:#ef4444;">red = worst</span>, <span style="color:#fca5a5;">light red = middle</span>, <span style="color:#FFCC00;">yellow = best</span> (hubs with no timed replies yet count as worst).</p>
                         </div>
                         <div class="lg:col-span-2">
                             <div class="flex items-center gap-4 mb-3 text-[11px]" style="color: var(--text-muted);">
@@ -1418,7 +1418,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                         <div>
                             <h3 class="text-base font-bold theme-transition" style="color: var(--text-primary);">Hub Remarks Leaderboard</h3>
-                            <p class="text-xs mt-0.5 theme-transition" style="color: var(--text-muted);">Ranked best (fastest, most remarks given) to last, based on how quickly each hub sends remarks once an issue moves to In Progress. Reply SLA: <span id="hubSlaLabel"></span>. Click a hub name (in the list above) to see its Issue IDs.</p>
+                            <p class="text-xs mt-0.5 theme-transition" style="color: var(--text-muted);">Listed worst to best, so the hubs needing attention are at the top. Rank is by quality (#1 = best overall) even though it now appears near the bottom. Based on how quickly each hub sends remarks once an issue moves to In Progress. Reply SLA: <span id="hubSlaLabel"></span>. Click a hub row (in the list above) to see its Issue IDs.</p>
                         </div>
                         <button onclick="exportHubPerformanceCSV()" class="px-4 py-2 rounded-lg bg-gold hover:opacity-90 text-sm font-bold transition-colors flex items-center gap-2 self-start sm:self-auto" style="color: var(--cb-black);">
                             <i class="fa-solid fa-download"></i> Export Hub Performance CSV
@@ -1871,15 +1871,19 @@ const WHATSAPP_BRIDGE_API_KEY = 'changeme'; // same key you used on the bridge's
 
 let kamTableReady = false;
 
+// Converts JS values into Turso's typed-arg wire format. Shared by tursoQuery
+// (one statement) and tursoBatchExecute (many statements in one HTTP call).
+function tursoArgs(args) {
+    return args.map(a => {
+        if (a === null || a === undefined) return { type: 'null', value: null };
+        if (typeof a === 'number') return { type: Number.isInteger(a) ? 'integer' : 'float', value: String(a) };
+        return { type: 'text', value: String(a) };
+    });
+}
+
 async function tursoQuery(sql, args = []) {
     const stmt = { sql };
-    if (args.length) {
-        stmt.args = args.map(a => {
-            if (a === null || a === undefined) return { type: 'null', value: null };
-            if (typeof a === 'number') return { type: Number.isInteger(a) ? 'integer' : 'float', value: String(a) };
-            return { type: 'text', value: String(a) };
-        });
-    }
+    if (args.length) stmt.args = tursoArgs(args);
     const res = await fetch(KAM_TURSO_URL, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${KAM_TURSO_TOKEN}`, 'Content-Type': 'application/json' },
@@ -2003,6 +2007,28 @@ async function ensureHubRemarksTable() {
     hubRemarksTableReady = true;
 }
 
+// Sends several statements in one HTTP round trip via Turso's pipeline API,
+// instead of the one-request-per-statement pattern tursoQuery uses. Used for
+// the hub-remarks backlog sync below, where a single request per row was the
+// main cause of the dashboard loading slowly the first time it ran.
+async function tursoBatchExecute(stmts) {
+    if (!stmts.length) return;
+    const requests = stmts.map(s => ({
+        type: 'execute',
+        stmt: (s.args && s.args.length) ? { sql: s.sql, args: tursoArgs(s.args) } : { sql: s.sql }
+    }));
+    requests.push({ type: 'close' });
+    const res = await fetch(KAM_TURSO_URL, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${KAM_TURSO_TOKEN}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requests })
+    });
+    if (!res.ok) throw new Error(`Turso HTTP ${res.status}`);
+    const data = await res.json();
+    const errored = (data.results || []).find(r => r && r.type === 'error');
+    if (errored) throw new Error((errored.error && errored.error.message) || 'Turso batch query failed');
+}
+
 async function loadHubRemarksTimelineFromTurso() {
     try {
         await ensureHubRemarksTable();
@@ -2015,6 +2041,10 @@ async function loadHubRemarksTimelineFromTurso() {
 
 // Called every refresh, after sheet enrichment: any ticket that now shows hub
 // remark text but isn't recorded yet gets stamped "now" and written to Turso.
+// Batched in chunks (tursoBatchExecute) rather than one request per ticket —
+// on the very first run after this feature ships, hundreds of already-existing
+// tickets can qualify at once, and one-request-per-row made that migration
+// (and therefore the whole dashboard) painfully slow to load.
 async function syncHubRemarksTimeline() {
     const toInsert = issuesData.filter(issue => {
         const text = (issue.remarks || '').trim();
@@ -2023,16 +2053,20 @@ async function syncHubRemarksTimeline() {
     if (!toInsert.length) return;
     await ensureHubRemarksTable();
     const now = new Date().toISOString();
-    for (const issue of toInsert) {
-        const text = (issue.remarks || '').trim();
+    const CHUNK_SIZE = 100;
+    for (let i = 0; i < toInsert.length; i += CHUNK_SIZE) {
+        const chunk = toInsert.slice(i, i + CHUNK_SIZE);
+        const stmts = chunk.map(issue => ({
+            sql: 'INSERT OR IGNORE INTO hub_remarks_timeline (ticket_id, hub, remark, first_seen_at) VALUES (?, ?, ?, ?)',
+            args: [issue.ticketId, issue.hub || '', (issue.remarks || '').trim(), now]
+        }));
         try {
-            await tursoQuery(
-                'INSERT OR IGNORE INTO hub_remarks_timeline (ticket_id, hub, remark, first_seen_at) VALUES (?, ?, ?, ?)',
-                [issue.ticketId, issue.hub || '', text, now]
-            );
-            hubRemarksTimelineMap.set(issue.ticketId, { hub: issue.hub || '', remark: text, firstSeenAt: now });
+            await tursoBatchExecute(stmts);
+            chunk.forEach(issue => {
+                hubRemarksTimelineMap.set(issue.ticketId, { hub: issue.hub || '', remark: (issue.remarks || '').trim(), firstSeenAt: now });
+            });
         } catch (e) {
-            console.error('Hub remark timeline insert error:', e);
+            console.error('Hub remark timeline batch insert error:', e);
         }
     }
 }
@@ -2152,9 +2186,6 @@ async function fetchData(silent = false) {
         loadStatusTimelineFromTurso(),
         loadHubRemarksTimelineFromTurso()
     ]);
-    // Needs enrichWithSheetData (issue.remarks/hub) + loadHubRemarksTimelineFromTurso
-    // (existing map) to both be in, so it runs after the Promise.all above.
-    await syncHubRemarksTimeline();
     applyHubRemarksTimeline();
 
     document.getElementById('loading-state').classList.add('hidden');
@@ -2169,6 +2200,15 @@ async function fetchData(silent = false) {
     if (!document.getElementById('view-performance').classList.contains('hidden')) renderPerformanceTable();
     document.getElementById('last-refreshed').innerText = `Last refreshed: ${new Date().toLocaleTimeString()}`;
     refreshIcon.classList.remove('fa-spin');
+
+    // Runs in the background, never blocking the render above: it only writes
+    // NEW hub-remark timestamps (batched), which is usually a handful of rows
+    // per refresh. Once done, silently refresh the Hub Performance tab if it's
+    // the one currently open, so the numbers catch up without a manual reload.
+    syncHubRemarksTimeline().then(() => {
+        applyHubRemarksTimeline();
+        if (!document.getElementById('view-hub-performance').classList.contains('hidden')) renderHubMap();
+    }).catch(e => console.error('Background hub remarks sync failed:', e));
 }
 
 function applySessionResponses() {
@@ -3657,12 +3697,43 @@ function computeHubStats() {
     if (statusEl) statusEl.innerText = `Updated ${new Date().toLocaleTimeString()}`;
 }
 
-function pinRadius(total) {
-    return Math.max(4, Math.min(11, 4 + Math.sqrt(total)));
+// Map pin / leaderboard color tiers, worst-to-best: red -> light red -> yellow.
+const HUB_TIER_COLORS = { best: '#FFCC00', mid: '#fca5a5', worst: '#ef4444' };
+
+// Best-to-worst quality order (index 0 = best: fastest & most reliable hub
+// remarks). Shared by the leaderboard (for its Rank column) and the map pins
+// (for their color tier), so both always agree on who's actually best/worst.
+function computeHubQualityOrder() {
+    return Object.entries(hubStats).map(([name, s]) => {
+        const avgRemarkMs = s.remarkDurations.length ? s.remarkDurations.reduce((a, b) => a + b, 0) / s.remarkDurations.length : null;
+        const remarkRate = s.total ? (s.remarksGiven / s.total) * 100 : 0;
+        return { name, total: s.total, remarksGiven: s.remarksGiven, remarkRate, avgRemarkMs, lateCount: s.lateCount };
+    }).sort((a, b) => {
+        // Ranked by average reply speed (faster = better); hubs with no timed
+        // replies yet have nothing to rank on, so they count as worst.
+        if (a.avgRemarkMs == null && b.avgRemarkMs == null) return b.total - a.total;
+        if (a.avgRemarkMs == null) return 1;
+        if (b.avgRemarkMs == null) return -1;
+        return a.avgRemarkMs - b.avgRemarkMs;
+    });
 }
 
-function pinColor(s) {
-    return s.inProgress > s.resolved ? '#ef4444' : '#F9BC15';
+// Splits the quality order into thirds and maps each hub name to a pin color:
+// top third (best) = yellow, middle third = light red, bottom third (worst,
+// including hubs with no timed data yet) = red.
+function hubTierColorMap() {
+    const order = computeHubQualityOrder();
+    const n = order.length;
+    const map = {};
+    order.forEach((r, i) => {
+        const pct = n > 1 ? i / (n - 1) : 0;
+        map[r.name] = pct <= 1 / 3 ? HUB_TIER_COLORS.best : pct <= 2 / 3 ? HUB_TIER_COLORS.mid : HUB_TIER_COLORS.worst;
+    });
+    return map;
+}
+
+function pinRadius(total) {
+    return Math.max(4, Math.min(11, 4 + Math.sqrt(total)));
 }
 
 function showHubTooltip(hubName, s, clientX, clientY, wrapEl) {
@@ -3698,6 +3769,7 @@ function renderHubMap() {
     const layer = document.getElementById('hubPinsLayer');
     const wrapEl = document.getElementById('hubMapWrap');
     if (!layer) { renderHubList(); return; }
+    const tierColors = hubTierColorMap();
     // FIX #1 applied here too: build pin nodes without touching layout mid-loop.
     const frag = document.createDocumentFragment();
 
@@ -3710,7 +3782,7 @@ function renderHubMap() {
         circle.setAttribute('cy', pos.y);
         circle.setAttribute('r', r);
         circle.setAttribute('class', 'hub-pin hub-pin-dot');
-        circle.style.fill = pinColor(s);
+        circle.style.fill = tierColors[name] || HUB_TIER_COLORS.worst;
         circle.dataset.hub = name;
         circle.addEventListener('mouseenter', (e) => { setActiveHub(name); showHubTooltip(name, s, e.clientX, e.clientY, wrapEl); });
         circle.addEventListener('mousemove', (e) => showHubTooltip(name, s, e.clientX, e.clientY, wrapEl));
@@ -3771,22 +3843,24 @@ function renderHubList() {
         row.addEventListener('click', () => {
             const name = row.dataset.hub;
             setActiveHub(activeHub === name ? null : name);
-            const pin = document.querySelector(`.hub-pin[data-hub="${CSS.escape(name)}"]`);
-            if (pin) pin.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-        });
-    });
-    container.querySelectorAll('.hub-name-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            openHubIssuesModal(btn.dataset.hub);
+            openHubIssuesModal(name);
         });
     });
 }
 
 // ==================== HUB ISSUES MODAL (per-hub Issue IDs) ====================
 function openHubIssuesModal(hubName) {
-    const s = hubStats[hubName];
-    if (!s) return;
+    let s = hubStats[hubName];
+    if (!s) {
+        // Fall back to a trimmed/case-insensitive match in case of any
+        // whitespace/casing drift between the button and the stats key.
+        const key = Object.keys(hubStats).find(k => k.trim().toLowerCase() === String(hubName || '').trim().toLowerCase());
+        s = key ? hubStats[key] : null;
+    }
+    if (!s) {
+        showToast('No data for this hub yet — try refreshing.', 'error');
+        return;
+    }
     document.getElementById('hubIssuesModalHub').innerText = hubName;
     document.getElementById('hubIssuesModalTitle').innerText = `${s.total} issue${s.total === 1 ? '' : 's'} under this hub`;
     const body = document.getElementById('hubIssuesModalBody');
@@ -3813,19 +3887,14 @@ function closeHubIssuesModal() {
 }
 
 // ==================== HUB LEADERBOARD (top-to-last quick-respond ranking) ====================
+// Leaderboard is DISPLAYED worst-to-best (per team request: worst performers
+// at the top, where they're most visible) while the Rank column still
+// reflects true quality — #1 is always the best hub, so it now appears at
+// the bottom of the list rather than the top.
 function buildHubLeaderboard() {
-    return Object.entries(hubStats).map(([name, s]) => {
-        const avgRemarkMs = s.remarkDurations.length ? s.remarkDurations.reduce((a, b) => a + b, 0) / s.remarkDurations.length : null;
-        const remarkRate = s.total ? (s.remarksGiven / s.total) * 100 : 0;
-        return { name, total: s.total, remarksGiven: s.remarksGiven, remarkRate, avgRemarkMs, lateCount: s.lateCount };
-    }).sort((a, b) => {
-        // Ranked by average reply speed (faster = better); hubs with no timed
-        // replies yet have nothing to rank on, so they sink to the bottom.
-        if (a.avgRemarkMs == null && b.avgRemarkMs == null) return b.total - a.total;
-        if (a.avgRemarkMs == null) return 1;
-        if (b.avgRemarkMs == null) return -1;
-        return a.avgRemarkMs - b.avgRemarkMs;
-    });
+    const bestToWorst = computeHubQualityOrder();
+    bestToWorst.forEach((r, i) => { r.rank = i + 1; });
+    return bestToWorst.slice().reverse();
 }
 
 function renderHubLeaderboard() {
@@ -3835,9 +3904,9 @@ function renderHubLeaderboard() {
     if (slaLabel) slaLabel.innerText = formatDuration(HUB_REMARK_SLA_MS);
     const rows = buildHubLeaderboard();
     document.getElementById('hubLeaderboardEmpty').classList.toggle('hidden', rows.length !== 0);
-    tbody.innerHTML = rows.map((r, i) => `
+    tbody.innerHTML = rows.map(r => `
         <tr class="hover-row transition-colors border-b last:border-0 theme-transition" style="border-color: var(--border-color);">
-            <td class="p-3 text-xs font-bold theme-transition" style="color: var(--text-primary);">#${i + 1}</td>
+            <td class="p-3 text-xs font-bold theme-transition" style="color: var(--text-primary);">#${r.rank}</td>
             <td class="p-3 text-sm font-medium theme-transition" style="color: var(--text-primary);">${escapeHTML(r.name)}</td>
             <td class="p-3 text-xs theme-transition" style="color: var(--text-secondary);">${r.total}</td>
             <td class="p-3 text-xs theme-transition" style="color: var(--text-secondary);">${r.remarksGiven}/${r.total} (${Math.round(r.remarkRate)}%)</td>
