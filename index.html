@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CarryBee | Issue Tracker</title>
+<title>CarryBee | Stringer Alert</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -889,7 +889,8 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
             <div class="flex items-center gap-3 min-w-0">
                 <img src="carrybee-logo.png" alt="CarryBee" class="logo-img hidden md:block" onerror="this.onerror=null;this.src='data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27140%27%20height=%2728%27%3E%3Crect%20width=%27140%27%20height=%2728%27%20rx=%276%27%20fill=%27%23FFCC00%27/%3E%3Ctext%20x=%2770%27%20y=%2719%27%20font-family=%27Arial%27%20font-size=%2714%27%20font-weight=%27bold%27%20fill=%27%23333132%27%20text-anchor=%27middle%27%3ECB%3C/text%3E%3C/svg%3E';">
                 <div class="min-w-0">
-                <h2 id="page-title" class="text-xl font-bold theme-transition truncate" style="color: var(--text-primary);">Issue Tracker</h2>
+                <h2 id="page-title" class="text-xl font-bold theme-transition truncate" style="color: var(--text-primary);">Stringer Alert</h2>
+                <p id="page-tab-label" class="text-xs font-semibold theme-transition truncate" style="color: var(--cb-yellow);">Issue Tracker</p>
                 <p id="last-refreshed" class="text-xs mt-0.5 theme-transition" style="color: var(--text-muted);">Last refreshed: Never</p>
                 <p id="auto-refresh-countdown" class="text-xs mt-0.5 font-mono theme-transition" style="color: var(--cb-yellow); opacity: 0.8;"></p>
                 </div>
@@ -4615,7 +4616,7 @@ function switchView(view) {
     document.getElementById(`view-${view}`).classList.remove('hidden');
     document.getElementById(`tab-${view}`).classList.add('active');
     const titles = { tracker: 'Issue Tracker', pending: 'Pending', analytics: 'Analytics', 'hub-performance': 'HUB Performance', performance: 'Performance' };
-    document.getElementById('page-title').innerText = titles[view] || 'Issue Tracker';
+    document.getElementById('page-tab-label').innerText = titles[view] || 'Issue Tracker';
     if (view === 'pending') {
         renderPendingTable();
     }
