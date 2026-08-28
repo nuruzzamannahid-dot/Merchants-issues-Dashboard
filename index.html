@@ -1086,18 +1086,18 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
             </div>
             <div id="view-pending" class="hidden fade-in space-y-6">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="card-gradient p-5 rounded-xl border relative overflow-hidden group theme-transition" style="border-color: var(--border-color); box-shadow: var(--shadow-sm);">
+                    <button type="button" onclick="setPendingAlertTypeFilter('overdue')" class="text-left card-gradient p-5 rounded-xl border relative overflow-hidden group theme-transition cursor-pointer" style="border-color: var(--border-color); box-shadow: var(--shadow-sm);">
                         <div class="absolute top-0 right-0 w-24 h-24 rounded-full -mr-8 -mt-8 transition-transform group-hover:scale-110" style="background: rgba(239,68,68,0.1);"></div>
                         <p class="text-xs font-semibold uppercase tracking-wider theme-transition" style="color: var(--text-muted);">Overdue Follow-ups</p>
                         <h3 class="text-3xl font-bold mt-1" style="color: #ef4444;" id="stat-pending-overdue">0</h3>
-                        <p class="text-xs mt-1 theme-transition" style="color: var(--text-muted);">Past their follow-up time</p>
-                    </div>
-                    <div class="card-gradient p-5 rounded-xl border relative overflow-hidden group theme-transition" style="border-color: var(--border-color); box-shadow: var(--shadow-sm);">
+                        <p class="text-xs mt-1 theme-transition" style="color: var(--text-muted);">Past their follow-up time — click to filter</p>
+                    </button>
+                    <button type="button" onclick="setPendingAlertTypeFilter('stale')" class="text-left card-gradient p-5 rounded-xl border relative overflow-hidden group theme-transition cursor-pointer" style="border-color: var(--border-color); box-shadow: var(--shadow-sm);">
                         <div class="absolute top-0 right-0 w-24 h-24 rounded-full -mr-8 -mt-8 transition-transform group-hover:scale-110" style="background: rgba(59,130,246,0.1);"></div>
                         <p class="text-xs font-semibold uppercase tracking-wider theme-transition" style="color: var(--text-muted);">In Progress 48h+</p>
                         <h3 class="text-3xl font-bold mt-1" style="color: #3b82f6;" id="stat-pending-stale">0</h3>
-                        <p class="text-xs mt-1 theme-transition" style="color: var(--text-muted);">Stuck in progress</p>
-                    </div>
+                        <p class="text-xs mt-1 theme-transition" style="color: var(--text-muted);">Stuck in progress — click to filter</p>
+                    </button>
                 </div>
                 <div class="flex gap-3">
                     <div class="relative flex-1">
@@ -1116,12 +1116,11 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                 <!-- Same status/tag/date/KAM-remark filters as the Issue Tracker tab, kept on
                      their own IDs so filtering Pending never touches the Tracker's filters. -->
                 <div id="pendingFilterPanel" class="hidden grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 p-3 rounded-lg theme-transition" style="background-color: var(--bg-input); border: 1px solid var(--border-input);">
-                    <select id="pendingStatusFilter" onchange="renderPendingTable()" class="rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
+                    <select id="pendingAlertTypeFilter" onchange="renderPendingTable()" class="rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
                         style="background-color: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-input);">
-                        <option value="All">All Statuses</option>
-                        <option value="Open">Open</option>
-                        <option value="In Progress">In Progress</option>
-                        <option value="Resolved">Resolved</option>
+                        <option value="All">All Pending</option>
+                        <option value="overdue">Overdue Remarks</option>
+                        <option value="stale">48+ Hours</option>
                     </select>
                     <select id="pendingTagFilter" onchange="renderPendingTable()" class="rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
                         style="background-color: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-input);">
@@ -1592,13 +1591,21 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                     <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
             </div>
-            <div class="p-6 space-y-4">
+            <div class="p-6 space-y-4 overflow-y-auto" style="max-height: 70vh;">
                 <div id="kamRemarkExisting" class="hidden rounded-lg p-4 border theme-transition" style="background-color: var(--bg-modal-content); border-color: var(--border-color);">
                     <p class="text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Current Remark</p>
                     <p class="text-sm leading-relaxed whitespace-pre-wrap break-words theme-transition" style="color: var(--text-secondary);" id="kamRemarkExistingText">-</p>
                     <div class="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs theme-transition" style="color: var(--text-muted);">
                         <span id="kamRemarkExistingBy"></span>
                         <span id="kamRemarkExistingAt"></span>
+                    </div>
+                </div>
+                <div id="kamRemarkHistorySection" class="hidden">
+                    <button type="button" onclick="toggleKamRemarkHistory()" id="kamRemarkHistoryToggle" class="w-full flex items-center justify-between text-xs uppercase font-semibold mb-2 theme-transition" style="color: var(--text-muted); background: none; border: none; cursor: pointer; padding: 0;">
+                        <span><i class="fa-solid fa-clock-rotate-left mr-1.5"></i>Remarks History (<span id="kamRemarkHistoryCount">0</span>)</span>
+                        <i class="fa-solid fa-chevron-down text-[10px] transition-transform" id="kamRemarkHistoryChevron"></i>
+                    </button>
+                    <div id="kamRemarkHistoryList" class="hidden space-y-2 max-h-52 overflow-y-auto pr-1 rounded-lg p-3 border theme-transition" style="background-color: var(--bg-modal-content); border-color: var(--border-color);">
                     </div>
                 </div>
                 <div>
@@ -1918,12 +1925,21 @@ async function ensureKamRemarksTable() {
     kamTableReady = true;
 }
 
+// Keeps every remark per ticket (not just the latest) so the KAM Remarks
+// modal can show a full history log, not only the current one.
+let kamRemarksHistoryMap = new Map(); // ticketId -> [{ remark, kam_by, created_at, followup_at }, ...] newest first
+
 async function loadKamRemarksFromTurso() {
     try {
         await ensureKamRemarksTable();
         const { rows } = await tursoQuery('SELECT ticket_id, remark, kam_by, created_at, followup_at FROM kam_remarks ORDER BY created_at DESC');
         const latestByTicket = new Map();
-        rows.forEach(r => { if (!latestByTicket.has(r.ticket_id)) latestByTicket.set(r.ticket_id, r); });
+        kamRemarksHistoryMap = new Map();
+        rows.forEach(r => {
+            if (!latestByTicket.has(r.ticket_id)) latestByTicket.set(r.ticket_id, r);
+            if (!kamRemarksHistoryMap.has(r.ticket_id)) kamRemarksHistoryMap.set(r.ticket_id, []);
+            kamRemarksHistoryMap.get(r.ticket_id).push(r);
+        });
         issuesData.forEach(issue => {
             const r = latestByTicket.get(issue.ticketId);
             if (r) {
@@ -2541,7 +2557,7 @@ function clearTrackerFilters() {
 // Tracker tab's filters.
 function clearPendingFilters() {
     document.getElementById('pendingSearchInput').value = '';
-    document.getElementById('pendingStatusFilter').value = 'All';
+    document.getElementById('pendingAlertTypeFilter').value = 'All';
     document.getElementById('pendingTagFilter').value = 'All';
     document.getElementById('pendingDateFromFilter').value = '';
     document.getElementById('pendingDateToFilter').value = '';
@@ -2556,14 +2572,25 @@ function togglePendingFilterPanel() {
     document.getElementById('pendingFilterToggleBtn').style.borderColor = isHidden ? 'var(--cb-yellow)' : 'var(--border-input)';
 }
 
+// Lets the "Overdue Follow-ups" / "In Progress 48h+" summary cards double as
+// quick filters: clicking one sets the Alert Type dropdown and opens the
+// filter panel so it's obvious a filter is now active.
+function setPendingAlertTypeFilter(alertType) {
+    const select = document.getElementById('pendingAlertTypeFilter');
+    select.value = select.value === alertType ? 'All' : alertType;
+    document.getElementById('pendingFilterPanel').classList.remove('hidden');
+    document.getElementById('pendingFilterToggleBtn').style.borderColor = 'var(--cb-yellow)';
+    renderPendingTable();
+}
+
 function updatePendingFilterBadge() {
-    const statusFilter = document.getElementById('pendingStatusFilter').value;
+    const alertTypeFilter = document.getElementById('pendingAlertTypeFilter').value;
     const tagFilter = document.getElementById('pendingTagFilter').value;
     const dateFrom = document.getElementById('pendingDateFromFilter').value;
     const dateTo = document.getElementById('pendingDateToFilter').value;
     const kamRemarkFilterValue = document.getElementById('pendingKamRemarkFilter').value;
     let count = 0;
-    if (statusFilter !== 'All') count++;
+    if (alertTypeFilter !== 'All') count++;
     if (tagFilter !== 'All') count++;
     if (dateFrom) count++;
     if (dateTo) count++;
@@ -2784,26 +2811,29 @@ function renderPendingAlertCell(alerts) {
 }
 
 // Applies the Pending tab's own search box + status/tag/date/KAM-remark
-// filters (pendingSearchInput / pendingStatusFilter / etc.) on top of the
+// filters (pendingSearchInput / pendingAlertTypeFilter / etc.) on top of the
 // base overdue-or-stale list from getPendingIssues(). Mirrors
 // getFilteredIssues() above, but scoped to the Pending tab's controls.
 function getFilteredPendingEntries() {
     const search = document.getElementById('pendingSearchInput').value.toLowerCase();
-    const statusFilter = document.getElementById('pendingStatusFilter').value;
+    const alertTypeFilter = document.getElementById('pendingAlertTypeFilter').value;
     const tagFilter = document.getElementById('pendingTagFilter').value;
     const dateFrom = document.getElementById('pendingDateFromFilter').value;
     const dateTo = document.getElementById('pendingDateToFilter').value;
     const kamRemarkFilterValue = document.getElementById('pendingKamRemarkFilter').value;
 
-    return getPendingIssues().filter(({ issue }) => {
-        const status = getStatus(issue);
+    return getPendingIssues().filter(({ issue, alerts }) => {
         const matchesSearch =
             (issue.ticketId && issue.ticketId.toLowerCase().includes(search)) ||
             (issue.merchant && issue.merchant.toLowerCase().includes(search)) ||
             (issue.merchantPhoneDigits && issue.merchantPhoneDigits.includes(search.replace(/[^\d]/g, ''))) ||
             (issue.consignmentId && issue.consignmentId.toLowerCase().includes(search)) ||
             (issue.details && issue.details.toLowerCase().includes(search));
-        const matchesStatus = statusFilter === 'All' || status === statusFilter;
+        // Every Pending entry is already Open/In Progress with an active
+        // alert (see getPendingIssues), so instead of a Status dropdown this
+        // filters by WHICH alert applies: an overdue KAM follow-up, or an
+        // issue stuck In Progress for 48+ hours.
+        const matchesAlertType = alertTypeFilter === 'All' || alerts.some(a => a.type === alertTypeFilter);
         const matchesTag = tagFilter === 'All' || normalizeTag(issue.issueTag) === normalizeTag(tagFilter);
 
         let matchesDate = true;
@@ -2819,7 +2849,7 @@ function getFilteredPendingEntries() {
 
         const matchesKamRemark = matchesKamRemarkFilter(issue, kamRemarkFilterValue);
 
-        return matchesSearch && matchesStatus && matchesTag && matchesDate && matchesKamRemark;
+        return matchesSearch && matchesAlertType && matchesTag && matchesDate && matchesKamRemark;
     });
 }
 
@@ -2986,9 +3016,50 @@ function openKamRemarkModal(ticketId) {
         clearBtn.classList.add('hidden');
     }
 
+    renderKamRemarkHistory(ticketId);
+
     lastKamRemarkFocus = document.activeElement;
     document.getElementById('kamRemarkModal').classList.remove('hidden');
     document.getElementById('kam-remark-text').focus();
+}
+
+// Shows every past remark for this ticket (kam_remarks stores one row per
+// save, never overwrites), so KAMs can see the full back-and-forth on an
+// issue, not just the latest note. Collapsed by default; the toggle button
+// remembers open/closed via kamRemarkHistoryOpen so it doesn't re-collapse
+// every time the modal is reopened in the same session.
+let kamRemarkHistoryOpen = false;
+
+function renderKamRemarkHistory(ticketId) {
+    const section = document.getElementById('kamRemarkHistorySection');
+    const list = document.getElementById('kamRemarkHistoryList');
+    const countEl = document.getElementById('kamRemarkHistoryCount');
+    const history = kamRemarksHistoryMap.get(ticketId) || [];
+
+    if (!history.length) {
+        section.classList.add('hidden');
+        return;
+    }
+    section.classList.remove('hidden');
+    countEl.innerText = String(history.length);
+    list.innerHTML = history.map(r => `
+        <div class="rounded-lg p-3 border theme-transition" style="border-color: var(--border-color); background: var(--bg-card);">
+            <p class="text-sm leading-relaxed whitespace-pre-wrap break-words theme-transition" style="color: var(--text-secondary);">${escapeHTML(r.remark || '')}</p>
+            <div class="flex flex-wrap gap-x-3 gap-y-1 mt-1.5 text-[11px] theme-transition" style="color: var(--text-muted);">
+                <span>${escapeHTML(r.kam_by || 'Unknown')}</span>
+                <span>${escapeHTML(formatTimestamp(r.created_at))}</span>
+            </div>
+        </div>
+    `).join('');
+
+    list.classList.toggle('hidden', !kamRemarkHistoryOpen);
+    document.getElementById('kamRemarkHistoryChevron').style.transform = kamRemarkHistoryOpen ? 'rotate(180deg)' : '';
+}
+
+function toggleKamRemarkHistory() {
+    kamRemarkHistoryOpen = !kamRemarkHistoryOpen;
+    document.getElementById('kamRemarkHistoryList').classList.toggle('hidden', !kamRemarkHistoryOpen);
+    document.getElementById('kamRemarkHistoryChevron').style.transform = kamRemarkHistoryOpen ? 'rotate(180deg)' : '';
 }
 
 let lastKamRemarkFocus = null;
@@ -3019,6 +3090,11 @@ async function submitKamRemark() {
     issue.kamRemarkAt = nowISO;
     issue.kamFollowupAt = followupISO;
 
+    // Keep the in-memory history log current immediately, rather than
+    // waiting for the next refresh's loadKamRemarksFromTurso() to pick it up.
+    if (!kamRemarksHistoryMap.has(issue.ticketId)) kamRemarksHistoryMap.set(issue.ticketId, []);
+    kamRemarksHistoryMap.get(issue.ticketId).unshift({ ticket_id: issue.ticketId, remark: text, kam_by: kamName, created_at: nowISO, followup_at: followupISO });
+
     closeKamRemarkModal();
     renderTable();
     if (!document.getElementById('view-pending').classList.contains('hidden')) renderPendingTable();
@@ -3037,6 +3113,7 @@ async function clearKamRemark() {
     issue.kamRemarkBy = '';
     issue.kamRemarkAt = null;
     issue.kamFollowupAt = null;
+    kamRemarksHistoryMap.delete(issue.ticketId);
     closeKamRemarkModal();
     renderTable();
     if (!document.getElementById('view-pending').classList.contains('hidden')) renderPendingTable();
