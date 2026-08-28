@@ -1381,7 +1381,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                                 </svg>
                                 <div id="hubTooltip" class="hidden absolute z-10 pointer-events-none rounded-lg px-3 py-2 text-xs shadow-lg" style="background: var(--bg-modal-content); border: 1px solid var(--border-color); min-width: 160px;"></div>
                             </div>
-                            <p class="text-[11px] mt-2 theme-transition" style="color: var(--text-muted);">Pin position is based on the hub's district/area name; hubs sharing a district are spread out slightly so they don't overlap. Map is simplified, not to scale. Pin color reflects each hub's quick-respond rank: <span style="color:#ef4444;">red = worst</span>, <span style="color:#fca5a5;">light red = middle</span>, <span style="color:#FFCC00;">yellow = best</span> (hubs with no timed replies yet count as worst).</p>
+                            <p class="text-[11px] mt-2 theme-transition" style="color: var(--text-muted);">Pin position is based on the hub's district/area name; hubs sharing a district are spread out slightly so they don't overlap. Map is simplified, not to scale. Pin color reflects each hub's combined rank (remarks given + reply time): <span style="color:#ef4444;">red = worst</span>, <span style="color:#fca5a5;">light red = middle</span>, <span style="color:#FFCC00;">yellow = best</span> (hubs with no timed replies yet count as worst).</p>
                         </div>
                         <div class="lg:col-span-2">
                             <div class="flex items-center gap-4 mb-3 text-[11px]" style="color: var(--text-muted);">
@@ -1418,7 +1418,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                         <div>
                             <h3 class="text-base font-bold theme-transition" style="color: var(--text-primary);">Hub Remarks Leaderboard</h3>
-                            <p class="text-xs mt-0.5 theme-transition" style="color: var(--text-muted);">Listed worst to best, so the hubs needing attention are at the top. Rank is by quality (#1 = best overall) even though it now appears near the bottom. Based on how quickly each hub sends remarks once an issue moves to In Progress. Reply SLA: <span id="hubSlaLabel"></span>. Click a hub row (in the list above) to see its Issue IDs.</p>
+                            <p class="text-xs mt-0.5 theme-transition" style="color: var(--text-muted);">Listed worst to best, so the hubs needing attention are at the top. Rank is a combined score of two factors: remarks given (how many issues the hub has actually replied to) and reply time (from the moment a ticket is marked In Progress to the moment the hub's remark shows up) &mdash; each counts for half. Reply SLA: <span id="hubSlaLabel"></span>. Click a hub row (in the list above) to see its Issue IDs.</p>
                         </div>
                         <button onclick="exportHubPerformanceCSV()" class="px-4 py-2 rounded-lg bg-gold hover:opacity-90 text-sm font-bold transition-colors flex items-center gap-2 self-start sm:self-auto" style="color: var(--cb-black);">
                             <i class="fa-solid fa-download"></i> Export Hub Performance CSV
@@ -1433,6 +1433,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                                     <th class="p-3 whitespace-nowrap">Total Issues</th>
                                     <th class="p-3 whitespace-nowrap">Remarks Given</th>
                                     <th class="p-3 whitespace-nowrap">Avg Time to Remark</th>
+                                    <th class="p-3 whitespace-nowrap">Score</th>
                                     <th class="p-3 whitespace-nowrap">Late (&gt;SLA)</th>
                                 </tr>
                             </thead>
@@ -4013,21 +4014,41 @@ function computeHubStats() {
 // Map pin / leaderboard color tiers, worst-to-best: red -> light red -> yellow.
 const HUB_TIER_COLORS = { best: '#FFCC00', mid: '#fca5a5', worst: '#ef4444' };
 
-// Best-to-worst quality order (index 0 = best: fastest & most reliable hub
-// remarks). Shared by the leaderboard (for its Rank column) and the map pins
-// (for their color tier), so both always agree on who's actually best/worst.
+// Best-to-worst quality order (index 0 = best). Rank is a composite of two
+// factors, per team request:
+//   1. Remarks count  -- how many issues this hub has actually given a remark
+//      for (s.remarksGiven), more = better.
+//   2. Time count      -- how long it took, per ticket: the clock starts the
+//      moment the ticket is marked "In Progress" (issue.progressAt) and stops
+//      the moment the hub's remark shows up (remarkAt from getHubRemarksMeta).
+//      That per-ticket duration is averaged into avgRemarkMs; faster = better.
+// Both are normalized 0-1 against the best hub in the current data set and
+// combined into a single 0-100 qualityScore (50/50 weight), so the two
+// factors are shown on the leaderboard AND directly decide the rank.
 function computeHubQualityOrder() {
-    return Object.entries(hubStats).map(([name, s]) => {
+    const entries = Object.entries(hubStats).map(([name, s]) => {
         const avgRemarkMs = s.remarkDurations.length ? s.remarkDurations.reduce((a, b) => a + b, 0) / s.remarkDurations.length : null;
         const remarkRate = s.total ? (s.remarksGiven / s.total) * 100 : 0;
         return { name, total: s.total, remarksGiven: s.remarksGiven, remarkRate, avgRemarkMs, lateCount: s.lateCount };
-    }).sort((a, b) => {
-        // Ranked by average reply speed (faster = better); hubs with no timed
-        // replies yet have nothing to rank on, so they count as worst.
-        if (a.avgRemarkMs == null && b.avgRemarkMs == null) return b.total - a.total;
-        if (a.avgRemarkMs == null) return 1;
-        if (b.avgRemarkMs == null) return -1;
-        return a.avgRemarkMs - b.avgRemarkMs;
+    });
+
+    const maxRemarks = Math.max(1, ...entries.map(e => e.remarksGiven));
+    const timedEntries = entries.filter(e => e.avgRemarkMs != null);
+    const maxAvgMs = timedEntries.length ? Math.max(...timedEntries.map(e => e.avgRemarkMs)) : 0;
+
+    entries.forEach(e => {
+        const remarksScore = e.remarksGiven / maxRemarks; // 0..1, more remarks given = higher
+        // Faster average reply = higher score. No timed replies yet = worst (0).
+        const timeScore = e.avgRemarkMs == null ? 0 : (maxAvgMs > 0 ? 1 - (e.avgRemarkMs / maxAvgMs) : 1);
+        e.remarksScore = remarksScore;
+        e.timeScore = timeScore;
+        e.qualityScore = (remarksScore * 0.5 + timeScore * 0.5) * 100;
+    });
+
+    return entries.sort((a, b) => {
+        if (b.qualityScore !== a.qualityScore) return b.qualityScore - a.qualityScore;
+        if (b.remarksGiven !== a.remarksGiven) return b.remarksGiven - a.remarksGiven;
+        return a.name.localeCompare(b.name);
     });
 }
 
@@ -4224,6 +4245,7 @@ function renderHubLeaderboard() {
             <td class="p-3 text-xs theme-transition" style="color: var(--text-secondary);">${r.total}</td>
             <td class="p-3 text-xs theme-transition" style="color: var(--text-secondary);">${r.remarksGiven}/${r.total} (${Math.round(r.remarkRate)}%)</td>
             <td class="p-3 text-xs font-semibold" style="color:#3b82f6;">${r.avgRemarkMs != null ? formatDuration(r.avgRemarkMs) : '-'}</td>
+            <td class="p-3 text-xs font-semibold theme-transition" style="color: var(--text-primary);" title="Remarks count (50%) + reply time (50%)">${Math.round(r.qualityScore)}</td>
             <td class="p-3 text-xs font-semibold" style="color:${r.lateCount > 0 ? '#ef4444' : 'var(--text-muted)'};">${r.lateCount}</td>
         </tr>
     `).join('');
