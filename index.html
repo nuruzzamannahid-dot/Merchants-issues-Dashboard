@@ -822,6 +822,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .perf-trend-tab.active { background: var(--cb-yellow); color: var(--cb-black); }
 .perf-change-up { color: #ef4444; }
 .perf-change-down { color: #22c55e; }
+.hub-edit-btn:hover { color: var(--cb-yellow) !important; }
 @media (max-width: 760px) {
     .lamp { left: 50%; }
     .light-cone { left: 50%; }
@@ -1533,6 +1534,10 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                         <p class="text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Responded By</p>
                         <p class="text-sm font-medium theme-transition" style="color: var(--text-primary);" id="modal-responder">-</p>
                     </div>
+                    <div id="modal-progress-wrap" class="hidden">
+                        <p class="text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Moved to In Progress</p>
+                        <p class="text-sm font-medium theme-transition" style="color: var(--text-primary);" id="modal-progress-at">-</p>
+                    </div>
                 </div>
                 <div>
                     <p class="text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Issue Details</p>
@@ -1628,6 +1633,57 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                 <p class="text-xs text-center italic theme-transition" style="color: var(--text-muted);">
                     <i class="fa-solid fa-circle-info mr-1"></i>
                     Timestamp and follow-up are saved automatically with your name.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hub Info Modal (manual Hub Name / Hub Remark override) -->
+<div id="hubInfoModal" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="hubInfoModalTitle">
+    <div class="modal-overlay absolute inset-0" onclick="closeHubInfoModal()"></div>
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg px-4">
+        <div class="rounded-2xl shadow-2xl overflow-hidden theme-transition" style="background-color: var(--bg-modal); border: 1px solid var(--border-color);">
+            <div class="p-6 border-b flex justify-between items-start theme-transition" style="border-color: var(--border-color);">
+                <div>
+                    <p class="text-gold text-xs font-mono mb-1" id="hubInfoModalTicket">CB-0000-00000</p>
+                    <h3 class="text-xl font-bold theme-transition" style="color: var(--text-primary);" id="hubInfoModalTitle">Hub Info</h3>
+                </div>
+                <button onclick="closeHubInfoModal()" class="theme-transition" style="color: var(--text-muted);" aria-label="Close modal">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-4 overflow-y-auto" style="max-height: 70vh;">
+                <p class="text-xs theme-transition" style="color: var(--text-muted);" id="hubInfoAutoNote">-</p>
+                <div id="hubInfoExisting" class="hidden rounded-lg p-4 border theme-transition" style="background-color: var(--bg-modal-content); border-color: var(--border-color);">
+                    <p class="text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Current Manual Entry</p>
+                    <p class="text-sm leading-relaxed whitespace-pre-wrap break-words theme-transition" style="color: var(--text-secondary);" id="hubInfoExistingText">-</p>
+                    <div class="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs theme-transition" style="color: var(--text-muted);">
+                        <span id="hubInfoExistingBy"></span>
+                        <span id="hubInfoExistingAt"></span>
+                    </div>
+                </div>
+                <div>
+                    <label for="hub-info-name" class="block text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Hub Name</label>
+                    <input type="text" id="hub-info-name" class="w-full rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-gold/50 theme-transition"
+                        style="background-color: var(--bg-modal-content); color: var(--text-primary); border: 1px solid var(--border-input);" placeholder="Enter hub name" maxlength="100">
+                </div>
+                <div>
+                    <label for="hub-info-remark" class="block text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Hub Remark</label>
+                    <textarea id="hub-info-remark" rows="4" class="w-full rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-gold/50 resize-none theme-transition"
+                        style="background-color: var(--bg-modal-content); color: var(--text-primary); border: 1px solid var(--border-input);" placeholder="Add a manual hub remark for this issue..." maxlength="1000"></textarea>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="submitHubInfo()" class="flex-1 py-2.5 rounded-lg bg-gold hover:opacity-90 text-sm font-bold transition-colors" style="color: var(--cb-black);">
+                        Save Hub Info
+                    </button>
+                    <button onclick="clearHubInfo()" id="hubInfoClearBtn" class="hidden px-4 py-2.5 rounded-lg text-sm font-medium border transition-colors theme-transition" style="color: #ef4444; border-color: rgba(239,68,68,0.3);">
+                        Clear
+                    </button>
+                </div>
+                <p class="text-xs text-center italic theme-transition" style="color: var(--text-muted);">
+                    <i class="fa-solid fa-circle-info mr-1"></i>
+                    This is a manual override shown alongside the auto-fetched hub data — it doesn't stop automatic fetching.
                 </p>
             </div>
         </div>
@@ -2096,6 +2152,152 @@ function applyHubRemarksTimeline() {
     });
 }
 
+// ==================== HUB MANUAL INFO (manual Hub Name / Hub Remark override) ====================
+// A KAM can manually set/correct a ticket's Hub Name and add a manual Hub
+// Remark note when the auto-fetched sheet data is missing or wrong. This is
+// purely additive: it never overwrites issue.hub / issue.remarks (the fields
+// the automatic sheet lookup and the Hub Performance SLA tracking depend on),
+// so automatic fetching keeps working exactly as before. Manual values are
+// only shown alongside the automatic ones (renderHubCell / renderHubRemarksCell).
+let hubManualInfoTableReady = false;
+let hubManualInfoMap = new Map(); // ticketId -> { hubName, hubRemark, updatedBy, updatedAt }
+
+async function ensureHubManualInfoTable() {
+    if (hubManualInfoTableReady) return;
+    await tursoQuery(`CREATE TABLE IF NOT EXISTS hub_manual_info (
+        ticket_id TEXT PRIMARY KEY,
+        hub_name TEXT,
+        hub_remark TEXT,
+        updated_by TEXT,
+        updated_at TEXT NOT NULL
+    )`);
+    hubManualInfoTableReady = true;
+}
+
+async function loadHubManualInfoFromTurso() {
+    try {
+        await ensureHubManualInfoTable();
+        const { rows } = await tursoQuery('SELECT ticket_id, hub_name, hub_remark, updated_by, updated_at FROM hub_manual_info');
+        hubManualInfoMap = new Map(rows.map(r => [r.ticket_id, { hubName: r.hub_name || '', hubRemark: r.hub_remark || '', updatedBy: r.updated_by || '', updatedAt: r.updated_at }]));
+    } catch (e) {
+        console.error('Load hub manual info error:', e);
+    }
+}
+
+function applyHubManualInfo() {
+    issuesData.forEach(issue => {
+        const rec = issue.ticketId && hubManualInfoMap.get(issue.ticketId);
+        issue.hubManualName = rec ? rec.hubName : '';
+        issue.hubManualRemark = rec ? rec.hubRemark : '';
+        issue.hubManualBy = rec ? rec.updatedBy : '';
+        issue.hubManualAt = rec ? rec.updatedAt : null;
+    });
+}
+
+let currentHubInfoIssue = null;
+let lastHubInfoFocus = null;
+
+function openHubInfoModal(ticketId) {
+    const issue = issuesData.find(i => i.ticketId === ticketId);
+    if (!issue) return;
+    currentHubInfoIssue = issue;
+
+    document.getElementById('hubInfoModalTicket').innerText = issue.ticketId;
+    document.getElementById('hub-info-name').value = issue.hubManualName || issue.hub || '';
+    document.getElementById('hub-info-remark').value = issue.hubManualRemark || '';
+    document.getElementById('hubInfoAutoNote').innerText = issue.hub
+        ? `Auto-fetched hub: ${issue.hub}`
+        : 'No auto-fetched hub yet for this ticket.';
+
+    const existingBox = document.getElementById('hubInfoExisting');
+    const clearBtn = document.getElementById('hubInfoClearBtn');
+    if (issue.hubManualName || issue.hubManualRemark) {
+        existingBox.classList.remove('hidden');
+        document.getElementById('hubInfoExistingText').innerText =
+            [issue.hubManualName ? `Hub: ${issue.hubManualName}` : '', issue.hubManualRemark ? `Remark: ${issue.hubManualRemark}` : '']
+                .filter(Boolean).join('  |  ') || '-';
+        document.getElementById('hubInfoExistingBy').innerText = issue.hubManualBy ? `By ${issue.hubManualBy}` : '';
+        document.getElementById('hubInfoExistingAt').innerText = issue.hubManualAt ? formatTimestamp(issue.hubManualAt) : '';
+        clearBtn.classList.remove('hidden');
+    } else {
+        existingBox.classList.add('hidden');
+        clearBtn.classList.add('hidden');
+    }
+
+    lastHubInfoFocus = document.activeElement;
+    document.getElementById('hubInfoModal').classList.remove('hidden');
+    document.getElementById('hub-info-name').focus();
+}
+
+function closeHubInfoModal() {
+    document.getElementById('hubInfoModal').classList.add('hidden');
+    currentHubInfoIssue = null;
+    if (lastHubInfoFocus && lastHubInfoFocus.focus) { lastHubInfoFocus.focus(); }
+    lastHubInfoFocus = null;
+}
+
+async function submitHubInfo() {
+    if (!currentHubInfoIssue) return;
+    if (currentHubInfoIssue.demo) {
+        showToast("Server offline — hub info isn't saved.", 'error');
+        return;
+    }
+    const hubName = document.getElementById('hub-info-name').value.trim();
+    const hubRemark = document.getElementById('hub-info-remark').value.trim();
+    if (!hubName && !hubRemark) { showToast('Enter a hub name or a remark before saving', 'error'); return; }
+
+    const now = new Date().toISOString();
+    const updatedBy = currentUser ? currentUser.name : 'Unknown';
+    const issue = currentHubInfoIssue;
+
+    issue.hubManualName = hubName;
+    issue.hubManualRemark = hubRemark;
+    issue.hubManualBy = updatedBy;
+    issue.hubManualAt = now;
+    hubManualInfoMap.set(issue.ticketId, { hubName, hubRemark, updatedBy, updatedAt: now });
+
+    closeHubInfoModal();
+    renderTable();
+    if (!document.getElementById('view-pending').classList.contains('hidden')) renderPendingTable();
+    try {
+        await ensureHubManualInfoTable();
+        await tursoQuery(
+            `INSERT INTO hub_manual_info (ticket_id, hub_name, hub_remark, updated_by, updated_at) VALUES (?, ?, ?, ?, ?)
+             ON CONFLICT(ticket_id) DO UPDATE SET hub_name = excluded.hub_name, hub_remark = excluded.hub_remark, updated_by = excluded.updated_by, updated_at = excluded.updated_at`,
+            [issue.ticketId, hubName, hubRemark, updatedBy, now]
+        );
+        showToast('Hub info saved', 'success');
+    } catch (err) {
+        console.error('Save hub manual info error:', err);
+        showToast('Failed to save hub info to the database. It may not persist after refresh.', 'error');
+    }
+}
+
+async function clearHubInfo() {
+    if (!currentHubInfoIssue) return;
+    if (currentHubInfoIssue.demo) {
+        showToast("Server offline — hub info isn't saved.", 'error');
+        return;
+    }
+    const issue = currentHubInfoIssue;
+    issue.hubManualName = '';
+    issue.hubManualRemark = '';
+    issue.hubManualBy = '';
+    issue.hubManualAt = null;
+    hubManualInfoMap.delete(issue.ticketId);
+    closeHubInfoModal();
+    renderTable();
+    if (!document.getElementById('view-pending').classList.contains('hidden')) renderPendingTable();
+    try {
+        await ensureHubManualInfoTable();
+        await tursoQuery('DELETE FROM hub_manual_info WHERE ticket_id = ?', [issue.ticketId]);
+        showToast('Manual hub info cleared', 'success');
+    } catch (err) {
+        console.error('Clear hub manual info error:', err);
+        showToast('Failed to clear hub info in the database.', 'error');
+    }
+}
+
 // ==================== HELPERS ====================
 function escapeHTML(s) {
     return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -2200,9 +2402,11 @@ async function fetchData(silent = false) {
         enrichWithGroupData(),
         loadKamRemarksFromTurso(),
         loadStatusTimelineFromTurso(),
-        loadHubRemarksTimelineFromTurso()
+        loadHubRemarksTimelineFromTurso(),
+        loadHubManualInfoFromTurso()
     ]);
     applyHubRemarksTimeline();
+    applyHubManualInfo();
 
     document.getElementById('loading-state').classList.add('hidden');
     document.getElementById('view-tracker').classList.remove('hidden');
@@ -2223,6 +2427,7 @@ async function fetchData(silent = false) {
     // the one currently open, so the numbers catch up without a manual reload.
     syncHubRemarksTimeline().then(() => {
         applyHubRemarksTimeline();
+        applyHubManualInfo();
         if (!document.getElementById('view-hub-performance').classList.contains('hidden')) renderHubMap();
     }).catch(e => console.error('Background hub remarks sync failed:', e));
 }
@@ -2729,9 +2934,10 @@ function buildIssueRowHTML(issue, extraLeadingCellHtml) {
                             <span class="w-1.5 h-1.5 rounded-full ${statusDot}"></span>
                             ${status}
                         </span>
+                        ${status === 'In Progress' && issue.progressAt ? `<div class="text-[10px] mt-1 theme-transition" style="color: var(--text-muted);"><i class="fa-solid fa-clock mr-1"></i>Since ${escapeHTML(formatTimestamp(issue.progressAt))}</div>` : ''}
                     </td>
                     <td class="p-4 text-xs theme-transition" style="color: var(--text-secondary);">${respondedBy}</td>
-                    <td class="p-4 text-xs theme-transition" style="color: var(--text-muted);">${escapeHTML(issue.hub || '-')}</td>
+                    <td class="p-4 text-xs theme-transition" style="color: var(--text-muted);">${renderHubCell(issue)}</td>
                     <td class="p-4 text-xs">${renderKamRemarkCell(issue)}</td>
                     <td class="p-4 text-xs">${renderHubRemarksCell(issue, status)}</td>
                     <td class="p-4 text-right">
@@ -2948,6 +3154,23 @@ function renderKamRemarkCell(issue) {
 // time we see non-empty remark text for a ticket, we stamp "now" and remember it
 // in localStorage keyed by ticket ID — that stamped time is treated as when the
 // hub gave the remark.
+// Hub Name cell: shows the manually-set name (if a KAM has overridden it)
+// with a small pencil badge, otherwise falls back to the auto-fetched
+// issue.hub from the sheet lookup. The edit icon opens the Hub Info modal
+// for setting/overriding both the name and a manual remark for this ticket.
+function renderHubCell(issue) {
+    const manualName = (issue.hubManualName || '').trim();
+    const displayName = manualName || issue.hub || '';
+    return `
+        <div class="inline-flex items-center gap-1.5">
+            <span>${displayName ? escapeHTML(displayName) : '<span style="color: var(--text-muted);">-</span>'}</span>
+            ${manualName ? '<i class="fa-solid fa-pen-to-square text-[10px] text-gold" title="Manually set"></i>' : ''}
+            <button type="button" onclick="openHubInfoModal('${escapeHTML(issue.ticketId)}')" class="hub-edit-btn text-[11px] transition-colors" style="color: var(--text-muted);" title="Edit hub name / add a manual remark">
+                <i class="fa-solid fa-pen"></i>
+            </button>
+        </div>`;
+}
+
 function getHubRemarksMeta(issue) {
     const text = (issue.remarks || issue.opsRemarks || issue.ops_remarks || '').trim();
     const hasRemarks = text.length > 0;
@@ -2983,12 +3206,18 @@ function renderHubRemarksCell(issue, status) {
     }
     const { text, hasRemarks, at } = getHubRemarksMeta(issue);
     const ts = at ? formatTimestamp(at) : '';
+    const manualNote = (issue.hubManualRemark || '').trim();
+    const manualHtml = manualNote ? `
+                <span class="text-[10px] mt-1 theme-transition" style="color: var(--cb-yellow);">
+                    <i class="fa-solid fa-note-sticky mr-1"></i>Manual: ${escapeHTML(manualNote)}${issue.hubManualAt ? ` <span style="color: var(--text-muted);">(${escapeHTML(formatTimestamp(issue.hubManualAt))}${issue.hubManualBy ? ' by ' + escapeHTML(issue.hubManualBy) : ''})</span>` : ''}
+                </span>` : '';
     return `
         <label class="inline-flex items-start gap-2 cursor-default" title="${hasRemarks ? 'Hub remarks added' : 'Waiting for hub remarks'}">
             <input type="checkbox" class="remarks-checkbox mt-0.5" ${hasRemarks ? 'checked' : ''} disabled>
             <span class="flex flex-col">
                 <span class="theme-transition" style="color: var(--text-muted);">${escapeHTML(text || 'No remarks yet')}</span>
                 ${ts ? `<span class="text-[10px] theme-transition" style="color: var(--text-muted);"><i class="fa-solid fa-clock mr-1"></i>${escapeHTML(ts)}</span>` : ''}
+                ${manualHtml}
             </span>
         </label>`;
 }
@@ -3217,6 +3446,13 @@ function openModal(ticketId) {
         : `${issue.date} ${issue.timestamp}`;
     document.getElementById('modal-details').innerText = issue.details || '-';
     document.getElementById('modal-responder').innerText = issue.respondedBy || 'Not yet responded';
+    const progressWrap = document.getElementById('modal-progress-wrap');
+    if (issue.progressAt) {
+        progressWrap.classList.remove('hidden');
+        document.getElementById('modal-progress-at').innerText = new Date(issue.progressAt).toLocaleString('en-US', { timeZone: 'Asia/Dhaka', year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit' });
+    } else {
+        progressWrap.classList.add('hidden');
+    }
     updateModalButtons(issue);
     lastModalFocus = document.activeElement;
     document.getElementById('issueModal').classList.remove('hidden');
@@ -4286,8 +4522,8 @@ function exportCSV() {
     const rowsToExport = issuesData;
 
     const header = ['Ticket ID', 'Date', 'Time', 'Merchant', 'Merchant Phone', 'Consignment', 'Tag', 'Status',
-        'Responded By', 'Hub', 'KAM Remark', 'KAM Remark By', 'KAM Remark At', 'Follow-up At',
-        'Details', 'Hub Remarks', 'Hub Remarks At'];
+        'Responded By', 'In Progress At', 'Hub', 'Manual Hub Name', 'KAM Remark', 'KAM Remark By', 'KAM Remark At', 'Follow-up At',
+        'Details', 'Hub Remarks', 'Hub Remarks At', 'Manual Hub Remark', 'Manual Hub Remark By', 'Manual Hub Remark At'];
 
     const lines = [header.map(csvField).join(',')];
 
@@ -4299,11 +4535,13 @@ function exportCSV() {
         const bdTime = rowOpenedISO ? new Date(rowOpenedISO).toLocaleTimeString('en-GB', { timeZone: 'Asia/Dhaka', hour12: false }) : (row.timestamp || '');
         const hubRemarksMeta = getHubRemarksMeta(row);
         const hubRemarksAt = hubRemarksMeta.at ? formatTimestamp(hubRemarksMeta.at) : '';
+        const progressAt = row.progressAt ? formatTimestamp(row.progressAt) : '';
+        const manualHubAt = row.hubManualAt ? formatTimestamp(row.hubManualAt) : '';
 
         const fields = [
             row.ticketId, bdDate, bdTime, row.merchant, row.merchantPhoneDisplay || '', row.consignmentId, row.issueTag,
-            getStatus(row), row.respondedBy, row.hub, row.kamRemark, row.kamRemarkBy,
-            kamRemarkAt, followupAt, row.details, hubRemarksMeta.text, hubRemarksAt
+            getStatus(row), row.respondedBy, progressAt, row.hub, row.hubManualName || '', row.kamRemark, row.kamRemarkBy,
+            kamRemarkAt, followupAt, row.details, hubRemarksMeta.text, hubRemarksAt, row.hubManualRemark || '', row.hubManualBy || '', manualHubAt
         ];
         lines.push(fields.map(csvField).join(','));
     });
@@ -4338,9 +4576,9 @@ function showToast(message, type) {
 window.addEventListener('DOMContentLoaded', () => { checkAuth(); });
 
 document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') { closeModal(); closeRaiseIssue(); closeKamRemarkModal(); }
+    if (e.key === 'Escape') { closeModal(); closeRaiseIssue(); closeKamRemarkModal(); closeHubInfoModal(); }
     if (e.key === 'Tab') {
-        const modal = ['issueModal', 'raiseIssueModal', 'kamRemarkModal']
+        const modal = ['issueModal', 'raiseIssueModal', 'kamRemarkModal', 'hubInfoModal']
             .map(id => document.getElementById(id))
             .find(m => m && !m.classList.contains('hidden'));
         if (!modal) return;
