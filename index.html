@@ -1433,6 +1433,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                                     <th class="p-3 whitespace-nowrap">Avg Time to Remark</th>
                                     <th class="p-3 whitespace-nowrap">Score</th>
                                     <th class="p-3 whitespace-nowrap">Late (&gt;SLA)</th>
+                                    <th class="p-3 whitespace-nowrap" title="Marked Resolved without ever getting a hub remark">Resolved, No Remark</th>
                                 </tr>
                             </thead>
                             <tbody id="hubLeaderboardBody" class="text-sm divide-y theme-transition" style="color: var(--text-secondary); border-color: var(--border-color);">
@@ -4017,6 +4018,37 @@ function geocodeHub(hubName) {
 let hubStats = {};
 let activeHub = null;
 
+// The "time to remark" clock, in one place so every part of the Hub
+// Performance tab (map, list, leaderboard, trend reports, CSV) agrees on it:
+//   - starts the moment a ticket becomes "In Progress" (issue.progressAt)
+//   - stops the moment a hub remark first appears — whether it was
+//     auto-fetched from the tracking sheet or typed in manually via the
+//     Hub Info modal (both set issue.remarks + issue.hubRemarkAt the same way)
+//   - only counts if that remark happened BEFORE the ticket was marked
+//     Resolved. A remark timestamp at/after resolution doesn't represent
+//     "the hub replied while we were working it" — it's excluded from the
+//     average rather than silently accepted, and flagged via remarkAfterResolve.
+// A Resolved ticket that never got any remark at all is flagged separately
+// via resolvedWithoutRemark, since that's the real process gap worth seeing.
+function computeTimeToRemark(issue) {
+    const { hasRemarks, at: remarkAt } = getHubRemarksMeta(issue);
+    const progressMs = issue.progressAt ? new Date(issue.progressAt).getTime() : null;
+    const remarkMs = remarkAt ? new Date(remarkAt).getTime() : null;
+    const resolvedMs = issue.resolvedTimelineAt ? new Date(issue.resolvedTimelineAt).getTime() : null;
+
+    let timeToRemark = null;
+    let remarkAfterResolve = false;
+    if (progressMs != null && remarkMs != null && remarkMs >= progressMs) {
+        if (resolvedMs != null && remarkMs > resolvedMs) {
+            remarkAfterResolve = true;
+        } else {
+            timeToRemark = remarkMs - progressMs;
+        }
+    }
+    const resolvedWithoutRemark = getStatus(issue) === 'Resolved' && !hasRemarks;
+    return { hasRemarks, remarkAt, timeToRemark, remarkAfterResolve, resolvedWithoutRemark };
+}
+
 function computeHubStats() {
     const stats = {};
     issuesData.forEach(issue => {
@@ -4024,7 +4056,7 @@ function computeHubStats() {
         const hubName = (rawHub && rawHub !== '-') ? rawHub : 'Unassigned';
         if (!stats[hubName]) stats[hubName] = {
             open: 0, inProgress: 0, resolved: 0, total: 0,
-            tickets: [], remarksGiven: 0, remarkDurations: [], lateCount: 0
+            tickets: [], remarksGiven: 0, remarkDurations: [], lateCount: 0, resolvedNoRemark: 0
         };
         const s = stats[hubName];
         const status = getStatus(issue);
@@ -4035,22 +4067,19 @@ function computeHubStats() {
 
         // Per-issue detail so the "click a hub -> see its Issue IDs" modal and
         // the remarks/quick-respond metrics below can both read from one pass.
-        const { hasRemarks, at: remarkAt } = getHubRemarksMeta(issue);
+        const { hasRemarks, remarkAt, timeToRemark, resolvedWithoutRemark } = computeTimeToRemark(issue);
         s.tickets.push({
             ticketId: issue.ticketId, merchant: issue.merchant, status,
             hasRemarks, remarkAt
         });
         if (hasRemarks) {
             s.remarksGiven += 1;
-            const progressISO = issue.progressAt || null;
-            if (progressISO && remarkAt) {
-                const dur = new Date(remarkAt).getTime() - new Date(progressISO).getTime();
-                if (dur >= 0) {
-                    s.remarkDurations.push(dur);
-                    if (dur > HUB_REMARK_SLA_MS) s.lateCount += 1;
-                }
+            if (timeToRemark != null) {
+                s.remarkDurations.push(timeToRemark);
+                if (timeToRemark > HUB_REMARK_SLA_MS) s.lateCount += 1;
             }
         }
+        if (resolvedWithoutRemark) s.resolvedNoRemark += 1;
     });
     hubStats = stats;
     const statusEl = document.getElementById('hubMapStatus');
@@ -4075,7 +4104,7 @@ function computeHubQualityOrder() {
     const entries = Object.entries(hubStats).map(([name, s]) => {
         const avgRemarkMs = s.remarkDurations.length ? s.remarkDurations.reduce((a, b) => a + b, 0) / s.remarkDurations.length : null;
         const remarkRate = s.total ? (s.remarksGiven / s.total) * 100 : 0;
-        return { name, total: s.total, remarksGiven: s.remarksGiven, remarkRate, avgRemarkMs, lateCount: s.lateCount };
+        return { name, total: s.total, remarksGiven: s.remarksGiven, remarkRate, avgRemarkMs, lateCount: s.lateCount, resolvedNoRemark: s.resolvedNoRemark || 0 };
     });
 
     const maxRemarks = Math.max(1, ...entries.map(e => e.remarksGiven));
@@ -4369,6 +4398,7 @@ function renderHubLeaderboard() {
             <td class="p-3 text-xs font-semibold" style="color:#3b82f6;">${r.avgRemarkMs != null ? formatDuration(r.avgRemarkMs) : '-'}</td>
             <td class="p-3 text-xs font-semibold theme-transition" style="color: var(--text-primary);" title="Remarks count (50%) + reply time (50%)">${Math.round(r.qualityScore)}</td>
             <td class="p-3 text-xs font-semibold" style="color:${r.lateCount > 0 ? '#ef4444' : 'var(--text-muted)'};">${r.lateCount}</td>
+            <td class="p-3 text-xs font-semibold" style="color:${r.resolvedNoRemark > 0 ? '#ef4444' : 'var(--text-muted)'};">${r.resolvedNoRemark}</td>
         </tr>
     `).join('');
 }
@@ -4387,11 +4417,7 @@ function buildHubRemarkRows(hubFilter) {
         return { issue, hubName };
     }).filter(r => !hubFilter || hubFilter === 'all' || r.hubName === hubFilter)
       .map(r => {
-        const { hasRemarks, at: remarkAt } = getHubRemarksMeta(r.issue);
-        const progressISO = r.issue.progressAt || null;
-        const progressMs = progressISO ? new Date(progressISO).getTime() : null;
-        const remarkMs = remarkAt ? new Date(remarkAt).getTime() : null;
-        const timeToRemark = (progressMs != null && remarkMs != null && remarkMs >= progressMs) ? remarkMs - progressMs : null;
+        const { hasRemarks, remarkAt, timeToRemark } = computeTimeToRemark(r.issue);
         return { issue: r.issue, hub: r.hubName, hasRemarks, remarkAt, timeToRemark };
     });
 }
@@ -4486,12 +4512,13 @@ function renderHubTotalAverages() {
 
 function exportHubPerformanceCSV() {
     let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "Hub,Ticket ID,Merchant,Status,Moved to In Progress At,Hub Remark At,Time to Remark,Late (>SLA)\n";
+    csvContent += "Hub,Ticket ID,Merchant,Status,Moved to In Progress At,Hub Remark At,Time to Remark,Late (>SLA),Resolved Without Remark\n";
     buildHubRemarkRows('all').forEach(r => {
         const merchant = (r.issue.merchant || '').replace(/"/g, '""');
         const hub = (r.hub || '').replace(/"/g, '""');
         const late = (r.timeToRemark != null && r.timeToRemark > HUB_REMARK_SLA_MS) ? 'Yes' : '';
-        csvContent += `"${hub}",${r.issue.ticketId || ''},"${merchant}",${getStatus(r.issue)},${r.issue.progressAt ? formatTimestamp(r.issue.progressAt) : ''},${r.remarkAt ? formatTimestamp(r.remarkAt) : ''},${formatDuration(r.timeToRemark)},${late}\n`;
+        const resolvedNoRemark = (getStatus(r.issue) === 'Resolved' && !r.hasRemarks) ? 'Yes' : '';
+        csvContent += `"${hub}",${r.issue.ticketId || ''},"${merchant}",${getStatus(r.issue)},${r.issue.progressAt ? formatTimestamp(r.issue.progressAt) : ''},${r.remarkAt ? formatTimestamp(r.remarkAt) : ''},${formatDuration(r.timeToRemark)},${late},${resolvedNoRemark}\n`;
     });
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
