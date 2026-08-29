@@ -3136,16 +3136,28 @@ function formatTimestamp(iso) {
     return d.toLocaleString('en-US', { timeZone: 'Asia/Dhaka', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
+// Auto-calculated "next follow-up" time after a KAM remark: if it's within
+// office hours, follow up 2 hours later; otherwise, next business day at
+// office open. Explicitly computed in Asia/Dhaka wall-clock time (the same
+// +6h-shift technique officeMsInRange uses below) rather than the viewer's
+// device clock/timezone, so it gives the same answer no matter what
+// timezone a KAM's phone or laptop happens to be set to. Office hours here
+// are the same 10:00-19:00 window used everywhere else in the app
+// (OFFICE_START_HOUR / OFFICE_END_HOUR), so there's only one "office hours"
+// definition instead of two disagreeing ones.
 function computeFollowupTime(remarkDate) {
-    const WORK_START = 10, WORK_END = 17;
-    const hour = remarkDate.getHours() + remarkDate.getMinutes() / 60;
-    if (hour >= WORK_START && hour < WORK_END) {
-        return new Date(remarkDate.getTime() + 2 * 60 * 60 * 1000);
+    const nowMs = remarkDate.getTime();
+    const shifted = nowMs + DHAKA_OFFSET_MS;
+    const dayStart = Math.floor(shifted / DAY_MS) * DAY_MS; // Dhaka midnight, shifted
+    const hour = (shifted - dayStart) / 3600000; // hour-of-day in Dhaka time
+
+    if (hour >= OFFICE_START_HOUR && hour < OFFICE_END_HOUR) {
+        return new Date(nowMs + 2 * 60 * 60 * 1000);
     }
-    const followup = new Date(remarkDate);
-    if (hour >= WORK_END) followup.setDate(followup.getDate() + 1);
-    followup.setHours(WORK_START, 0, 0, 0);
-    return followup;
+    let nextDayStart = dayStart;
+    if (hour >= OFFICE_END_HOUR) nextDayStart += DAY_MS;
+    const followupShifted = nextDayStart + OFFICE_START_HOUR * 3600000;
+    return new Date(followupShifted - DHAKA_OFFSET_MS);
 }
 
 function followupBadge(iso) {
