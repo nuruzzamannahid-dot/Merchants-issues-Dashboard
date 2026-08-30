@@ -406,6 +406,19 @@ body {
 [data-theme="dark"] .followup-later { color: #9ca3af; }
 .kam-remark-btn { cursor: pointer; text-align: left; }
 .kam-remark-btn:hover { text-decoration: underline; }
+.ops-sent-btns { display: flex; flex-direction: column; gap: 4px; }
+.ops-sent-btn {
+    cursor: pointer; text-align: center; white-space: nowrap;
+    font-size: 0.65rem; font-weight: 700; letter-spacing: 0.02em;
+    padding: 3px 8px; border-radius: 6px; transition: all 0.15s ease;
+    background: rgba(239,68,68,0.1); color: #ef4444; border: 1px solid rgba(239,68,68,0.3);
+}
+.ops-sent-btn:hover { filter: brightness(1.1); }
+.ops-sent-btn.ops-sent-active {
+    background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid rgba(34,197,94,0.4);
+}
+body.viewer-mode .ops-sent-btn { cursor: default; opacity: 0.85; }
+body.hide-ops-col .ops-col { display: none !important; }
 .hub-live-dot {
     display: inline-block; width: 7px; height: 7px; border-radius: 9999px;
     background: #22c55e; margin-right: 5px; position: relative; top: -1px;
@@ -1108,6 +1121,7 @@ body.viewer-mode #modal-status-section .status-save-hint {
                                     <th class="p-4 w-28">Hub</th>
                                     <th class="p-4 w-56">KAM Remarks</th>
                                     <th class="p-4 w-56">Hub Remarks</th>
+                                    <th class="p-4 w-32 ops-col">Sent to OPS</th>
                                     <th class="p-4 w-20 text-right">Action</th>
                                 </tr>
                             </thead>
@@ -1204,6 +1218,7 @@ body.viewer-mode #modal-status-section .status-save-hint {
                                     <th class="p-4 w-28">Hub</th>
                                     <th class="p-4 w-56">KAM Remarks</th>
                                     <th class="p-4 w-56">Hub Remarks</th>
+                                    <th class="p-4 w-32 ops-col">Sent to OPS</th>
                                     <th class="p-4 w-20 text-right">Action</th>
                                 </tr>
                             </thead>
@@ -1879,6 +1894,13 @@ function isViewer() {
     return !!(currentUser && currentUser.role === 'viewer');
 }
 
+// "Sent to OPS" (CTG/OSD/ISD) is restricted to just these two people — every
+// other logged-in user (including other admins) sees the column blank/hidden.
+const SENT_TO_OPS_ALLOWED_EMAILS = ['nuruzzaman.nahid@carrybee.com', 'asif.rashid@carrybee.com'];
+function canUseSentToOps() {
+    return !!(currentUser && SENT_TO_OPS_ALLOWED_EMAILS.includes(currentUser.email));
+}
+
 let currentUser = null;
 
 function checkAuth() {
@@ -1961,6 +1983,7 @@ function updateUserUI() {
     document.getElementById('userAvatar').textContent = initials;
     document.getElementById('dropdownName').textContent = currentUser.name;
     document.getElementById('dropdownEmail').textContent = currentUser.email;
+    document.body.classList.toggle('hide-ops-col', !canUseSentToOps());
 }
 
 function toggleUserMenu() {
@@ -2323,6 +2346,88 @@ function applyHubManualInfo() {
     });
 }
 
+// ==================== SENT TO OPS (CTG / OSD / ISD) ====================
+// Three toggle buttons per ticket letting a KAM mark which OPS division(s)
+// the issue has been escalated to. Shared across every teammate/device via
+// the same Turso DB the other manual-tracking features use (not localStorage),
+// so the button color reflects reality no matter who's viewing it.
+let sentToOpsTableReady = false;
+let sentToOpsMap = new Map(); // ticketId -> { ctg, osd, isd, updatedBy, updatedAt }
+
+async function ensureSentToOpsTable() {
+    if (sentToOpsTableReady) return;
+    await tursoQuery(`CREATE TABLE IF NOT EXISTS sent_to_ops (
+        ticket_id TEXT PRIMARY KEY,
+        ctg_ops INTEGER NOT NULL DEFAULT 0,
+        osd_ops INTEGER NOT NULL DEFAULT 0,
+        isd_ops INTEGER NOT NULL DEFAULT 0,
+        updated_by TEXT,
+        updated_at TEXT NOT NULL
+    )`);
+    sentToOpsTableReady = true;
+}
+
+async function loadSentToOpsFromTurso() {
+    try {
+        await ensureSentToOpsTable();
+        const { rows } = await tursoQuery('SELECT ticket_id, ctg_ops, osd_ops, isd_ops, updated_by, updated_at FROM sent_to_ops');
+        sentToOpsMap = new Map(rows.map(r => [r.ticket_id, {
+            ctg: String(r.ctg_ops) === '1',
+            osd: String(r.osd_ops) === '1',
+            isd: String(r.isd_ops) === '1',
+            updatedBy: r.updated_by || '',
+            updatedAt: r.updated_at
+        }]));
+    } catch (e) {
+        console.error('Load sent-to-ops error:', e);
+    }
+}
+
+function applySentToOps() {
+    issuesData.forEach(issue => {
+        const rec = issue.ticketId && sentToOpsMap.get(issue.ticketId);
+        issue.sentToOps = rec ? { ctg: !!rec.ctg, osd: !!rec.osd, isd: !!rec.isd } : { ctg: false, osd: false, isd: false };
+    });
+}
+
+function renderSentToOpsCell(issue) {
+    if (!canUseSentToOps()) return '';
+    const state = issue.sentToOps || { ctg: false, osd: false, isd: false };
+    const btn = (key, label) => `<button type="button" onclick="toggleSentToOps('${escapeHTML(issue.ticketId)}', '${key}')" class="ops-sent-btn${state[key] ? ' ops-sent-active' : ''}">${label}</button>`;
+    return `<div class="ops-sent-btns">${btn('ctg', 'CTG OPS')}${btn('osd', 'OSD OPS')}${btn('isd', 'ISD OPS')}</div>`;
+}
+
+async function toggleSentToOps(ticketId, which) {
+    if (!canUseSentToOps()) return;
+    if (isViewer()) { showToast('View-only access — you cannot update OPS status.', 'warning'); return; }
+    const issue = issuesData.find(i => i.ticketId === ticketId);
+    if (!issue) return;
+    if (issue.demo) { showToast("Server offline — OPS status isn't saved.", 'error'); return; }
+
+    const current = issue.sentToOps || { ctg: false, osd: false, isd: false };
+    const next = { ...current, [which]: !current[which] };
+    issue.sentToOps = next;
+    const now = new Date().toISOString();
+    const updatedBy = currentUser ? currentUser.name : 'Unknown';
+    sentToOpsMap.set(ticketId, { ...next, updatedBy, updatedAt: now });
+
+    // Optimistic UI update, same pattern used elsewhere in the app.
+    renderTable();
+    if (!document.getElementById('view-pending').classList.contains('hidden')) renderPendingTable();
+
+    try {
+        await ensureSentToOpsTable();
+        await tursoQuery(
+            `INSERT INTO sent_to_ops (ticket_id, ctg_ops, osd_ops, isd_ops, updated_by, updated_at) VALUES (?, ?, ?, ?, ?, ?)
+             ON CONFLICT(ticket_id) DO UPDATE SET ctg_ops = excluded.ctg_ops, osd_ops = excluded.osd_ops, isd_ops = excluded.isd_ops, updated_by = excluded.updated_by, updated_at = excluded.updated_at`,
+            [ticketId, next.ctg ? 1 : 0, next.osd ? 1 : 0, next.isd ? 1 : 0, updatedBy, now]
+        );
+    } catch (err) {
+        console.error('Save sent-to-ops error:', err);
+        showToast('Failed to save OPS status. It may not persist after refresh.', 'error');
+    }
+}
+
 let currentHubInfoIssue = null;
 let lastHubInfoFocus = null;
 
@@ -2533,10 +2638,12 @@ async function fetchData(silent = false) {
         loadKamRemarksFromTurso(),
         loadStatusTimelineFromTurso(),
         loadHubRemarksTimelineFromTurso(),
-        loadHubManualInfoFromTurso()
+        loadHubManualInfoFromTurso(),
+        loadSentToOpsFromTurso()
     ]);
     applyHubRemarksTimeline();
     applyHubManualInfo();
+    applySentToOps();
 
     document.getElementById('loading-state').classList.add('hidden');
     document.getElementById('view-tracker').classList.remove('hidden');
@@ -3070,6 +3177,7 @@ function buildIssueRowHTML(issue, extraLeadingCellHtml) {
                     <td class="p-4 text-xs theme-transition" style="color: var(--text-muted);">${renderHubCell(issue)}</td>
                     <td class="p-4 text-xs">${renderKamRemarkCell(issue)}</td>
                     <td class="p-4 text-xs">${renderHubRemarksCell(issue, status)}</td>
+                    <td class="p-4 text-xs ops-col">${renderSentToOpsCell(issue)}</td>
                     <td class="p-4 text-right">
                         <button onclick="openModal('${escapeHTML(issue.ticketId)}')" class="text-gold hover:opacity-80 text-xs font-bold uppercase tracking-wider transition-colors">View</button>
                     </td>
