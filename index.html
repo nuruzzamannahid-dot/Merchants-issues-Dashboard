@@ -1398,6 +1398,26 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                 <div class="glass-panel rounded-xl p-5 space-y-4">
                     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                         <div>
+                            <h3 class="text-base font-bold theme-transition" style="color: var(--text-primary);">Today's Issues vs Remarks by Hub</h3>
+                            <p class="text-xs mt-0.5 theme-transition" style="color: var(--text-muted);">Per hub in the selected group: issues opened today vs remarks the hub sent today (Asia/Dhaka).</p>
+                        </div>
+                        <div class="inline-flex rounded-lg p-1 self-start sm:self-auto theme-transition" style="background: var(--bg-input); border: 1px solid var(--border-color);">
+                            <button onclick="setHubTodayChartCategory('ISD')" id="hub-today-cat-ISD" class="perf-trend-tab active px-3 py-1.5 rounded-md text-xs font-semibold transition-colors">ISD</button>
+                            <button onclick="setHubTodayChartCategory('SUB')" id="hub-today-cat-SUB" class="perf-trend-tab px-3 py-1.5 rounded-md text-xs font-semibold transition-colors">SUB</button>
+                            <button onclick="setHubTodayChartCategory('OSD')" id="hub-today-cat-OSD" class="perf-trend-tab px-3 py-1.5 rounded-md text-xs font-semibold transition-colors">OSD</button>
+                        </div>
+                    </div>
+                    <div class="chart-container" style="height: 320px;">
+                        <canvas id="hubTodayChart"></canvas>
+                    </div>
+                    <div id="hubTodayChartEmpty" class="hidden p-8 text-center">
+                        <p class="text-sm theme-transition" style="color: var(--text-muted);">No hubs with issues in this group yet.</p>
+                    </div>
+                </div>
+
+                <div class="glass-panel rounded-xl p-5 space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div>
                             <h3 class="text-base font-bold theme-transition" style="color: var(--text-primary);">Hub Remarks Leaderboard</h3>
                             <p class="text-xs mt-0.5 theme-transition" style="color: var(--text-muted);" id="hubLeaderboardDesc">Listed worst to best, so the hubs needing attention are at the top. Rank is a combined score of two factors: remarks given (how many issues the hub has actually replied to) and reply time (from the moment a ticket is marked In Progress to the moment the hub's remark shows up) &mdash; each counts for half. Reply SLA: <span id="hubSlaLabel"></span>. Click a hub row (in the list above) to see its Issue IDs.</p>
                         </div>
@@ -1481,6 +1501,47 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                     </div>
                     <div id="hubTrendEmptyState" class="hidden p-8 text-center">
                         <p class="text-sm theme-transition" style="color: var(--text-muted);">No hub remarks yet to build a trend report.</p>
+                    </div>
+                </div>
+
+                <div class="glass-panel rounded-xl p-5 space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div>
+                            <h3 class="text-base font-bold theme-transition" style="color: var(--text-primary);">Hub Remarks Log</h3>
+                            <p class="text-xs mt-0.5 theme-transition" style="color: var(--text-muted);">Every remark a hub has sent, newest first (Asia/Dhaka time). Showing up to the latest 300 matching entries.</p>
+                        </div>
+                        <div class="flex items-center gap-2 flex-wrap self-start sm:self-auto">
+                            <select id="hubLogCategoryFilter" onchange="onHubLogFilterChange()" class="rounded-lg px-3 py-2 text-xs theme-transition" style="background: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
+                                <option value="all">All Groups</option>
+                                <option value="ISD">ISD</option>
+                                <option value="SUB">SUB</option>
+                                <option value="OSD">OSD</option>
+                            </select>
+                            <div class="relative">
+                                <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-xs theme-transition" style="color: var(--text-muted);"></i>
+                                <input type="text" id="hubLogSearch" onkeyup="onHubLogFilterChange()" placeholder="Search hub, ticket, or merchant..." class="rounded-lg pl-8 pr-3 py-2 text-xs theme-transition" style="background: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input); min-width: 220px;">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="overflow-auto" style="max-height: 420px;">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b text-xs uppercase font-semibold tracking-wider theme-transition" style="border-color: var(--border-color); color: var(--text-muted);">
+                                    <th class="p-3 whitespace-nowrap">Remarked At</th>
+                                    <th class="p-3 whitespace-nowrap">Hub</th>
+                                    <th class="p-3 whitespace-nowrap">Group</th>
+                                    <th class="p-3 whitespace-nowrap">Ticket ID</th>
+                                    <th class="p-3 whitespace-nowrap">Merchant</th>
+                                    <th class="p-3 whitespace-nowrap">Status</th>
+                                    <th class="p-3 whitespace-nowrap">Time to Remark</th>
+                                </tr>
+                            </thead>
+                            <tbody id="hubRemarksLogBody" class="text-sm divide-y theme-transition" style="color: var(--text-secondary); border-color: var(--border-color);">
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="hubRemarksLogEmpty" class="hidden p-8 text-center">
+                        <p class="text-sm theme-transition" style="color: var(--text-muted);">No hub remarks logged yet.</p>
                     </div>
                 </div>
 
@@ -4220,9 +4281,11 @@ function renderHubMap() {
 
     renderHubList();
     renderHubLeaderboard();
+    renderHubTodayChart();
     populateHubTrendFilter();
     renderHubTotalAverages();
     renderHubTrendReport();
+    renderHubRemarksLog();
 }
 
 function renderHubList() {
@@ -4413,6 +4476,139 @@ function renderHubLeaderboard() {
             <td class="p-3 text-xs font-semibold" style="color:${r.resolvedNoRemark > 0 ? '#ef4444' : 'var(--text-muted)'};">${r.resolvedNoRemark}</td>
         </tr>
     `).join('');
+}
+
+// ==================== TODAY'S ISSUES VS REMARKS BY HUB (bar chart, ISD/SUB/OSD) ====================
+let hubTodayChartCategory = 'ISD'; // 'ISD' | 'SUB' | 'OSD'
+
+function setHubTodayChartCategory(cat) {
+    hubTodayChartCategory = cat;
+    ['ISD', 'SUB', 'OSD'].forEach(c => {
+        const btn = document.getElementById(`hub-today-cat-${c}`);
+        if (btn) btn.classList.toggle('active', c === cat);
+    });
+    renderHubTodayChart();
+}
+
+// "Issues today" = this hub's issues opened today (Asia/Dhaka, by submitted date).
+// "Remarks today" = this hub's issues where the hub's remark first showed up
+// today (Asia/Dhaka, by remarkAt) — may be a reply to an issue opened on an
+// earlier day, which is intentional: it answers "how much did the hub reply
+// today", not just "today's new issues".
+function computeHubTodayCounts(category) {
+    const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Dhaka' });
+    const data = {};
+    issuesData.forEach(issue => {
+        const rawHub = (issue.hub || '').toString().trim();
+        const hubName = (rawHub && rawHub !== '-') ? rawHub : 'Unassigned';
+        if (getHubCategory(hubName) !== category) return;
+        if (!data[hubName]) data[hubName] = { issuesToday: 0, remarksToday: 0 };
+
+        if (getOpenedDhakaDateStr(issue) === todayStr) data[hubName].issuesToday += 1;
+
+        const { hasRemarks, at } = getHubRemarksMeta(issue);
+        if (hasRemarks && at) {
+            const remarkD = new Date(at);
+            if (!isNaN(remarkD.getTime()) && remarkD.toLocaleDateString('en-CA', { timeZone: 'Asia/Dhaka' }) === todayStr) {
+                data[hubName].remarksToday += 1;
+            }
+        }
+    });
+    return data;
+}
+
+function renderHubTodayChart() {
+    const canvas = document.getElementById('hubTodayChart');
+    if (!canvas) return;
+    const data = computeHubTodayCounts(hubTodayChartCategory);
+    const hubs = Object.keys(data).sort((a, b) => a.localeCompare(b));
+    const emptyEl = document.getElementById('hubTodayChartEmpty');
+    if (emptyEl) emptyEl.classList.toggle('hidden', hubs.length !== 0);
+    if (charts.hubToday) { charts.hubToday.destroy(); charts.hubToday = null; }
+    if (!hubs.length) return;
+    const cc = getChartColors();
+    const ctx = canvas.getContext('2d');
+    charts.hubToday = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: hubs,
+            datasets: [
+                { label: 'Issues Today', data: hubs.map(h => data[h].issuesToday), backgroundColor: '#fbbf24', borderRadius: 6, borderSkipped: false },
+                { label: 'Remarks Today', data: hubs.map(h => data[h].remarksToday), backgroundColor: '#3b82f6', borderRadius: 6, borderSkipped: false }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom', labels: { color: cc.legend, usePointStyle: true, padding: 16 } } },
+            scales: {
+                y: { beginAtZero: true, grid: { color: cc.grid }, ticks: { color: cc.tick, stepSize: 1 } },
+                x: { grid: { display: false }, ticks: { color: cc.tick } }
+            }
+        }
+    });
+}
+
+// ==================== HUB REMARKS LOG (chronological, newest first) ====================
+let hubLogCategoryFilter = 'all'; // 'all' | 'ISD' | 'SUB' | 'OSD'
+let hubLogSearchTerm = '';
+
+function onHubLogFilterChange() {
+    const select = document.getElementById('hubLogCategoryFilter');
+    const search = document.getElementById('hubLogSearch');
+    hubLogCategoryFilter = select ? select.value : 'all';
+    hubLogSearchTerm = search ? search.value.trim().toLowerCase() : '';
+    renderHubRemarksLog();
+}
+
+function buildHubRemarksLog() {
+    const rows = [];
+    issuesData.forEach(issue => {
+        const { hasRemarks, at } = getHubRemarksMeta(issue);
+        if (!hasRemarks || !at) return;
+        const remarkMs = new Date(at).getTime();
+        if (isNaN(remarkMs)) return;
+        const rawHub = (issue.hub || '').toString().trim();
+        const hubName = (rawHub && rawHub !== '-') ? rawHub : 'Unassigned';
+        const { timeToRemark } = computeTimeToRemark(issue);
+        rows.push({
+            hub: hubName,
+            category: getHubCategory(hubName) || '-',
+            ticketId: issue.ticketId || '-',
+            merchant: issue.merchant || '-',
+            status: getStatus(issue),
+            remarkMs,
+            timeToRemark
+        });
+    });
+    return rows.sort((a, b) => b.remarkMs - a.remarkMs);
+}
+
+function renderHubRemarksLog() {
+    const tbody = document.getElementById('hubRemarksLogBody');
+    if (!tbody) return;
+    let rows = buildHubRemarksLog();
+    if (hubLogCategoryFilter !== 'all') rows = rows.filter(r => r.category === hubLogCategoryFilter);
+    if (hubLogSearchTerm) {
+        rows = rows.filter(r =>
+            r.hub.toLowerCase().includes(hubLogSearchTerm) ||
+            String(r.ticketId).toLowerCase().includes(hubLogSearchTerm) ||
+            String(r.merchant).toLowerCase().includes(hubLogSearchTerm)
+        );
+    }
+    const emptyEl = document.getElementById('hubRemarksLogEmpty');
+    if (emptyEl) emptyEl.classList.toggle('hidden', rows.length !== 0);
+    const statusColor = st => st === 'Open' ? '#f59e0b' : st === 'In Progress' ? '#3b82f6' : st === 'Resolved' ? '#22c55e' : '#94a3b8';
+    tbody.innerHTML = rows.slice(0, 300).map(r => `
+        <tr class="hover-row transition-colors border-b last:border-0 theme-transition" style="border-color: var(--border-color);">
+            <td class="p-3 text-xs whitespace-nowrap theme-transition" style="color: var(--text-secondary);">${escapeHTML(new Date(r.remarkMs).toLocaleString('en-US', { timeZone: 'Asia/Dhaka', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }))}</td>
+            <td class="p-3 text-sm font-medium theme-transition" style="color: var(--text-primary);">${escapeHTML(r.hub)}</td>
+            <td class="p-3 text-xs theme-transition" style="color: var(--text-secondary);">${escapeHTML(r.category)}</td>
+            <td class="p-3 text-xs font-mono text-gold">${escapeHTML(r.ticketId)}</td>
+            <td class="p-3 text-xs theme-transition" style="color: var(--text-secondary);">${escapeHTML(r.merchant)}</td>
+            <td class="p-3"><span class="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full" style="background:${statusColor(r.status)}22; color:${statusColor(r.status)};">${escapeHTML(r.status)}</span></td>
+            <td class="p-3 text-xs font-semibold whitespace-nowrap" style="color:${r.timeToRemark != null && r.timeToRemark > HUB_REMARK_SLA_MS ? '#ef4444' : 'var(--text-secondary)'};">${r.timeToRemark != null ? formatDuration(r.timeToRemark) : '-'}</td>
+        </tr>
+    `).join('') || '';
 }
 
 // ==================== HUB REMARKS TREND REPORTS (DOD / WOW / MOM + total average) ====================
