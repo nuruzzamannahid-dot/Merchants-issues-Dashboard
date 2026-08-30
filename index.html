@@ -427,6 +427,21 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
     border-radius: 6px;
 }
 
+/* ========== VIEW-ONLY ROLE ========== */
+/* When body.viewer-mode is set, hide every control that mutates data —
+   viewer accounts can only browse the Issue Tracker table and use its
+   filters/search. */
+body.viewer-mode #tab-pending,
+body.viewer-mode #tab-analytics,
+body.viewer-mode #tab-hub-performance,
+body.viewer-mode #tab-performance,
+body.viewer-mode #tab-raise-issue,
+body.viewer-mode .kam-remark-btn,
+body.viewer-mode .hub-edit-btn,
+body.viewer-mode #modal-status-section {
+    display: none !important;
+}
+
 /* ========== LOGIN SCREEN ========== */
 .login-screen {
     position: fixed;
@@ -938,7 +953,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
             <button onclick="switchView('analytics')" id="tab-analytics" class="mobile-tab-item shrink-0 py-2.5 text-sm font-medium">Analytics</button>
             <button onclick="switchView('hub-performance')" id="tab-hub-performance" class="mobile-tab-item shrink-0 py-2.5 text-sm font-medium">HUB Performance</button>
             <button onclick="switchView('performance')" id="tab-performance" class="mobile-tab-item shrink-0 py-2.5 text-sm font-medium">Performance</button>
-            <button onclick="showRaiseIssue()" class="mobile-tab-item shrink-0 py-2.5 text-sm font-medium">Raise Issue</button>
+            <button onclick="showRaiseIssue()" id="tab-raise-issue" class="mobile-tab-item shrink-0 py-2.5 text-sm font-medium">Raise Issue</button>
             <span class="shrink-0 w-px h-4" style="background: var(--border-color);"></span>
             <a href="https://merchant-issues-form.onrender.com/" target="_blank" rel="noopener noreferrer"
                 class="mobile-tab-item shrink-0 py-2.5 text-sm font-medium inline-flex items-center gap-1.5" title="Opens in a new tab">
@@ -1636,7 +1651,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                         <p class="text-sm leading-relaxed whitespace-pre-wrap break-words font-bangla theme-transition" style="color: var(--text-secondary);" id="modal-details">-</p>
                     </div>
                 </div>
-                <div class="pt-2">
+                <div class="pt-2" id="modal-status-section">
                     <p class="text-xs uppercase font-semibold mb-3 theme-transition" style="color: var(--text-muted);">Update Status</p>
                     <div class="flex gap-2">
                         <button onclick="updateStatus('Open')" id="btn-open" class="flex-1 py-2 rounded-lg text-sm font-medium border transition-all status-open">Open</button>
@@ -1837,11 +1852,17 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 <script>
 // ==================== AUTHENTICATION ====================
 const USERS = [
-    { email: 'nuruzzaman.nahid@carrybee.com', password: 'CL-84175', name: 'Nuruzzaman Nahid' },
-    { email: 'asif.rashid@carrybee.com', password: 'CL-86026', name: 'Asif Rashid' },
-    { email: 'golam.muktadir@carrybee.com', password: 'CL-86003', name: 'Golam Muktadir' },
-    { email: 'solayman.shadik@carrybee.com', password: 'CL-84426', name: 'Solayman Shadik' }
+    { email: 'nuruzzaman.nahid@carrybee.com', password: 'CL-84175', name: 'Nuruzzaman Nahid', role: 'admin' },
+    { email: 'asif.rashid@carrybee.com', password: 'CL-86026', name: 'Asif Rashid', role: 'admin' },
+    { email: 'golam.muktadir@carrybee.com', password: 'CL-86003', name: 'Golam Muktadir', role: 'admin' },
+    { email: 'solayman.shadik@carrybee.com', password: 'CL-84426', name: 'Solayman Shadik', role: 'admin' },
+    { email: 'socialmedia@carrybee.com', password: '11223344', name: 'Social Media', role: 'viewer' },
+    { email: 'inbound@carrybee.com', password: '11223344', name: 'Inbound', role: 'viewer' }
 ];
+
+function isViewer() {
+    return !!(currentUser && currentUser.role === 'viewer');
+}
 
 let currentUser = null;
 
@@ -1864,12 +1885,14 @@ function checkAuth() {
 function showLogin() {
     document.getElementById('loginScreen').classList.remove('hidden');
     document.getElementById('dashboard').style.display = 'none';
+    document.body.classList.remove('viewer-mode');
     currentUser = null;
 }
 
 function showDashboard() {
     document.getElementById('loginScreen').classList.add('hidden');
     document.getElementById('dashboard').style.display = 'flex';
+    document.body.classList.toggle('viewer-mode', isViewer());
     updateUserUI();
     if (issuesData.length === 0) fetchData();
 }
@@ -2289,6 +2312,7 @@ let currentHubInfoIssue = null;
 let lastHubInfoFocus = null;
 
 function openHubInfoModal(ticketId) {
+    if (isViewer()) { showToast('View-only access — you cannot edit hub info.', 'warning'); return; }
     const issue = issuesData.find(i => i.ticketId === ticketId);
     if (!issue) return;
     currentHubInfoIssue = issue;
@@ -3326,6 +3350,7 @@ function renderHubRemarksCell(issue, status) {
 }
 
 function openKamRemarkModal(ticketId) {
+    if (isViewer()) { showToast('View-only access — you cannot add remarks.', 'warning'); return; }
     const issue = issuesData.find(i => i.ticketId === ticketId);
     if (!issue) return;
     currentKamRemarkIssue = issue;
@@ -3589,6 +3614,7 @@ function updateModalButtons(issue) {
 let analyticsDirty = true;
 
 function updateStatus(newStatus) {
+    if (isViewer()) { showToast('View-only access — you cannot change status.', 'warning'); return; }
     if (!currentModalIssue) return;
     if (currentModalIssue.demo) {
         showToast("Server offline — status changes aren't saved.", 'error');
@@ -3657,6 +3683,7 @@ function closeModal() {
     lastModalFocus = null;
 }
 function showRaiseIssue() {
+    if (isViewer()) { showToast('View-only access — you cannot raise issues.', 'warning'); return; }
     document.getElementById('raiseIssueModal').classList.remove('hidden');
     lastRaiseFocus = document.activeElement;
     const first = document.getElementById('new-merchant');
@@ -4924,6 +4951,7 @@ function renderResolutionChart() {
 }
 
 function switchView(view) {
+    if (isViewer() && view !== 'tracker') { showToast('View-only access — this section is not available.', 'warning'); return; }
     document.getElementById('view-tracker').classList.add('hidden');
     document.getElementById('view-pending').classList.add('hidden');
     document.getElementById('view-analytics').classList.add('hidden');
