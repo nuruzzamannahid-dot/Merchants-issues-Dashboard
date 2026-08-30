@@ -4741,9 +4741,46 @@ function renderHubTotalAverages() {
 }
 
 function exportHubPerformanceCSV() {
-    const header = ['Hub', 'Group', 'Ticket ID', 'Merchant', 'Status', 'Moved to In Progress At',
+    // Refresh hubStats right before export so the summary always matches
+    // what's currently on screen, even if this is called before any other
+    // re-render this session.
+    computeHubStats();
+
+    const lines = [];
+
+    // ---- Section 1: Hub Summary (one row per hub) ----
+    // Pulls from the same computeHubQualityOrder() the leaderboard uses, so
+    // "Total Issues", "Remarks Given" and "Avg Time to Remark" here always
+    // match the leaderboard numbers exactly.
+    lines.push(['Hub Summary'].map(csvField).join(','));
+    const summaryHeader = ['Hub', 'Group', 'Total Issues', 'Remarks Given', 'Remark Rate',
+        'Avg Time to Remark', 'Late (>SLA)', 'Resolved Without Remark'];
+    lines.push(summaryHeader.map(csvField).join(','));
+
+    const hubSummaries = computeHubQualityOrder().sort((a, b) => {
+        if (b.total !== a.total) return b.total - a.total;
+        return a.name.localeCompare(b.name);
+    });
+    hubSummaries.forEach(h => {
+        const fields = [
+            h.name,
+            getHubCategory(h.name) || '',
+            h.total,
+            h.remarksGiven,
+            `${h.remarkRate.toFixed(1)}%`,
+            h.avgRemarkMs != null ? formatDuration(h.avgRemarkMs) : '-',
+            h.lateCount,
+            h.resolvedNoRemark
+        ];
+        lines.push(fields.map(csvField).join(','));
+    });
+
+    // ---- Section 2: Ticket-Level Detail (one row per issue) ----
+    lines.push('');
+    lines.push(['Ticket-Level Detail'].map(csvField).join(','));
+    const detailHeader = ['Hub', 'Group', 'Ticket ID', 'Merchant', 'Status', 'Moved to In Progress At',
         'Hub Remark At', 'Time to Remark', 'Late (>SLA)', 'Resolved Without Remark'];
-    const lines = [header.map(csvField).join(',')];
+    lines.push(detailHeader.map(csvField).join(','));
 
     buildHubRemarkRows('all').forEach(r => {
         const late = (r.timeToRemark != null && r.timeToRemark > HUB_REMARK_SLA_MS) ? 'Yes' : 'No';
