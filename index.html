@@ -3855,19 +3855,41 @@ document.getElementById('perfSearchInput').addEventListener('input', () => {
 });
 
 function exportPerformanceCSV() {
-    let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "Ticket ID,Merchant,Opened At,Moved to In Progress At,Resolved At,Time to In Progress,Progress (Office),Progress (Off-hours),Time to Resolution,Resolution (Office),Resolution (Off-hours)\n";
+    const header = ['Ticket ID', 'Merchant', 'Opened At', 'Moved to In Progress At', 'Resolved At',
+        'Time to In Progress', 'Progress (Office Hours)', 'Progress (Off-hours)',
+        'Time to Resolution', 'Resolution (Office Hours)', 'Resolution (Off-hours)'];
+    const lines = [header.map(csvField).join(',')];
+
     buildPerformanceRows().forEach(r => {
-        const merchant = (r.issue.merchant || '').replace(/"/g, '""');
-        csvContent += `${r.issue.ticketId || ''},"${merchant}",${r.openedISO ? formatTimestamp(r.openedISO) : ''},${r.progressISO ? formatTimestamp(r.progressISO) : ''},${r.resolvedISO ? formatTimestamp(r.resolvedISO) : ''},${formatDuration(r.timeToProgress)},${formatDuration(r.progressOfficeMs)},${formatDuration(r.progressNonOfficeMs)},${formatDuration(r.timeToResolve)},${formatDuration(r.resolveOfficeMs)},${formatDuration(r.resolveNonOfficeMs)}\n`;
+        const fields = [
+            r.issue.ticketId || '',
+            r.issue.merchant || '',
+            r.openedISO ? formatTimestamp(r.openedISO) : '',
+            r.progressISO ? formatTimestamp(r.progressISO) : '',
+            r.resolvedISO ? formatTimestamp(r.resolvedISO) : '',
+            formatDuration(r.timeToProgress),
+            formatDuration(r.progressOfficeMs),
+            formatDuration(r.progressNonOfficeMs),
+            formatDuration(r.timeToResolve),
+            formatDuration(r.resolveOfficeMs),
+            formatDuration(r.resolveNonOfficeMs)
+        ];
+        lines.push(fields.map(csvField).join(','));
     });
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "carrybee_performance.csv");
+
+    // Same BOM + Blob approach as the main issues export: correct Bangla
+    // rendering in Excel, and every field quoted so a comma inside a
+    // formatted timestamp (e.g. "Aug 30, 3:45 PM") can never shift columns.
+    const csvContent = '\uFEFF' + lines.join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `carrybee_performance_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
     showToast('Performance CSV exported successfully!', 'success');
 }
 
@@ -4719,22 +4741,41 @@ function renderHubTotalAverages() {
 }
 
 function exportHubPerformanceCSV() {
-    let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "Hub,Ticket ID,Merchant,Status,Moved to In Progress At,Hub Remark At,Time to Remark,Late (>SLA),Resolved Without Remark\n";
+    const header = ['Hub', 'Group', 'Ticket ID', 'Merchant', 'Status', 'Moved to In Progress At',
+        'Hub Remark At', 'Time to Remark', 'Late (>SLA)', 'Resolved Without Remark'];
+    const lines = [header.map(csvField).join(',')];
+
     buildHubRemarkRows('all').forEach(r => {
-        const merchant = (r.issue.merchant || '').replace(/"/g, '""');
-        const hub = (r.hub || '').replace(/"/g, '""');
-        const late = (r.timeToRemark != null && r.timeToRemark > HUB_REMARK_SLA_MS) ? 'Yes' : '';
-        const resolvedNoRemark = (getStatus(r.issue) === 'Resolved' && !r.hasRemarks) ? 'Yes' : '';
-        csvContent += `"${hub}",${r.issue.ticketId || ''},"${merchant}",${getStatus(r.issue)},${r.issue.progressAt ? formatTimestamp(r.issue.progressAt) : ''},${r.remarkAt ? formatTimestamp(r.remarkAt) : ''},${formatDuration(r.timeToRemark)},${late},${resolvedNoRemark}\n`;
+        const late = (r.timeToRemark != null && r.timeToRemark > HUB_REMARK_SLA_MS) ? 'Yes' : 'No';
+        const resolvedNoRemark = (getStatus(r.issue) === 'Resolved' && !r.hasRemarks) ? 'Yes' : 'No';
+        const fields = [
+            r.hub || '',
+            getHubCategory(r.hub) || '',
+            r.issue.ticketId || '',
+            r.issue.merchant || '',
+            getStatus(r.issue),
+            r.issue.progressAt ? formatTimestamp(r.issue.progressAt) : '',
+            r.remarkAt ? formatTimestamp(r.remarkAt) : '',
+            formatDuration(r.timeToRemark),
+            late,
+            resolvedNoRemark
+        ];
+        lines.push(fields.map(csvField).join(','));
     });
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "carrybee_hub_performance.csv");
+
+    // Same BOM + Blob approach as the main issues export: correct Bangla
+    // rendering in Excel, and every field quoted so a comma inside a
+    // formatted timestamp (e.g. "Aug 30, 3:45 PM") can never shift columns.
+    const csvContent = '\uFEFF' + lines.join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `carrybee_hub_performance_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
     showToast('Hub performance CSV exported successfully!', 'success');
 }
 
