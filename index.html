@@ -2405,7 +2405,8 @@ async function toggleSentToOps(ticketId, which) {
     if (issue.demo) { showToast("Server offline — OPS status isn't saved.", 'error'); return; }
 
     const current = issue.sentToOps || { ctg: false, osd: false, isd: false };
-    const next = { ...current, [which]: !current[which] };
+    const turningOn = !current[which];
+    const next = { ...current, [which]: turningOn };
     issue.sentToOps = next;
     const now = new Date().toISOString();
     const updatedBy = currentUser ? currentUser.name : 'Unknown';
@@ -2425,6 +2426,57 @@ async function toggleSentToOps(ticketId, which) {
     } catch (err) {
         console.error('Save sent-to-ops error:', err);
         showToast('Failed to save OPS status. It may not persist after refresh.', 'error');
+    }
+
+    // Only notify OPS when a button is switched ON (red→green) — turning one
+    // back off is just a correction and shouldn't re-alert the group.
+    if (turningOn) sendOpsAlertToWhatsApp(issue, which);
+}
+
+// ==================== SENT TO OPS → WHATSAPP ====================
+// Fixed dashboard→group names (create these mappings once in the bridge's
+// /admin page, pointed at BisDev CTG & Comilla / BisDev OSD Central /
+// BisDev ISD Central) — unlike KAM remarks, these three don't depend on the
+// ticket's assignedGroup, they always go to the same OPS group per division.
+const OPS_WA_GROUP_NAMES = {
+    ctg: 'CarryBee OPS Alert || CTG',
+    osd: 'CarryBee OPS Alert || OSD',
+    isd: 'CarryBee OPS Alert || ISD'
+};
+const OPS_WA_LABELS = { ctg: 'CTG OPS', osd: 'OSD OPS', isd: 'ISD OPS' };
+
+function formatOpsAlertMessage(issue) {
+    const openedISO = getOpenedAtISO(issue);
+    const dateLabel = openedISO
+        ? new Date(openedISO).toLocaleString('en-US', { timeZone: 'Asia/Dhaka', year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+        : (issue.date || '-');
+    const hubName = issue.hubManualName || issue.hub || '-';
+    const lines = [];
+    lines.push(`Date: ${dateLabel}`);
+    lines.push(`Consignment ID: ${issue.consignmentId || '-'}`);
+    lines.push(`HUB: ${hubName}`);
+    lines.push(`Details: ${issue.details || '-'}`);
+    return lines.join('\n');
+}
+
+async function sendOpsAlertToWhatsApp(issue, which) {
+    const groupName = OPS_WA_GROUP_NAMES[which];
+    if (!groupName) return;
+    try {
+        const message = formatOpsAlertMessage(issue);
+        const res = await fetch(`${WHATSAPP_BRIDGE_URL}/api/send-remark`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-api-key': WHATSAPP_BRIDGE_API_KEY },
+            body: JSON.stringify({ group_name: groupName, message })
+        });
+        if (!res.ok) {
+            const errBody = await res.json().catch(() => ({}));
+            throw new Error(errBody.error || `Bridge responded ${res.status}`);
+        }
+        showToast(`Sent to ${OPS_WA_LABELS[which]} group`, 'success');
+    } catch (err) {
+        console.error('OPS WhatsApp send error:', err);
+        showToast(`Marked ${OPS_WA_LABELS[which]}, but WhatsApp send failed.`, 'error');
     }
 }
 
