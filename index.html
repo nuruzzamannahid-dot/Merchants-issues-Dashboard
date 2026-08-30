@@ -2438,10 +2438,12 @@ async function toggleSentToOps(ticketId, which) {
 // /admin page, pointed at BisDev CTG & Comilla / BisDev OSD Central /
 // BisDev ISD Central) — unlike KAM remarks, these three don't depend on the
 // ticket's assignedGroup, they always go to the same OPS group per division.
+// Dashboard names match the button labels exactly ("CTG OPS" / "OSD OPS" /
+// "ISD OPS") — that's what's mapped in the bridge's /admin page.
 const OPS_WA_GROUP_NAMES = {
-    ctg: 'CarryBee OPS Alert || CTG',
-    osd: 'CarryBee OPS Alert || OSD',
-    isd: 'CarryBee OPS Alert || ISD'
+    ctg: 'CTG OPS',
+    osd: 'OSD OPS',
+    isd: 'ISD OPS'
 };
 const OPS_WA_LABELS = { ctg: 'CTG OPS', osd: 'OSD OPS', isd: 'ISD OPS' };
 
