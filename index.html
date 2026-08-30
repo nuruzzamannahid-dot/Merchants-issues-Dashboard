@@ -263,9 +263,12 @@ body {
 /* design inspired by icon from thenounproject.com */
 .reduceMotionToggle {
   width: 34px;
-  height: auto;
+  height: 34px;
   color: var(--text-muted);
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 .st-reduceMotionToggleBtn {
   position: relative;
@@ -274,10 +277,12 @@ body {
 .st-reduceMotionToggleBtn .reduceMotionToggleInput {
   opacity: 0;
   width: inherit;
+  height: inherit;
   aspect-ratio: 1;
 }
 .st-reduceMotionToggleBtn svg {
   position: absolute;
+  top: 0;
   left: 0;
   width: inherit;
   height: inherit;
