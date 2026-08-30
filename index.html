@@ -428,18 +428,33 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 }
 
 /* ========== VIEW-ONLY ROLE ========== */
-/* When body.viewer-mode is set, hide every control that mutates data —
-   viewer accounts can only browse the Issue Tracker table and use its
-   filters/search. */
+/* When body.viewer-mode is set, hide the controls that let a viewer *change*
+   data — but keep everything that just *displays* data (like the KAM remark
+   preview text and the current status highlighting) visible, since viewers
+   still need to see full issue details, just not edit them. */
 body.viewer-mode #tab-pending,
 body.viewer-mode #tab-analytics,
 body.viewer-mode #tab-hub-performance,
 body.viewer-mode #tab-performance,
 body.viewer-mode #tab-raise-issue,
-body.viewer-mode .kam-remark-btn,
-body.viewer-mode .hub-edit-btn,
-body.viewer-mode #modal-status-section {
+body.viewer-mode .hub-edit-btn {
     display: none !important;
+}
+/* The KAM remark cell's text lives inside its <button>, so it stays visible
+   but becomes non-interactive for viewers instead of being hidden. */
+body.viewer-mode .kam-remark-btn {
+    pointer-events: none;
+    cursor: default;
+}
+/* The status buttons in the issue modal double as the current-status
+   indicator (highlighted/ring styling), so keep them visible for viewers
+   and only disable the click. */
+body.viewer-mode #modal-status-section button {
+    pointer-events: none;
+    cursor: default;
+}
+body.viewer-mode #modal-status-section .status-save-hint {
+    display: none;
 }
 
 /* ========== LOGIN SCREEN ========== */
@@ -1658,7 +1673,7 @@ body.viewer-mode #modal-status-section {
                         <button onclick="updateStatus('In Progress')" id="btn-progress" class="flex-1 py-2 rounded-lg text-sm font-medium border transition-all status-progress">In Progress</button>
                         <button onclick="updateStatus('Resolved')" id="btn-resolved" class="flex-1 py-2 rounded-lg text-sm font-medium border transition-all status-resolved">Resolved</button>
                     </div>
-                    <p class="text-xs mt-3 text-center italic theme-transition" style="color: var(--text-muted);">
+                    <p class="text-xs mt-3 text-center italic theme-transition status-save-hint" style="color: var(--text-muted);">
                         <i class="fa-solid fa-circle-info mr-1"></i>
                         Status is saved to the CarryBee database.
                     </p>
