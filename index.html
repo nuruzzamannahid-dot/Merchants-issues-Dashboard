@@ -1837,7 +1837,8 @@ body.viewer-mode #modal-status-section .status-save-hint {
                 <div>
                     <label for="new-merchant-phone" class="block text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Merchant Phone (Reg. Number)</label>
                     <input type="tel" id="new-merchant-phone" class="w-full rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-gold/50 theme-transition"
-                        style="background-color: var(--bg-modal-content); color: var(--text-primary); border: 1px solid var(--border-input);" placeholder="e.g. 01712345678" maxlength="20">
+                        style="background-color: var(--bg-modal-content); color: var(--text-primary); border: 1px solid var(--border-input);" placeholder="e.g. 01712345678" inputmode="numeric" maxlength="11"
+                        oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,11)">
                 </div>
                 <div>
                     <label for="new-consignment" class="block text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Consignment ID</label>
@@ -2838,23 +2839,32 @@ async function enrichWithGroupData() {
             if (!response.ok) throw new Error(`Group CSV responded ${response.status}`);
             const text = await response.text();
             const rows = parseCSV(text).slice(1);
-            // Keyed by Reg Phone (column F, index 5) instead of Business Name —
-            // business names have dupes/typos across merchants, phone doesn't.
-            adGroupCache = new Map(
-                rows
-                    .filter(r => r[5])
-                    .map(r => {
-                        const regPhone = normalizeBdPhone(r[5]);
-                        return regPhone ? [regPhone.digits, { group: r[3], phone: r[4] }] : null;
-                    })
-                    .filter(Boolean)
-            );
+            // Matched two ways: Reg Phone (column F) first since it's unique per
+            // merchant, falling back to Business Name (column B) for tickets
+            // raised before the phone field existed (or if it wasn't entered).
+            const byPhone = new Map();
+            const byName = new Map();
+            rows.forEach(r => {
+                const info = { group: r[3], phone: r[4] };
+                if (r[5]) {
+                    const regPhone = normalizeBdPhone(r[5]);
+                    if (regPhone) byPhone.set(regPhone.digits, info);
+                }
+                if (r[1]) {
+                    byName.set(String(r[1]).trim().toLowerCase(), info);
+                }
+            });
+            adGroupCache = { byPhone, byName };
         }
 
         issuesData.forEach(issue => {
+            let entry = null;
             const issuePhone = normalizeBdPhone(issue.merchantPhone);
-            if (!issuePhone) return;
-            const entry = adGroupCache.get(issuePhone.digits);
+            if (issuePhone) entry = adGroupCache.byPhone.get(issuePhone.digits);
+            if (!entry) {
+                const nameKey = String(issue.merchant || '').trim().toLowerCase();
+                if (nameKey) entry = adGroupCache.byName.get(nameKey);
+            }
             if (!entry) return;
             if (entry.group) issue.assignedGroup = entry.group;
             if (entry.phone && String(entry.phone).trim()) {
@@ -3884,6 +3894,9 @@ async function submitNewIssue() {
     const details = document.getElementById('new-details').value.trim();
     if (!merchant || !merchantPhoneRaw || !consignment || !tag) { showToast('Please fill all fields', 'error'); return; }
     if (details.length < 20) { showToast('Please provide at least 20 characters of details', 'error'); return; }
+
+    const merchantPhoneDigits = merchantPhoneRaw.replace(/[^\d]/g, '');
+    if (merchantPhoneDigits.length !== 11) { showToast('Merchant phone must be exactly 11 digits (e.g. 01712345678)', 'error'); return; }
 
     const normalizedPhone = normalizeBdPhone(merchantPhoneRaw);
     if (!normalizedPhone) { showToast('Please enter a valid merchant phone number', 'error'); return; }
