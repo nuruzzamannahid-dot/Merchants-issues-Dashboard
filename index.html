@@ -1835,6 +1835,11 @@ body.viewer-mode #modal-status-section .status-save-hint {
                         style="background-color: var(--bg-modal-content); color: var(--text-primary); border: 1px solid var(--border-input);" placeholder="Enter merchant name" maxlength="100">
                 </div>
                 <div>
+                    <label for="new-merchant-phone" class="block text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Merchant Phone (Reg. Number)</label>
+                    <input type="tel" id="new-merchant-phone" class="w-full rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-gold/50 theme-transition"
+                        style="background-color: var(--bg-modal-content); color: var(--text-primary); border: 1px solid var(--border-input);" placeholder="e.g. 01712345678" maxlength="20">
+                </div>
+                <div>
                     <label for="new-consignment" class="block text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Consignment ID</label>
                     <input type="text" id="new-consignment" class="w-full rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-gold/50 theme-transition"
                         style="background-color: var(--bg-modal-content); color: var(--text-primary); border: 1px solid var(--border-input);" placeholder="Enter consignment ID" maxlength="50">
@@ -2833,16 +2838,23 @@ async function enrichWithGroupData() {
             if (!response.ok) throw new Error(`Group CSV responded ${response.status}`);
             const text = await response.text();
             const rows = parseCSV(text).slice(1);
+            // Keyed by Reg Phone (column F, index 5) instead of Business Name —
+            // business names have dupes/typos across merchants, phone doesn't.
             adGroupCache = new Map(
                 rows
-                    .filter(r => r[1])
-                    .map(r => [String(r[1]).trim().toLowerCase(), { group: r[3], phone: r[4] }])
+                    .filter(r => r[5])
+                    .map(r => {
+                        const regPhone = normalizeBdPhone(r[5]);
+                        return regPhone ? [regPhone.digits, { group: r[3], phone: r[4] }] : null;
+                    })
+                    .filter(Boolean)
             );
         }
 
         issuesData.forEach(issue => {
-            const key = String(issue.merchant || '').trim().toLowerCase();
-            const entry = adGroupCache.get(key);
+            const issuePhone = normalizeBdPhone(issue.merchantPhone);
+            if (!issuePhone) return;
+            const entry = adGroupCache.get(issuePhone.digits);
             if (!entry) return;
             if (entry.group) issue.assignedGroup = entry.group;
             if (entry.phone && String(entry.phone).trim()) {
@@ -3866,17 +3878,21 @@ function closeRaiseIssue() {
 
 async function submitNewIssue() {
     const merchant = document.getElementById('new-merchant').value.trim();
+    const merchantPhoneRaw = document.getElementById('new-merchant-phone').value.trim();
     const consignment = document.getElementById('new-consignment').value.trim();
     const tag = document.getElementById('new-tag').value;
     const details = document.getElementById('new-details').value.trim();
-    if (!merchant || !consignment || !tag) { showToast('Please fill all fields', 'error'); return; }
+    if (!merchant || !merchantPhoneRaw || !consignment || !tag) { showToast('Please fill all fields', 'error'); return; }
     if (details.length < 20) { showToast('Please provide at least 20 characters of details', 'error'); return; }
+
+    const normalizedPhone = normalizeBdPhone(merchantPhoneRaw);
+    if (!normalizedPhone) { showToast('Please enter a valid merchant phone number', 'error'); return; }
 
     try {
         const response = await fetch(`${API_BASE_URL}/api/issues`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ consignmentId: consignment, merchantName: merchant, issueTag: tag, issueDetails: details })
+            body: JSON.stringify({ consignmentId: consignment, merchantName: merchant, merchantPhone: normalizedPhone.digits, issueTag: tag, issueDetails: details })
         });
         if (!response.ok) {
             const err = await response.json().catch(() => ({}));
@@ -3885,6 +3901,7 @@ async function submitNewIssue() {
         closeRaiseIssue();
         showToast('New issue raised successfully!', 'success');
         document.getElementById('new-merchant').value = '';
+        document.getElementById('new-merchant-phone').value = '';
         document.getElementById('new-consignment').value = '';
         document.getElementById('new-tag').value = '';
         document.getElementById('new-details').value = '';
