@@ -1442,6 +1442,28 @@ body.viewer-mode #modal-status-section .status-save-hint {
             </div>
             <div id="view-hub-performance" class="hidden fade-in space-y-6">
 
+                <div class="glass-panel rounded-xl p-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center gap-3 flex-wrap">
+                        <span class="text-xs font-semibold uppercase tracking-wider theme-transition" style="color: var(--text-muted);">Filter</span>
+                        <input type="date" id="hubPerfDateFromFilter" onchange="renderHubMap()" title="From date" aria-label="From date"
+                            class="rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
+                            style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
+                        <input type="date" id="hubPerfDateToFilter" onchange="renderHubMap()" title="To date" aria-label="To date"
+                            class="rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
+                            style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
+                        <select id="hubPerfTagFilter" onchange="renderHubMap()" class="rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
+                            style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
+                            <option value="All">All Issue Tags</option>
+                        </select>
+                        <button onclick="clearHubPerfFilters()" type="button"
+                            class="px-3 py-2 rounded-lg text-xs font-medium border transition-colors theme-transition"
+                            style="background-color: var(--bg-input); color: var(--text-secondary); border-color: var(--border-input);">
+                            <i class="fa-solid fa-filter-circle-xmark mr-1"></i> Clear Filters
+                        </button>
+                        <span class="text-[11px] theme-transition" style="color: var(--text-muted);">Applies to the map, leaderboard and summary cards below (by Submitted date) — not to "Today's Issues" or the Trend Reports, which are always their own date ranges.</span>
+                    </div>
+                </div>
+
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div class="card-gradient p-5 rounded-xl border theme-transition" style="border-color: var(--border-color); box-shadow: var(--shadow-sm);">
                         <p class="text-xs font-semibold uppercase tracking-wider theme-transition" style="color: var(--text-muted);">Total Average &mdash; Time to Remark</p>
@@ -2734,6 +2756,7 @@ async function fetchData(silent = false) {
     updateResponseStats();
     rebuildTagFilterOptions(); // FIX #2: tag dropdown only rebuilt when data actually changes
     rebuildResponderAndHubFilterOptions();
+    rebuildHubPerfTagFilterOptions();
     renderTable();
     updateAnalytics();
     if (!document.getElementById('view-pending').classList.contains('hidden')) renderPendingTable();
@@ -4506,9 +4529,67 @@ function computeTimeToRemark(issue) {
     return { hasRemarks, remarkAt, timeToRemark, remarkAfterResolve, resolvedWithoutRemark };
 }
 
+// Scopes the Hub Performance tab's own Date From/To + Issue Tag filters
+// (hubPerfDateFromFilter/hubPerfDateToFilter/hubPerfTagFilter — separate IDs
+// from the Tracker/Pending filters, so they don't interact) on top of
+// issuesData. Feeds computeHubStats() and buildHubRemarkRows(), so the map,
+// leaderboard, summary cards and CSV export all stay in sync with whatever
+// range is selected. Intentionally NOT used by computeHubTodayCounts() (always
+// "today") or the Trend Reports (already their own day/week/month buckets).
+function getHubPerformanceIssues() {
+    const dateFromEl = document.getElementById('hubPerfDateFromFilter');
+    const dateToEl = document.getElementById('hubPerfDateToFilter');
+    const tagEl = document.getElementById('hubPerfTagFilter');
+    const dateFrom = dateFromEl ? dateFromEl.value : '';
+    const dateTo = dateToEl ? dateToEl.value : '';
+    const tagFilter = tagEl ? tagEl.value : 'All';
+
+    if (!dateFrom && !dateTo && tagFilter === 'All') return issuesData;
+
+    return issuesData.filter(issue => {
+        if (tagFilter !== 'All' && normalizeTag(issue.issueTag) !== normalizeTag(tagFilter)) return false;
+        if (dateFrom || dateTo) {
+            const openedDate = getOpenedDhakaDateStr(issue);
+            if (!openedDate) return false;
+            if (dateFrom && openedDate < dateFrom) return false;
+            if (dateTo && openedDate > dateTo) return false;
+        }
+        return true;
+    });
+}
+
+function clearHubPerfFilters() {
+    document.getElementById('hubPerfDateFromFilter').value = '';
+    document.getElementById('hubPerfDateToFilter').value = '';
+    document.getElementById('hubPerfTagFilter').value = 'All';
+    renderHubMap();
+}
+
+// Rebuilds the Hub Performance tab's own tag filter dropdown from issuesData.
+// Kept separate from rebuildTagFilterOptions() (Tracker/Pending) since this
+// one lives on its own ID and shouldn't be touched by those.
+function rebuildHubPerfTagFilterOptions() {
+    const select = document.getElementById('hubPerfTagFilter');
+    if (!select) return;
+    const seen = new Map();
+    issuesData.forEach(i => {
+        const t = (i.issueTag || '').trim();
+        if (!t) return;
+        const k = normalizeTag(t);
+        if (!seen.has(k)) seen.set(k, (TAG_LOOKUP[k] && TAG_LOOKUP[k].label) || t);
+    });
+    const uniqueTags = [...seen.values()].sort((a, b) => a.localeCompare(b));
+    const current = select.value;
+    const options = ['<option value="All">All Issue Tags</option>'];
+    uniqueTags.forEach(tag => {
+        options.push(`<option value="${escapeHTML(tag)}" ${normalizeTag(tag) === normalizeTag(current) ? 'selected' : ''}>${escapeHTML(tag)}</option>`);
+    });
+    select.innerHTML = options.join('');
+}
+
 function computeHubStats() {
     const stats = {};
-    issuesData.forEach(issue => {
+    getHubPerformanceIssues().forEach(issue => {
         const rawHub = (issue.hub || '').toString().trim();
         const hubName = (rawHub && rawHub !== '-') ? rawHub : 'Unassigned';
         if (!stats[hubName]) stats[hubName] = {
@@ -5003,7 +5084,7 @@ const HUB_TREND_LIMITS = { day: 21, week: 16, month: 12 };
 // One row per issue: how long (if at all) this hub took to reply after In
 // Progress. Reuses getHubRemarksMeta so it stays consistent with the map/list/modal.
 function buildHubRemarkRows(hubFilter) {
-    return issuesData.map(issue => {
+    return getHubPerformanceIssues().map(issue => {
         const rawHub = (issue.hub || '').toString().trim();
         const hubName = (rawHub && rawHub !== '-') ? rawHub : 'Unassigned';
         return { issue, hubName };
@@ -5332,14 +5413,13 @@ function csvField(value) {
 }
 
 function exportCSV() {
-    // Always export the full dataset, regardless of whatever search/status/
-    // tag/date/KAM-remark filters happen to be active on screen. Exporting
-    // only the filtered view was confusing in practice — it's easy to leave
-    // an old filter on without noticing, and the export then silently comes
-    // out smaller than expected with no clear indication why. Exporting
-    // everything means the CSV always matches the stat cards at the top
-    // (Total / Open / In Progress / Resolved) 1:1.
-    const rowsToExport = issuesData;
+    // Export matches whatever the Issue Tracker table is currently showing —
+    // same search box + status/tag/date/KAM-remark/responder/hub filters
+    // used by renderTable() (see getFilteredIssues()). Previously this always
+    // exported the full dataset regardless of active filters, which meant
+    // picking a date range and downloading still gave you every issue ever
+    // logged with no indication why.
+    const rowsToExport = getFilteredIssues();
 
     const header = ['Ticket ID', 'Date', 'Time', 'Merchant', 'Merchant Phone', 'Consignment', 'Tag', 'Status',
         'Responded By', 'In Progress At', 'Hub', 'Manual Hub Name', 'KAM Remark', 'KAM Remark By', 'KAM Remark At', 'Follow-up At',
