@@ -2899,26 +2899,13 @@ function normalizeBdPhone(raw) {
     return { display: original, digits };
 }
 
-let groupTableReady = false;
-async function ensureMerchantGroupingTable() {
-    if (groupTableReady) return;
-    await tursoQuery(`CREATE TABLE IF NOT EXISTS merchant_grouping (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        business_name TEXT,
-        group_name TEXT,
-        phone TEXT,
-        reg_phone TEXT,
-        updated_at TEXT
-    )`, [], { url: GROUP_TURSO_URL, token: GROUP_TURSO_TOKEN });
-    groupTableReady = true;
-}
-
 async function enrichWithGroupData() {
     try {
         if (!adGroupCache) {
-            await ensureMerchantGroupingTable();
+            // Table/column names match what's actually in the Turso DB (see the
+            // "AD Merchant Grouping" table) — quoted because of the spaces.
             const { rows } = await tursoQuery(
-                'SELECT business_name, group_name, phone, reg_phone FROM merchant_grouping',
+                'SELECT "Business Name", "Assigned Group", "Whatsapp Number", "Reg Phone" FROM "AD Merchant Grouping"',
                 [],
                 { url: GROUP_TURSO_URL, token: GROUP_TURSO_TOKEN }
             );
@@ -2928,13 +2915,13 @@ async function enrichWithGroupData() {
             const byPhone = new Map();
             const byName = new Map();
             rows.forEach(r => {
-                const info = { group: r.group_name, phone: r.phone };
-                if (r.reg_phone) {
-                    const regPhone = normalizeBdPhone(r.reg_phone);
+                const info = { group: r['Assigned Group'], phone: r['Whatsapp Number'] };
+                if (r['Reg Phone']) {
+                    const regPhone = normalizeBdPhone(r['Reg Phone']);
                     if (regPhone) byPhone.set(regPhone.digits, info);
                 }
-                if (r.business_name) {
-                    byName.set(String(r.business_name).trim().toLowerCase(), info);
+                if (r['Business Name']) {
+                    byName.set(String(r['Business Name']).trim().toLowerCase(), info);
                 }
             });
             adGroupCache = { byPhone, byName };
