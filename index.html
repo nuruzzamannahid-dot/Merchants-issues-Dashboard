@@ -2125,10 +2125,17 @@ function updateThemeIcon() {
 // ==================== CONFIGURATION ====================
 const API_BASE_URL = 'https://merchant-issues-escalation-databash.onrender.com';
 const SHEET_LOOKUP_URL = 'https://script.google.com/macros/s/AKfycbxluUMkxZ5HAdh3vtPf3yxZxXvvhbw1rG1wgmkYR8j3MY3NtNrDpsyNNH5OJeMumlhiEA/exec';
+// Legacy source, kept only for the one-time migration page (migrate-grouping.html).
+// Live enrichment now reads from Turso — see GROUP_TURSO_URL below.
 const ADM_GROUP_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTuapDC5l3Klr5XdcIf8ptsTMAkAkM38Zc6PdqlQj1-AzSCYgkSHU_pTcD6z35kq9B5hfzx5dnjbYrD/pub?output=csv';
 
 const KAM_TURSO_URL = 'https://dashboard-kam-remarks-nuruzzamannahid-dot.aws-ap-south-1.turso.io/v2/pipeline';
 const KAM_TURSO_TOKEN = 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3ODYzNjc4OTQsImlkIjoiMDE5ZmViMDUtMDAwMS03Y2E4LWE2Y2UtOTE4MWE3NTk0ZjAzIiwia2lkIjoianJpQ3JvbGdhcHJHMDlHOXFsOWtNZDFlX2hiN1ZnUV9vYzJGNXlPdGVYWSIsInJpZCI6ImM4MzBhOTMxLWVlZjYtNGRjZC04NzNlLThlYjljNTE4ZGJiZSJ9.AXUJyPONrTtdnkmxATVcCfeakwxrIiUhI-fTe9Hh8-d4QGwz3b1aT0S9-tQVnqSwFPKovHRxm7V3Dr_5vG22BA';
+
+// Merchant grouping / merchant number lookup — separate Turso database
+// (previously a published Google Sheet, see ADM_GROUP_CSV_URL above).
+const GROUP_TURSO_URL = 'https://ad-merchant-grouping-nuruzzamannahid-dot.aws-ap-south-1.turso.io/v2/pipeline';
+const GROUP_TURSO_TOKEN = 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3ODg2OTMxMzQsImlkIjoiMDFhMDc2NTktOWEwMS03NWJlLTg4YWEtNDEwZjI2YjhjNjI1Iiwia2lkIjoianJpQ3JvbGdhcHJHMDlHOXFsOWtNZDFlX2hiN1ZnUV9vYzJGNXlPdGVYWSIsInJpZCI6ImU2YjdjODRjLWQ1ZWMtNDE3ZS1hMTJhLThkMzhlNzMzMDg1MSJ9.pEcKWqkYd-GMpYPBfiQUwBg6L_hNJzKK8TrDU2SyrPvjgj2NtNgWEMmm2LTd_zMXGqc8zlOleF61pl491HUzCA';
 
 const WHATSAPP_BRIDGE_URL = 'https://whatsapp-agent-5pao.onrender.com';
 const WHATSAPP_BRIDGE_API_KEY = 'changeme'; // same key you used on the bridge's /admin page
@@ -2145,12 +2152,16 @@ function tursoArgs(args) {
     });
 }
 
-async function tursoQuery(sql, args = []) {
+// `target` lets callers point at a different Turso database (e.g. the
+// merchant-grouping DB) without duplicating this function. Defaults to the
+// original KAM remarks/timeline database so every existing call site
+// (which doesn't pass a target) keeps working unchanged.
+async function tursoQuery(sql, args = [], target = { url: KAM_TURSO_URL, token: KAM_TURSO_TOKEN }) {
     const stmt = { sql };
     if (args.length) stmt.args = tursoArgs(args);
-    const res = await fetch(KAM_TURSO_URL, {
+    const res = await fetch(target.url, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${KAM_TURSO_TOKEN}`, 'Content-Type': 'application/json' },
+        headers: { 'Authorization': `Bearer ${target.token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ requests: [{ type: 'execute', stmt }, { type: 'close' }] })
     });
     if (!res.ok) throw new Error(`Turso HTTP ${res.status}`);
@@ -2888,26 +2899,42 @@ function normalizeBdPhone(raw) {
     return { display: original, digits };
 }
 
+let groupTableReady = false;
+async function ensureMerchantGroupingTable() {
+    if (groupTableReady) return;
+    await tursoQuery(`CREATE TABLE IF NOT EXISTS merchant_grouping (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        business_name TEXT,
+        group_name TEXT,
+        phone TEXT,
+        reg_phone TEXT,
+        updated_at TEXT
+    )`, [], { url: GROUP_TURSO_URL, token: GROUP_TURSO_TOKEN });
+    groupTableReady = true;
+}
+
 async function enrichWithGroupData() {
     try {
         if (!adGroupCache) {
-            const response = await fetch(ADM_GROUP_CSV_URL);
-            if (!response.ok) throw new Error(`Group CSV responded ${response.status}`);
-            const text = await response.text();
-            const rows = parseCSV(text).slice(1);
-            // Matched two ways: Reg Phone (column F) first since it's unique per
-            // merchant, falling back to Business Name (column B) for tickets
-            // raised before the phone field existed (or if it wasn't entered).
+            await ensureMerchantGroupingTable();
+            const { rows } = await tursoQuery(
+                'SELECT business_name, group_name, phone, reg_phone FROM merchant_grouping',
+                [],
+                { url: GROUP_TURSO_URL, token: GROUP_TURSO_TOKEN }
+            );
+            // Matched two ways: Reg Phone first since it's unique per merchant,
+            // falling back to Business Name for tickets raised before the phone
+            // field existed (or if it wasn't entered).
             const byPhone = new Map();
             const byName = new Map();
             rows.forEach(r => {
-                const info = { group: r[3], phone: r[4] };
-                if (r[5]) {
-                    const regPhone = normalizeBdPhone(r[5]);
+                const info = { group: r.group_name, phone: r.phone };
+                if (r.reg_phone) {
+                    const regPhone = normalizeBdPhone(r.reg_phone);
                     if (regPhone) byPhone.set(regPhone.digits, info);
                 }
-                if (r[1]) {
-                    byName.set(String(r[1]).trim().toLowerCase(), info);
+                if (r.business_name) {
+                    byName.set(String(r.business_name).trim().toLowerCase(), info);
                 }
             });
             adGroupCache = { byPhone, byName };
