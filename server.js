@@ -84,9 +84,16 @@ function rowToIssue(row) {
 
 function nowParts() {
   const now = new Date();
-  const date = now.toISOString().split('T')[0];
-  const time = now.toTimeString().split(' ')[0];
-  return { date, time, iso: now.toISOString() };
+  // Both date and time MUST come from the same UTC-based string. Splitting
+  // date from toISOString() (always UTC) but time from toTimeString() (the
+  // server process's local timezone) meant that any ticket raised between
+  // 6pm-11:59pm UTC could get an issue_date one calendar day behind what
+  // issue_time actually represents — corrupting the "opened date" that the
+  // Hub Performance date filter and CSV export both group by.
+  const iso = now.toISOString(); // e.g. 2026-09-07T04:33:12.345Z
+  const [date, timePart] = iso.split('T');
+  const time = timePart.split('.')[0]; // HH:MM:SS, same UTC instant as `date`
+  return { date, time, iso };
 }
 
 // ==================== MIDDLEWARE ====================
