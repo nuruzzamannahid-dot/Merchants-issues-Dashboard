@@ -2820,21 +2820,53 @@ async function enrichWithSheetData() {
     });
 
     if (idsToFetch.length > 0) {
-        try {
-            const response = await fetch(SHEET_LOOKUP_URL, {
-                method: 'POST',
-                body: JSON.stringify({ consignmentIds: idsToFetch })
-            });
-            if (!response.ok) throw new Error(`Sheet lookup responded ${response.status}`);
-            const data = await response.json();
-            const results = data.results || {};
-            Object.entries(results).forEach(([key, entry]) => {
-                sheetLookupCache.set(key, { entry, ts: now });
-            });
-        } catch (e) {
-            console.error('Sheet enrichment error:', e);
-            // Fall through and use whatever is already cached, even if stale
-            // it's better than blocking the whole table on a failed request.
+        // The Apps Script call redirects through script.googleusercontent.com,
+        // which has shown intermittent connectivity failures (ERR_CONNECTION_TIMED_OUT)
+        // independent of the script itself — confirmed by testing the deployed
+        // URL directly. A hung connection with no timeout used to make the
+        // browser wait out its own default (60s+) before falling back, and a
+        // single failure wiped enrichment for every ticket with nothing cached
+        // yet. Retrying with a short per-attempt timeout means one bad
+        // connection attempt no longer takes down the whole dashboard.
+        const SHEET_LOOKUP_TIMEOUT_MS = 12000;
+        const SHEET_LOOKUP_MAX_ATTEMPTS = 3;
+        let lastError = null;
+        let succeeded = false;
+
+        for (let attempt = 1; attempt <= SHEET_LOOKUP_MAX_ATTEMPTS && !succeeded; attempt++) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), SHEET_LOOKUP_TIMEOUT_MS);
+            try {
+                const response = await fetch(SHEET_LOOKUP_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ consignmentIds: idsToFetch }),
+                    signal: controller.signal
+                });
+                if (!response.ok) throw new Error(`Sheet lookup responded ${response.status}`);
+                const data = await response.json();
+                const results = data.results || {};
+                Object.entries(results).forEach(([key, entry]) => {
+                    sheetLookupCache.set(key, { entry, ts: now });
+                });
+                succeeded = true;
+            } catch (e) {
+                lastError = e;
+                const reason = e.name === 'AbortError'
+                    ? `timed out after ${SHEET_LOOKUP_TIMEOUT_MS / 1000}s (likely the script.googleusercontent.com connectivity issue)`
+                    : e.message;
+                console.warn(`Sheet enrichment attempt ${attempt}/${SHEET_LOOKUP_MAX_ATTEMPTS} failed: ${reason}`);
+                if (attempt < SHEET_LOOKUP_MAX_ATTEMPTS) {
+                    await new Promise(r => setTimeout(r, 1000 * attempt)); // brief backoff before retrying
+                }
+            } finally {
+                clearTimeout(timeoutId);
+            }
+        }
+
+        if (!succeeded) {
+            console.error('Sheet enrichment error after all retries:', lastError);
+            // Fall through and use whatever is already cached, even if stale —
+            // it's better than blocking the whole dashboard on a network hiccup.
         }
     }
 
