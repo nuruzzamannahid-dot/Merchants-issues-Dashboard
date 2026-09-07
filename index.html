@@ -2838,10 +2838,17 @@ async function enrichWithSheetData() {
         const entry = cached && cached.entry;
         if (!entry || !entry.found || !entry.matches || entry.matches.length === 0) return;
 
-        const match = entry.matches.find(m => m.opsStatus) || entry.matches[0];
-        if (match.hubName) issue.hub = match.hubName;
-        if (match.opsStatus) issue.remarks = match.opsStatus;
-        if (match.kamName) issue.kamName = match.kamName;
+        // A ticket can show up in more than one sheet tab (e.g. its OPS status
+        // logged in the Central tab, its Hub Name logged in the ISD/OSD tab it
+        // was actually assigned to). Reading all 3 fields off a single "best"
+        // match silently dropped the Hub Name whenever it lived on a
+        // different match than the OPS status — merge across every match
+        // instead, taking the first non-empty value found for each field.
+        entry.matches.forEach(match => {
+            if (match.hubName && !issue.hub) issue.hub = match.hubName;
+            if (match.opsStatus && !issue.remarks) issue.remarks = match.opsStatus;
+            if (match.kamName && !issue.kamName) issue.kamName = match.kamName;
+        });
     });
 }
 
