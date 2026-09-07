@@ -2721,6 +2721,7 @@ function showOfflineBanner(show) {
 // enough (2 min) while sparing repeat round trips on quick refresh clicks.
 let sheetLookupCache = new Map(); // consignmentId -> { entry, ts }
 const SHEET_LOOKUP_TTL_MS = 2 * 60 * 1000;
+const _unmatchedConsignmentsLogged = new Set(); // consignment IDs already warned about (see enrichWithSheetData)
 
 async function fetchData(silent = false) {
     const refreshIcon = document.getElementById('refresh-icon');
@@ -2837,11 +2838,24 @@ async function enrichWithSheetData() {
         }
     }
 
+    // Logs each consignment ID that came back with no sheet match, once per
+    // ID. A ticket that never enriches never gets issue.hub, which silently
+    // drops it from every ISD/SUB/OSD-grouped view (chart, leaderboard, map)
+    // with no visible error anywhere — the exact failure mode that caused
+    // the "ISD hub empty" bug (a tab lookup silently returning no match).
+    // Console output here is the fast way to tell "this ID genuinely isn't
+    // in the sheet yet" apart from "the lookup script broke again".
     issuesData.forEach(issue => {
         const key = String(issue.consignmentId || '').trim().toUpperCase();
         const cached = sheetLookupCache.get(key);
         const entry = cached && cached.entry;
-        if (!entry || !entry.found || !entry.matches || entry.matches.length === 0) return;
+        if (!entry || !entry.found || !entry.matches || entry.matches.length === 0) {
+            if (key && !_unmatchedConsignmentsLogged.has(key)) {
+                _unmatchedConsignmentsLogged.add(key);
+                console.warn(`[Sheet Enrichment] Consignment "${key}" (ticket ${issue.ticketId || '?'}) has no match in the ISD/OSD/Central sheet lookup — it won't get a Hub Name, OPS status, or KAM name, and will be excluded from every hub-grouped view until it appears in the sheet.`);
+            }
+            return;
+        }
 
         // A ticket can show up in more than one sheet tab (e.g. its OPS status
         // logged in the Central tab, its Hub Name logged in the ISD/OSD tab it
