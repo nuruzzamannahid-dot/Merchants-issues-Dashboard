@@ -1338,7 +1338,7 @@ body.viewer-mode #modal-status-section .status-save-hint {
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <p class="text-xs theme-transition" style="color: var(--text-muted);">
                         <i class="fa-solid fa-circle-info mr-1"></i>
-                        Tracks how long each issue took to move Open &rarr; In Progress &rarr; Resolved. Only counts changes made since this tab was added. Office hours are 10:00 AM&ndash;7:00 PM (Asia/Dhaka); averages below split the elapsed time into office-hours vs non-office-hours.
+                        Tracks how long each issue took to move Open &rarr; In Progress &rarr; Resolved. Only counts changes made since this tab was added. Office hours are 10:00 AM&ndash;6:00 PM (Asia/Dhaka); averages below split the elapsed time into office-hours vs non-office-hours.
                     </p>
                     <button onclick="exportPerformanceCSV()" class="px-4 py-2 rounded-lg bg-gold hover:opacity-90 text-sm font-bold transition-colors flex items-center gap-2 self-start sm:self-auto" style="color: var(--cb-black);">
                         <i class="fa-solid fa-download"></i> Export Performance CSV
@@ -3663,7 +3663,7 @@ function formatTimestamp(iso) {
 // +6h-shift technique officeMsInRange uses below) rather than the viewer's
 // device clock/timezone, so it gives the same answer no matter what
 // timezone a KAM's phone or laptop happens to be set to. Office hours here
-// are the same 10:00-19:00 window used everywhere else in the app
+// are the same 10:00-18:00 window used everywhere else in the app
 // (OFFICE_START_HOUR / OFFICE_END_HOUR), so there's only one "office hours"
 // definition instead of two disagreeing ones.
 function computeFollowupTime(remarkDate) {
@@ -4209,7 +4209,7 @@ function getOpenedAtISO(issue) {
 const DHAKA_OFFSET_MS = 6 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const OFFICE_START_HOUR = 10; // 10:00 AM
-const OFFICE_END_HOUR = 19;   // 7:00 PM
+const OFFICE_END_HOUR = 18;   // 6:00 PM
 
 // A hub's remark is considered "late" if it takes longer than this to arrive
 // after an issue moves to In Progress. Adjust here if the team's SLA changes.
@@ -4272,7 +4272,7 @@ function getHubDivision(hubName) {
     return lookupHubMap(HUB_DIVISION_MAP, hubName);
 }
 
-// Returns milliseconds of [startMs, endMs) that fall inside the 10:00-19:00
+// Returns milliseconds of [startMs, endMs) that fall inside the 10:00-18:00
 // Dhaka window, walking one calendar day at a time.
 function officeMsInRange(startMs, endMs) {
     if (startMs == null || endMs == null || endMs <= startMs) return 0;
