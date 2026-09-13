@@ -22,7 +22,6 @@ async function initDb() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       consignment_id TEXT NOT NULL,
       merchant TEXT NOT NULL,
-      merchant_phone TEXT,
       issue_tag TEXT NOT NULL,
       details TEXT NOT NULL,
       remarks TEXT DEFAULT '',
@@ -36,7 +35,7 @@ async function initDb() {
     )
   `);
 
-  // Safe migration for databases created before responded_by/responded_at/merchant_phone existed.
+  // Safe migration for databases created before responded_by/responded_at existed.
   // ALTER TABLE ADD COLUMN has no "IF NOT EXISTS" in SQLite, so we probe first.
   const cols = await db.execute(`PRAGMA table_info(issues)`);
   const colNames = cols.rows.map((r) => r.name);
@@ -45,9 +44,6 @@ async function initDb() {
   }
   if (!colNames.includes('responded_at')) {
     await db.execute(`ALTER TABLE issues ADD COLUMN responded_at TEXT`);
-  }
-  if (!colNames.includes('merchant_phone')) {
-    await db.execute(`ALTER TABLE issues ADD COLUMN merchant_phone TEXT`);
   }
 }
 
@@ -71,7 +67,6 @@ function rowToIssue(row) {
     timestamp: row.issue_time,
     consignmentId: row.consignment_id,
     merchant: row.merchant,
-    merchantPhone: row.merchant_phone || null,
     issueTag: row.issue_tag,
     details: row.details,
     remarks: row.remarks || '',
@@ -84,17 +79,18 @@ function rowToIssue(row) {
 
 function nowParts() {
   const now = new Date();
-  const iso = now.toISOString(); // true UTC instant, e.g. 2026-09-07T04:33:12.345Z — used for created_at/responded_at
+  const iso = now.toISOString(); // true UTC instant — used for created_at/responded_at
 
   // issue_date/issue_time are read by the dashboard as Asia/Dhaka (UTC+6)
-  // wall-clock values (see index.html's getOpenedAtISO, which appends
-  // "+06:00" to them) — that's what drives the "Submitted" column, the
-  // date-range filters, and both CSV exports. Deriving them from the raw
-  // UTC iso string above used to store the UTC wall-clock instead, which
-  // the dashboard then mislabeled as Dhaka time, showing every ticket's
-  // submitted time 6 hours earlier than when it actually came in. Shifting
-  // by +6h here before splitting gives Dhaka wall-clock date/time so the
-  // two sides agree.
+  // wall-clock values (it appends "+06:00" when parsing them for the
+  // "Submitted" column, date filters, and CSV exports). This function used
+  // to build date from toISOString() (UTC) and time from toTimeString()
+  // (the server process's local timezone, i.e. also UTC on Render) — both
+  // effectively UTC, not Dhaka — so every ticket's submitted time displayed
+  // 6 hours earlier than when it actually came in, and mixing two
+  // different sources for date vs time could also put issue_date a day
+  // behind issue_time. Deriving both from one shifted Date fixes both
+  // problems: shift by +6h, then split date and time from that same value.
   const dhaka = new Date(now.getTime() + 6 * 60 * 60 * 1000);
   const dhakaIso = dhaka.toISOString();
   const [date, timePart] = dhakaIso.split('T');
@@ -131,20 +127,19 @@ app.post('/api/issues', async (req, res) => {
   try {
     const consignmentId = (req.body.consignmentId || '').trim();
     const merchant = (req.body.merchantName || req.body.merchant || '').trim();
-    const merchantPhone = (req.body.merchantPhone || '').toString().replace(/[^\d]/g, '');
     const issueTag = (req.body.issueTag || '').trim();
     const details = (req.body.issueDetails || req.body.details || '').trim();
 
-    if (!consignmentId || !merchant || !merchantPhone || !issueTag || !details) {
-      return res.status(400).json({ error: 'consignmentId, merchantName, merchantPhone, issueTag, and issueDetails are all required' });
+    if (!consignmentId || !merchant || !issueTag || !details) {
+      return res.status(400).json({ error: 'consignmentId, merchantName, issueTag, and issueDetails are all required' });
     }
 
     const { date, time, iso } = nowParts();
 
     const result = await db.execute({
-      sql: `INSERT INTO issues (consignment_id, merchant, merchant_phone, issue_tag, details, remarks, in_process, solved, issue_date, issue_time, created_at)
-            VALUES (?, ?, ?, ?, ?, '', 0, 0, ?, ?, ?)`,
-      args: [consignmentId, merchant, merchantPhone, issueTag, details, date, time, iso],
+      sql: `INSERT INTO issues (consignment_id, merchant, issue_tag, details, remarks, in_process, solved, issue_date, issue_time, created_at)
+            VALUES (?, ?, ?, ?, '', 0, 0, ?, ?, ?)`,
+      args: [consignmentId, merchant, issueTag, details, date, time, iso],
     });
 
     const newId = Number(result.lastInsertRowid);
