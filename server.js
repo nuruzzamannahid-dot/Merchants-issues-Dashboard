@@ -84,15 +84,21 @@ function rowToIssue(row) {
 
 function nowParts() {
   const now = new Date();
-  // Both date and time MUST come from the same UTC-based string. Splitting
-  // date from toISOString() (always UTC) but time from toTimeString() (the
-  // server process's local timezone) meant that any ticket raised between
-  // 6pm-11:59pm UTC could get an issue_date one calendar day behind what
-  // issue_time actually represents — corrupting the "opened date" that the
-  // Hub Performance date filter and CSV export both group by.
-  const iso = now.toISOString(); // e.g. 2026-09-07T04:33:12.345Z
-  const [date, timePart] = iso.split('T');
-  const time = timePart.split('.')[0]; // HH:MM:SS, same UTC instant as `date`
+  const iso = now.toISOString(); // true UTC instant, e.g. 2026-09-07T04:33:12.345Z — used for created_at/responded_at
+
+  // issue_date/issue_time are read by the dashboard as Asia/Dhaka (UTC+6)
+  // wall-clock values (see index.html's getOpenedAtISO, which appends
+  // "+06:00" to them) — that's what drives the "Submitted" column, the
+  // date-range filters, and both CSV exports. Deriving them from the raw
+  // UTC iso string above used to store the UTC wall-clock instead, which
+  // the dashboard then mislabeled as Dhaka time, showing every ticket's
+  // submitted time 6 hours earlier than when it actually came in. Shifting
+  // by +6h here before splitting gives Dhaka wall-clock date/time so the
+  // two sides agree.
+  const dhaka = new Date(now.getTime() + 6 * 60 * 60 * 1000);
+  const dhakaIso = dhaka.toISOString();
+  const [date, timePart] = dhakaIso.split('T');
+  const time = timePart.split('.')[0]; // HH:MM:SS, Dhaka wall-clock, same calendar day as `date`
   return { date, time, iso };
 }
 
