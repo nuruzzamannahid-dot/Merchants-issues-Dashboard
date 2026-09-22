@@ -79,23 +79,17 @@ function rowToIssue(row) {
 
 function nowParts() {
   const now = new Date();
-  const iso = now.toISOString(); // true UTC instant — used for created_at/responded_at
-
-  // issue_date/issue_time are read by the dashboard as Asia/Dhaka (UTC+6)
-  // wall-clock values (it appends "+06:00" when parsing them for the
-  // "Submitted" column, date filters, and CSV exports). This function used
-  // to build date from toISOString() (UTC) and time from toTimeString()
-  // (the server process's local timezone, i.e. also UTC on Render) — both
-  // effectively UTC, not Dhaka — so every ticket's submitted time displayed
-  // 6 hours earlier than when it actually came in, and mixing two
-  // different sources for date vs time could also put issue_date a day
-  // behind issue_time. Deriving both from one shifted Date fixes both
-  // problems: shift by +6h, then split date and time from that same value.
+  // Render runs the server clock in UTC, but issue_date/issue_time are
+  // treated everywhere downstream (dashboard "Submitted" column, ticket
+  // IDs, date-range filters, CSV exports) as Asia/Dhaka (UTC+6) local
+  // wall-clock values. Shift the epoch by +6h and read it back with the
+  // UTC getters to get correct Dhaka date/time regardless of the server's
+  // own timezone — same technique the dashboard's office-hours math uses.
   const dhaka = new Date(now.getTime() + 6 * 60 * 60 * 1000);
-  const dhakaIso = dhaka.toISOString();
-  const [date, timePart] = dhakaIso.split('T');
-  const time = timePart.split('.')[0]; // HH:MM:SS, Dhaka wall-clock, same calendar day as `date`
-  return { date, time, iso };
+  const pad2 = (n) => String(n).padStart(2, '0');
+  const date = `${dhaka.getUTCFullYear()}-${pad2(dhaka.getUTCMonth() + 1)}-${pad2(dhaka.getUTCDate())}`;
+  const time = `${pad2(dhaka.getUTCHours())}:${pad2(dhaka.getUTCMinutes())}:${pad2(dhaka.getUTCSeconds())}`;
+  return { date, time, iso: now.toISOString() };
 }
 
 // ==================== MIDDLEWARE ====================
